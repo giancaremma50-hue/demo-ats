@@ -17,6 +17,7 @@ function getResendClient(): Resend {
 
 export async function sendEmail(input: {
   to: string;
+  cc?: string[];
   subject: string;
   react: ReactElement;
 }): Promise<{ error?: string }> {
@@ -24,6 +25,7 @@ export async function sendEmail(input: {
   const { error } = await resend.emails.send({
     from: process.env.EMAIL_FROM!,
     to: input.to,
+    ...(input.cc && input.cc.length > 0 ? { cc: input.cc } : {}),
     subject: input.subject,
     react: input.react,
   });

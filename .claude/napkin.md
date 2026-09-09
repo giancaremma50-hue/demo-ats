@@ -1,5 +1,12 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (feedback en vivo sobre el drawer de candidato: hilo unificado, sombra sutil, revalidatePath cerrando el drawer)_
+_Última actualización: 2026-09-09 (segunda ronda de feedback: botón de tarea que no hacía nada, CC en mensajes al candidato)_
+
+## Segunda ronda de feedback sobre el drawer (2026-09-09)
+
+1. **BUG REAL: un botón de acción que solo cambia de pestaña (`setTab("seguimiento")`) no dispara nada visible si el usuario YA está en esa pestaña.** El botón "Asignar tarea" de la barra de acciones abría el formulario cuando venías de otra pestaña, pero parado en Seguimientos, el clic no hacía nada — se leía como "el botón está roto". Do instead: si un botón de acción tiene que producir un efecto visible además de navegar (acá: abrir un formulario), ese efecto no puede vivir en el estado del componente HIJO de la pestaña de destino — hay que subirlo al padre que controla ambas cosas (`tab` y `mostrarTarea` viven los dos en `CandidateDrawer` ahora), o el "ya estoy ahí" se come el segundo efecto.
+2. **Decisión de seguridad, no bug: el campo "Para" de mandar mensaje al candidato quedó fijo (`disabled`), no editable — la dirección real sigue resolviéndose 100% server-side.** El pedido original era "que se prellene con el correo y se puedan agregar más" — agregar más SÍ se hizo (campo `cc`, hasta 5, cada dirección validada con `z.email()` en la Server Action), pero el "para" del candidato no se volvió editable a propósito: el comentario ya existente en `sendCandidateMessage` explica por qué (el remitente es la plataforma; un "para" que viniera del cliente permitiría usarla para mandar cualquier cosa a cualquier dirección). Do instead: cuando un pedido de UX choca con una barrera anti-abuso ya documentada en el código, no ceder la barrera para cumplir la letra del pedido — resolver el problema real (loopear a alguien más) por el lado que no la rompe (cc, no to).
+
+---
 
 ## `revalidatePath` sobre la ruta que se está viendo remonta el árbol de cliente (2026-09-09) — MÁXIMA PRIORIDAD
 

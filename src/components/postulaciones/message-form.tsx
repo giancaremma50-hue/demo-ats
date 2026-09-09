@@ -8,9 +8,11 @@ import type { MessageTemplate } from "@/lib/message-templates/get-message-templa
 
 export function MessageForm({
   applicationId,
+  candidateEmail,
   templates,
 }: {
   applicationId: string;
+  candidateEmail: string;
   templates: MessageTemplate[];
 }) {
   const action = sendCandidateMessage.bind(null, applicationId);
@@ -40,6 +42,33 @@ export function MessageForm({
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-1">
+        <label className="text-[11px] text-muted-foreground">Para</label>
+        {/* Fijo, no editable: el destinatario principal sale SIEMPRE del
+            candidato real en la base, nunca de lo que el cliente mande —
+            ver el comentario de sendCandidateMessage. Un select/input
+            editable acá dejaría mandar correo con el remitente de la
+            plataforma a cualquier dirección. */}
+        <input
+          value={candidateEmail}
+          disabled
+          className="h-9 rounded-md border border-border bg-muted px-2.5 text-sm text-muted-foreground"
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="cc" className="text-[11px] text-muted-foreground">
+          Copia (opcional)
+        </label>
+        <input
+          id="cc"
+          name="cc"
+          type="text"
+          placeholder="otro-correo@empresa.com, tercero@empresa.com"
+          aria-invalid={state?.field === "cc"}
+          className={`h-9 rounded-md border bg-background px-2.5 text-sm ${state?.field === "cc" ? "border-destructive" : "border-border"}`}
+        />
+        {state?.field === "cc" && <p className="text-[11px] text-destructive">{state.error}</p>}
+      </div>
       {templates.length > 0 && (
         <select
           defaultValue=""

@@ -57,4 +57,8 @@ export const SendMessageSchema = z.object({
     .trim()
     .min(2, { error: "Escribe el mensaje." })
     .max(4000, { error: "Máximo 4000 caracteres." }),
+  // Uno o más correos separados por coma, validados uno por uno en la
+  // Server Action (no acá): un solo inválido tiene que poder señalarse por
+  // su propio texto en el mensaje de error, no solo "cc inválido".
+  cc: z.string().trim().optional(),
 });

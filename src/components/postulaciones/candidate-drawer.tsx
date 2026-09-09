@@ -72,6 +72,11 @@ export function CandidateDrawer({
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("info");
   const [panel, setPanel] = useState<Panel>(null);
+  // Vive acá y no dentro de SeguimientoView: el botón "Asignar tarea" de la
+  // barra de acciones (abajo del todo) necesita abrir el formulario aunque
+  // el usuario YA esté en la pestaña Seguimientos — ahí setTab("seguimiento")
+  // solo no cambia nada visible porque el tab no cambia de valor.
+  const [mostrarTarea, setMostrarTarea] = useState(false);
   const rejectRef = useRef<RejectDialogHandle>(null);
 
   useEffect(() => {
@@ -144,7 +149,16 @@ export function CandidateDrawer({
     },
     { key: "reunion", label: "Agendar reunión", icon: CalendarPlus, onClick: () => setPanel("reunion"), hidden: !canDecide },
     { key: "seguimiento", label: "Seguimientos", icon: NotebookPen, onClick: () => setTab("seguimiento") },
-    { key: "tarea", label: "Asignar tarea", icon: ListChecks, onClick: () => setTab("seguimiento"), hidden: !canWrite },
+    {
+      key: "tarea",
+      label: "Asignar tarea",
+      icon: ListChecks,
+      onClick: () => {
+        setTab("seguimiento");
+        setMostrarTarea(true);
+      },
+      hidden: !canWrite,
+    },
     { key: "mensaje", label: "Mensaje por correo", icon: Mail, onClick: () => setTab("mensajes"), hidden: !canDecide },
   ];
 
@@ -206,7 +220,14 @@ export function CandidateDrawer({
           ) : tab === "info" ? (
             <InfoView data={data} />
           ) : tab === "seguimiento" ? (
-            <SeguimientoView data={data} applicationId={applicationId!} canWrite={canWrite} onChanged={refresh} />
+            <SeguimientoView
+              data={data}
+              applicationId={applicationId!}
+              canWrite={canWrite}
+              onChanged={refresh}
+              mostrarTarea={mostrarTarea}
+              onMostrarTareaChange={setMostrarTarea}
+            />
           ) : tab === "actividad" ? (
             <ApplicationTimeline events={data.application.events} />
           ) : tab === "bitacora" ? (
@@ -216,7 +237,11 @@ export function CandidateDrawer({
               isActive={data.application.status === "activa"}
             />
           ) : data.canDecide ? (
-            <MessageForm applicationId={applicationId!} templates={data.messageTemplates} />
+            <MessageForm
+              applicationId={applicationId!}
+              candidateEmail={data.application.candidateEmail}
+              templates={data.messageTemplates}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">Solo el reclutador asignado o RH pueden mandar mensajes.</p>
           )}
@@ -360,18 +385,22 @@ function SeguimientoView({
   applicationId,
   canWrite,
   onChanged,
+  mostrarTarea,
+  onMostrarTareaChange,
 }: {
   data: DrawerData;
   applicationId: string;
   canWrite: boolean;
   /** Recarga del drawer, ver `refresh()` en CandidateDrawer. */
   onChanged: () => void;
+  /**
+   * Vive en CandidateDrawer, no acá: el botón "Asignar tarea" de la barra de
+   * acciones tiene que poder abrir este formulario aunque el usuario YA esté
+   * en esta pestaña (donde cambiar de tab no dispara ningún re-render).
+   */
+  mostrarTarea: boolean;
+  onMostrarTareaChange: (value: boolean) => void;
 }) {
-  // Tareas se fusionó dentro de este hilo (decisión del usuario, 2026-09-09)
-  // — ya no tiene pestaña propia, así que "asignar una" es un formulario que
-  // se despliega acá mismo, mismo patrón que "Responder" en cada nota.
-  const [mostrarTarea, setMostrarTarea] = useState(false);
-
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <div>
@@ -401,14 +430,14 @@ function SeguimientoView({
                 applicationId={applicationId}
                 assignable={data.assignable}
                 onSaved={() => {
-                  setMostrarTarea(false);
+                  onMostrarTareaChange(false);
                   onChanged();
                 }}
               />
             ) : (
               <button
                 type="button"
-                onClick={() => setMostrarTarea(true)}
+                onClick={() => onMostrarTareaChange(true)}
                 className="self-start text-xs font-medium text-accent underline"
               >
                 + Asignar tarea

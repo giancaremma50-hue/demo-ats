@@ -587,8 +587,27 @@ export async function sendCandidateMessage(
   if (!(await canDecideApplication(profile.role, profile.id, application.job_id))) {
     return { error: "Tu perfil no puede enviar mensajes en esta vacante." };
   }
+
+  // El "para" sigue siendo SIEMPRE el candidato, resuelto server-side (ver el
+  // comentario de arriba) — "cc" es la parte que sí viene del formulario,
+  // pero cada dirección se valida acá, nunca se confía en que el cliente ya
+  // filtró algo válido. Tope de 5: esto es "avisarle a alguien más del
+  // equipo", no una lista de difusión.
+  const MAX_CC = 5;
+  let cc: string[] = [];
+  if (parsed.data.cc) {
+    const direcciones = [...new Set(parsed.data.cc.split(",").map((d) => d.trim().toLowerCase()).filter(Boolean))];
+    if (direcciones.length > MAX_CC) {
+      return { error: `Máximo ${MAX_CC} correos en copia.`, field: "cc" };
+    }
+    const invalida = direcciones.find((d) => !z.email().safeParse(d).success);
+    if (invalida) return { error: `"${invalida}" no es un correo válido.`, field: "cc" };
+    cc = direcciones;
+  }
+
   const { error: sendError } = await sendEmail({
     to: application.candidates!.email,
+    cc,
     subject: parsed.data.subject,
     react: MensajeCandidatoEmail({
       platformName,
@@ -604,7 +623,7 @@ export async function sendCandidateMessage(
     application_id: applicationId,
     type: "correo_enviado",
     actor_id: profile.id,
-    payload: { subject: parsed.data.subject },
+    payload: cc.length > 0 ? { subject: parsed.data.subject, cc } : { subject: parsed.data.subject },
   });
 
   await revalidateApplication(applicationId, application.job_id, { pipeline: false });
