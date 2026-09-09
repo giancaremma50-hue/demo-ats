@@ -89,7 +89,7 @@ export function FloatingNav({ role }: { role: Role }) {
                   <span
                     className={`relative flex items-center gap-2 ${active ? "text-foreground" : "text-primary-foreground/60"}`}
                   >
-                    <Icon className="size-[17px]" aria-hidden />
+                    <Icon className="size-[18px]" strokeWidth={2.5} aria-hidden />
                     {active && <span>{item.label}</span>}
                   </span>
                   {!active && (

@@ -27,10 +27,10 @@ export async function getKanbanData(jobId: string): Promise<KanbanData> {
       .eq("status", "activa")
       // Orden determinista, obligatorio desde que KanbanColumn recorta a 50 por
       // columna: sin ORDER BY, "las primeras 50" son 50 arbitrarias que Postgres
-      // puede devolver distintas entre cargas. Más antiguas primero es además el
-      // orden útil en un pipeline — quien lleva más esperando es por quien hay
-      // que actuar.
-      .order("applied_at", { ascending: true }),
+      // puede devolver distintas entre cargas. Más reciente primero — decisión
+      // del usuario 2026-09-09 — para ver de entrada quién acaba de entrar a
+      // cada etapa, en vez de tener que bajar hasta el final de la columna.
+      .order("applied_at", { ascending: false }),
   ]);
 
   const cards: KanbanCard[] = (applications ?? []).map((a) => ({

@@ -1,5 +1,17 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (retomó el reporte de seguridad del 2026-09-02 + migración de look AJE, sobre un `main` que había avanzado ~30 commits sin que esta rama los tuviera)_
+_Última actualización: 2026-09-09 (feedback en vivo sobre el drawer de candidato: hilo unificado, sombra sutil, revalidatePath cerrando el drawer)_
+
+## `revalidatePath` sobre la ruta que se está viendo remonta el árbol de cliente (2026-09-09) — MÁXIMA PRIORIDAD
+
+Reporte real del usuario: "cuando se responde un hilo se sale el drawer lateral,
+no debería de pasar eso, debería de actualizar pero sin modificar la pantalla."
+
+1. **BUG REAL: revalidar la ruta actualmente montada, si esa ruta tiene un `loading.tsx` (Suspense boundary), puede remontar todo el árbol de cliente por debajo — perdiendo `useState` que no está atado a la URL.** `addNote`/`addTask`/`toggleTask`/`deleteTask`/`sendCandidateMessage` llamaban `revalidateApplication(...)`, que revalida `/vacantes/[id]/pipeline` — la MISMA ruta que ya está abierta con el drawer del candidato encima (`KanbanBoard` → `CandidateDrawer`). Esa ruta tiene `pipeline/loading.tsx`, así que Next la envuelve en Suspense; una revalidación sobre la ruta activa puede volver a suspenderla, y al remontar, `KanbanBoard`'s `useState(initialOpenApplicationId)` vuelve a su valor inicial (casi siempre `null`, salvo que la URL traiga `?candidato=`) — el drawer se cierra solo, sin que nadie haya llamado `onClose()`.
+   Do instead: `revalidateApplication()` ahora acepta `{ pipeline?: boolean }` — cualquier acción que muta algo que NO se pinta en la tarjeta del kanban (`KanbanCard` solo muestra nombre y rating) pasa `{ pipeline: false }` y se salva de este problema, porque nunca tenía necesidad real de revalidar esa ruta. Antes de agregar una `revalidatePath` nueva sobre una ruta con `loading.tsx`, preguntar: ¿esta acción se puede disparar DESDE DENTRO de esa misma ruta, con estado de cliente (drawer abierto, tab seleccionado, filtro escrito) que no vive en la URL? Si sí, revisar si de verdad hace falta revalidar esa ruta específica — casi siempre el callback `onSaved`/`onChanged` del lado del cliente ya cubre lo que el usuario ve.
+2. **Decisión, mismo día: Tareas se fusionó DENTRO del hilo de Seguimientos (mismo componente, notas y tareas ordenadas por fecha, más reciente arriba) y dejó de tener pestaña propia.** `NoteList` ahora recibe `tasks` además de `notes` y arma un solo feed ordenado — una respuesta a un hilo no "sube" la nota raíz, se ordena por la fecha de la raíz, no de la última respuesta, para que sea un histórico estable.
+3. **Decisión: el orden del kanban pasó de "más antiguo arriba" (con justificación explícita: "quien lleva más esperando es por quien hay que actuar") a "más reciente arriba", a pedido directo del usuario.** Si en el futuro alguien reintroduce el orden viejo pensando que es un bug, no lo es — es una preferencia de producto que ya se revirtió una vez con conocimiento de causa.
+
+---
 
 ## Rama de seguridad estancada 30 commits + migración de diseño AJE (2026-09-09) — MÁXIMA PRIORIDAD
 

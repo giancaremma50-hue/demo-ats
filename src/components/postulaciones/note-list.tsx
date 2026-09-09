@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { NoteForm } from "./note-form";
 import { NoteBody } from "./note-body";
+import { TaskRow } from "./task-list";
 import { Card } from "@/components/ui/card";
-import type { ApplicationNote, MentionableProfile } from "@/lib/applications/get-applications";
+import type { ApplicationNote, ApplicationTask, MentionableProfile } from "@/lib/applications/get-applications";
 
 /** Cuántas respuestas se ven sin expandir. Decisión del usuario: solo las últimas 2. */
 const RESPUESTAS_VISIBLES = 2;
@@ -132,8 +133,13 @@ function Hilo({
   );
 }
 
+type FeedItem =
+  | { kind: "nota"; sortDate: string; raiz: ApplicationNote; respuestas: ApplicationNote[] }
+  | { kind: "tarea"; sortDate: string; task: ApplicationTask };
+
 export function NoteList({
   notes,
+  tasks,
   applicationId,
   mentionable,
   canWrite,
@@ -141,13 +147,16 @@ export function NoteList({
   onSaved,
 }: {
   notes: ApplicationNote[];
+  tasks: ApplicationTask[];
   applicationId: string;
   mentionable: MentionableProfile[];
   canWrite: boolean;
   canMarkPrivate: boolean;
   onSaved: () => void;
 }) {
-  if (notes.length === 0) return <p className="text-sm text-muted-foreground">Sin notas todavía.</p>;
+  if (notes.length === 0 && tasks.length === 0) {
+    return <p className="text-sm text-muted-foreground">Sin seguimientos todavía.</p>;
+  }
 
   // Un solo nivel, así que agrupar es directo: raíces en orden, y cada
   // respuesta cuelga de la suya. Las respuestas cuyo padre no está visible
@@ -165,21 +174,42 @@ export function NoteList({
     porPadre.set(n.parentId, [...(porPadre.get(n.parentId) ?? []), n]);
   }
 
+  // Un feed único, notas y tareas mezcladas por fecha — más reciente arriba
+  // (decisión del usuario, 2026-09-09): antes vivían en dos pestañas
+  // separadas, pero una tarea y una nota sobre lo mismo suelen pasar casi al
+  // mismo tiempo, y partirlas en dos listas rompía la secuencia real de qué
+  // se dijo o se hizo primero. Una respuesta no "sube" a su hilo raíz — el
+  // hilo se ordena por la fecha de la nota RAÍZ, no por su última respuesta,
+  // para que sea un histórico estable y no una bandeja que salta de lugar.
+  const items: FeedItem[] = [
+    ...[...raices, ...huerfanas].map((raiz) => ({
+      kind: "nota" as const,
+      sortDate: raiz.createdAt,
+      raiz,
+      respuestas: porPadre.get(raiz.id) ?? [],
+    })),
+    ...tasks.map((task) => ({ kind: "tarea" as const, sortDate: task.createdAt, task })),
+  ].sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
+
   return (
     <ul className="flex flex-col gap-3">
-      {[...raices, ...huerfanas].map((raiz) => (
-        <Hilo
-          key={raiz.id}
-          raiz={raiz}
-          canReply={!raiz.parentId}
-          respuestas={porPadre.get(raiz.id) ?? []}
-          applicationId={applicationId}
-          mentionable={mentionable}
-          canWrite={canWrite}
-          canMarkPrivate={canMarkPrivate}
-          onSaved={onSaved}
-        />
-      ))}
+      {items.map((item) =>
+        item.kind === "nota" ? (
+          <Hilo
+            key={item.raiz.id}
+            raiz={item.raiz}
+            canReply={!item.raiz.parentId}
+            respuestas={item.respuestas}
+            applicationId={applicationId}
+            mentionable={mentionable}
+            canWrite={canWrite}
+            canMarkPrivate={canMarkPrivate}
+            onSaved={onSaved}
+          />
+        ) : (
+          <TaskRow key={item.task.id} task={item.task} applicationId={applicationId} onChanged={onSaved} />
+        ),
+      )}
     </ul>
   );
 }

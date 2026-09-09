@@ -330,7 +330,7 @@ export async function addNote(
     });
   }
 
-  await revalidateApplication(applicationId, noteJobId);
+  await revalidateApplication(applicationId, noteJobId, { pipeline: false });
   return { success: parsed.data.parent_id ? "Respuesta agregada" : "Nota agregada" };
 }
 
@@ -528,7 +528,7 @@ export async function addTask(
   });
   if (error) return { error: "No se pudo agregar la tarea." };
 
-  await revalidateApplication(applicationId, taskJobId);
+  await revalidateApplication(applicationId, taskJobId, { pipeline: false });
   return { success: "Tarea agregada" };
 }
 
@@ -555,7 +555,7 @@ export async function toggleTask(taskId: string, applicationId: string, isDone: 
     .select("id");
   if (error || !updated || updated.length === 0) return { error: "No se pudo actualizar la tarea." };
 
-  await revalidateApplication(applicationId, jobId);
+  await revalidateApplication(applicationId, jobId, { pipeline: false });
   return { success: isDone ? "Tarea completada" : "Tarea reabierta" };
 }
 
@@ -607,7 +607,7 @@ export async function sendCandidateMessage(
     payload: { subject: parsed.data.subject },
   });
 
-  await revalidateApplication(applicationId, application.job_id);
+  await revalidateApplication(applicationId, application.job_id, { pipeline: false });
   return { success: "Mensaje enviado" };
 }
 
@@ -627,7 +627,7 @@ export async function deleteTask(taskId: string, applicationId: string): Promise
     .eq("application_id", applicationId)
     .select("id");
   if (error || !deleted || deleted.length === 0) throw new Error("No se pudo eliminar la tarea.");
-  await revalidateApplication(applicationId, jobId);
+  await revalidateApplication(applicationId, jobId, { pipeline: false });
 }
 
 /**

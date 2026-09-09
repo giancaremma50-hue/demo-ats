@@ -14,7 +14,7 @@ export function NoteBody({ body }: { body: string }) {
       {parseMentions(body).map((parte, i) =>
         parte.tipo === "mencion" ? (
           <strong key={i} className="font-semibold text-accent">
-            @{parte.nombre}
+            {parte.nombre}
           </strong>
         ) : (
           <span key={i}>{parte.valor}</span>

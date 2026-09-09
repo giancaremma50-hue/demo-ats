@@ -86,6 +86,8 @@ Están codificadas en componentes para que no dependan de la disciplina de nadie
 
 6. Skeletons durante la carga. Estados vacíos con una acción, nunca un texto muerto. Foco visible siempre. `prefers-reduced-motion` respetado.
 
+7. **Todo elemento clickeable que representa un registro concreto (una notificación, una tarea asignada, un ítem de actividad) navega a esa instancia real.** Nunca un clic que no mueve nada en pantalla — eso se lee como "no está pasando nada" y el usuario reintenta o abandona. Si todavía no hay una ruta o vista a la que mandarlo, es más honesto no hacerlo clickeable que fingir que lo es.
+
 ---
 
 ## Reglas de diseño visual — "AJE look" (ref. ajegroup.com, adoptado 2026-09-09)
@@ -117,6 +119,7 @@ Multicolor por contexto: cada estado o marca puede tener su color (igual que AJE
 - `border-radius` variable según el elemento, no una escala única: `4px` / `6px` / `8px` / `10px` / `12px` en tarjetas y campos.
 - **Píldora completa (`9999px`) en todo botón que pasa por `<ActionButton>`**, sea cual sea su variante (primario, secundario, destructivo, ghost) — en la referencia de AJE hasta el botón secundario de "Entrar con Google" es píldora, no solo el CTA principal.
 - **Círculo (`50%`) en todo ícono suelto de un solo símbolo**: cerrar diálogo, campana de notificaciones, reordenar/quitar una fila, el "+" flotante sobre una foto — no hace falta que "flote sobre una imagen", basta con que sea un ícono de acción aislado (así se ve en AJE: el menú hamburguesa y el selector de idioma también son círculos sobre fondo blanco, no solo los íconos sobre foto).
+- **Todo ícono sobre un fondo de color sólido (el menú flotante inferior, cualquier píldora rellena) lleva `strokeWidth={2.5}` como mínimo**, nunca el `2` por defecto de `lucide-react`. Encontrado 2026-09-09: con el verde AJE de fondo, una línea de grosor por defecto pierde contraste y el ícono se lee borroso — un fondo neutro (blanco, `bg-muted`) no tiene este problema y puede quedarse en el grosor default.
 - Excepción de densidad: en listas repetidas y densas (tarjetas de kanban, filas de tabla), la tarjeta en reposo usa borde de 1px, no sombra — la sombra difusa se reserva para cuando el elemento se separa de su fila (arrastrando, en hover destacado) para no repintar sombra en decenas de filas a la vez.
 
 **Imagen**

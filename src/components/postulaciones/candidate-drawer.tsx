@@ -15,28 +15,36 @@ import { RatingStars } from "./rating-stars";
 import { NoteForm } from "./note-form";
 import { NoteList } from "./note-list";
 import { TaskForm } from "./task-form";
-import { TaskList } from "./task-list";
 import { MessageForm } from "./message-form";
 import { InterviewList } from "./interview-list";
 import { ApplicationTimeline } from "./application-timeline";
 import { MeetingScheduler } from "./meeting-scheduler";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type Tab = "info" | "seguimiento" | "bitacora" | "actividad";
+type Tab = "info" | "seguimiento" | "bitacora" | "actividad" | "mensajes";
 
 /**
  * "Actividad" salió del fondo de Seguimientos a su propia pestaña (decisión del
  * usuario, 2026-09-09): mezclada ahí abajo obligaba a scrollear por todas las
  * notas para ver el registro de qué pasó, y son dos cosas distintas — una la
  * escribe el equipo, la otra la genera el sistema.
+ *
+ * Tareas y Mensajes dejaron de ser "paneles" que se abrían debajo de la
+ * pestaña activa (decisión del usuario, 2026-09-09) — las burbujas de conteo
+ * arriba del header quedaban de más al lado de una barra de pestañas que ya
+ * decía lo mismo. Tareas además se fusionó DENTRO de Seguimientos (ver
+ * NoteList): un solo contador de "actividad del equipo" en vez de dos.
  */
-const TABS: { key: Tab; label: string }[] = [
-  { key: "info", label: "Información" },
-  { key: "seguimiento", label: "Seguimientos" },
-  { key: "bitacora", label: "Bitácora" },
-  { key: "actividad", label: "Actividad" },
-];
-type Panel = null | "tarea" | "mensaje" | "reunion";
+function buildTabs(data: DrawerData, messageCount: number): { key: Tab; label: string }[] {
+  return [
+    { key: "info", label: "Información" },
+    { key: "seguimiento", label: `Seguimientos (${data.application.notes.length + data.application.tasks.length})` },
+    { key: "bitacora", label: "Bitácora" },
+    { key: "actividad", label: "Actividad" },
+    { key: "mensajes", label: `Mensajes (${messageCount})` },
+  ];
+}
+type Panel = null | "reunion";
 
 export function CandidateDrawer({
   applicationId,
@@ -136,8 +144,8 @@ export function CandidateDrawer({
     },
     { key: "reunion", label: "Agendar reunión", icon: CalendarPlus, onClick: () => setPanel("reunion"), hidden: !canDecide },
     { key: "seguimiento", label: "Seguimientos", icon: NotebookPen, onClick: () => setTab("seguimiento") },
-    { key: "tarea", label: "Asignar tarea", icon: ListChecks, onClick: () => setPanel(panel === "tarea" ? null : "tarea"), hidden: !canWrite },
-    { key: "mensaje", label: "Mensaje por correo", icon: Mail, onClick: () => setPanel(panel === "mensaje" ? null : "mensaje"), hidden: !canDecide },
+    { key: "tarea", label: "Asignar tarea", icon: ListChecks, onClick: () => setTab("seguimiento"), hidden: !canWrite },
+    { key: "mensaje", label: "Mensaje por correo", icon: Mail, onClick: () => setTab("mensajes"), hidden: !canDecide },
   ];
 
   return (
@@ -169,34 +177,21 @@ export function CandidateDrawer({
           </div>
 
           {data && (
-            <>
-              <div className="mt-3.5 flex gap-2">
-                <span className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${tab === "seguimiento" ? "border-accent text-accent" : "border-border text-muted-foreground"}`}>
-                  <b className="font-serif text-sm not-italic">{data.application.notes.length}</b> Seguimientos
-                </span>
-                <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
-                  <b className="font-serif text-sm not-italic">{data.application.tasks.length}</b> Tareas
-                </span>
-                <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
-                  <b className="font-serif text-sm not-italic">{messageCount}</b> Mensajes
-                </span>
-              </div>
-
-              {/* Las 4 pestañas salen de un array: eran 3 bloques repetidos y
-                  agregar "Actividad" a mano habría sido un cuarto. */}
-              <div className="mt-4 flex gap-5 border-b border-border">
-                {TABS.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setTab(key)}
-                    className={`pb-2.5 text-[13px] ${tab === key ? "border-b-2 border-accent font-medium text-foreground" : "text-muted-foreground"}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </>
+            // Las pestañas salen de un array con el conteo ya adentro del
+            // label — antes había además una fila de burbujas arriba
+            // repitiendo los mismos números, de más al lado de esta barra.
+            <div className="mt-4 flex gap-5 border-b border-border">
+              {buildTabs(data, messageCount).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className={`pb-2.5 text-[13px] ${tab === key ? "border-b-2 border-accent font-medium text-foreground" : "text-muted-foreground"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -214,33 +209,16 @@ export function CandidateDrawer({
             <SeguimientoView data={data} applicationId={applicationId!} canWrite={canWrite} onChanged={refresh} />
           ) : tab === "actividad" ? (
             <ApplicationTimeline events={data.application.events} />
-          ) : (
+          ) : tab === "bitacora" ? (
             <BitacoraView
               events={data.application.events}
               stages={stages}
               isActive={data.application.status === "activa"}
             />
-          )}
-
-          {data && panel === "tarea" && canWrite && (
-            <section className="mt-8 border-t border-border pt-5">
-              <h3 className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Tareas</h3>
-              <div className="mt-3">
-                <TaskForm applicationId={applicationId!} assignable={data.assignable} onSaved={refresh} />
-              </div>
-              <div className="mt-4">
-                <TaskList tasks={data.application.tasks} applicationId={applicationId!} onChanged={refresh} />
-              </div>
-            </section>
-          )}
-
-          {data && panel === "mensaje" && data.canDecide && (
-            <section className="mt-8 border-t border-border pt-5">
-              <h3 className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Mensaje por correo</h3>
-              <div className="mt-3">
-                <MessageForm applicationId={applicationId!} templates={data.messageTemplates} />
-              </div>
-            </section>
+          ) : data.canDecide ? (
+            <MessageForm applicationId={applicationId!} templates={data.messageTemplates} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Solo el reclutador asignado o RH pueden mandar mensajes.</p>
           )}
 
           {data && (
@@ -389,6 +367,11 @@ function SeguimientoView({
   /** Recarga del drawer, ver `refresh()` en CandidateDrawer. */
   onChanged: () => void;
 }) {
+  // Tareas se fusionó dentro de este hilo (decisión del usuario, 2026-09-09)
+  // — ya no tiene pestaña propia, así que "asignar una" es un formulario que
+  // se despliega acá mismo, mismo patrón que "Responder" en cada nota.
+  const [mostrarTarea, setMostrarTarea] = useState(false);
+
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <div>
@@ -402,7 +385,7 @@ function SeguimientoView({
       <div>
         <p className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Seguimiento</p>
         {canWrite ? (
-          <div className="mt-2">
+          <div className="mt-2 flex flex-col gap-2.5">
             <NoteForm
               // Cuenta solo las notas RAÍZ, no el total. Con el total, una
               // respuesta en cualquier hilo cambiaba esta key y borraba el
@@ -413,6 +396,24 @@ function SeguimientoView({
               canMarkPrivate={data.isAdminOrAbove}
               onSaved={onChanged}
             />
+            {mostrarTarea ? (
+              <TaskForm
+                applicationId={applicationId}
+                assignable={data.assignable}
+                onSaved={() => {
+                  setMostrarTarea(false);
+                  onChanged();
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMostrarTarea(true)}
+                className="self-start text-xs font-medium text-accent underline"
+              >
+                + Asignar tarea
+              </button>
+            )}
           </div>
         ) : (
           <p className="mt-2 text-xs text-muted-foreground">Tu nivel en esta vacante es de solo lectura.</p>
@@ -420,6 +421,7 @@ function SeguimientoView({
         <div className="mt-4">
           <NoteList
             notes={data.application.notes}
+            tasks={data.application.tasks}
             applicationId={applicationId}
             mentionable={data.mentionable}
             canWrite={canWrite}

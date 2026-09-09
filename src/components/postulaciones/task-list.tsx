@@ -14,7 +14,8 @@ function DueDate({ dueDate }: { dueDate: string }) {
   return <span className={due.overdue ? "text-destructive" : undefined}>{due.text}</span>;
 }
 
-function TaskRow({
+/** Exportado: el hilo de Seguimientos la reusa para intercalar tareas entre notas por fecha. */
+export function TaskRow({
   task,
   applicationId,
   onChanged,
