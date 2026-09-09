@@ -12,7 +12,16 @@ export function KanbanColumn({
   onOpenCard: (applicationId: string) => void;
 }) {
   return (
-    <div className="flex h-full min-w-[240px] max-w-[420px] flex-1 flex-col">
+    // `min-w` bajo a propósito, no por descuido. Con 240px, seis etapas exigían
+    // 6*240 + 5*16 = 1520px y en una pantalla de 1366 solo hay 1286 útiles: la
+    // última columna quedaba cortada y aparecía scroll horizontal. Con 150px
+    // caben hasta 7 etapas sin scroll en un portátil (flex-1 reparte el sobrante,
+    // así que con 6 etapas cada columna termina en ~200px, no en 150). El
+    // `overflow-x-auto` del tablero sigue ahí como red para pantallas angostas o
+    // pipelines de muchas etapas — no hay un mínimo que haga caber CUALQUIER
+    // número de etapas, y preferir el ajuste a la pantalla fue decisión del
+    // usuario, pedida dos veces.
+    <div className="flex h-full min-w-[150px] max-w-[420px] flex-1 flex-col">
       <div className="flex items-center justify-between px-1 pb-2">
         <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">{stage.name}</p>
         <span className="text-xs tabular-nums text-muted-foreground">{cards.length}</span>
