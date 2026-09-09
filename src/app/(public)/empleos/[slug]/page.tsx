@@ -1,13 +1,17 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { ApplicationForm } from "@/components/empleos/application-form";
 import { WORK_MODE_LABEL, EMPLOYMENT_TYPE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode, EmploymentType } from "@/lib/jobs/schema";
 import { parseCandidacyFields } from "@/lib/job-templates/candidacy-fields";
 
+// Ver el comentario en (public)/empleos/page.tsx: sin `revalidate` a
+// propósito, el nonce de CSP por request de src/proxy.ts fuerza dinámico en
+// todo el sitio. Queda el cliente sin cookies (createPublicClient).
+
 export default async function EmpleoDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: job } = await supabase
     .from("jobs")
     .select("id, title, country, location, work_mode, employment_type, description, requirements, candidacy_fields")

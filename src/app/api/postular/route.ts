@@ -17,8 +17,8 @@ import { NuevaPostulacionEmail } from "@/emails/nueva-postulacion";
 import { PostulacionRecibidaEmail } from "@/emails/postulacion-recibida";
 import { PostulacionDuplicadaEmail } from "@/emails/postulacion-duplicada";
 import { parseCandidacyFields } from "@/lib/job-templates/candidacy-fields";
-
-const MAX_CV_BYTES = 10 * 1024 * 1024;
+import { matchesDeclaredType } from "@/lib/jobs/validate-file-signature";
+import { MAX_CV_BYTES, MAX_ADDITIONAL_FILE_BYTES, MAX_TOTAL_UPLOAD_BYTES } from "@/lib/jobs/upload-limits";
 const ALLOWED_CV_TYPE = "application/pdf";
 const MAX_ADDITIONAL_FILES = 5;
 const ALLOWED_ADDITIONAL_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     .map((part) => part.trim())
     .filter(Boolean)
     .pop() ?? "desconocida";
-  if (!checkRateLimit(`postular:${ip}`, { max: 5, windowMs: 60_000 })) {
+  if (!(await checkRateLimit(`postular:${ip}`, { max: 5, windowMs: 60_000 }))) {
     return NextResponse.json(
       { error: "Demasiados intentos. Espera un minuto e inténtalo de nuevo." },
       { status: 429 },
@@ -125,12 +125,12 @@ export async function POST(request: NextRequest) {
     const cvFile = cv as File;
     if (cvFile.size > MAX_CV_BYTES) {
       return NextResponse.json(
-        { error: "El CV pesa más de 10 MB. Comprímelo e inténtalo de nuevo.", field: "cv" },
+        { error: "El CV pesa más de 4 MB. Comprímelo e inténtalo de nuevo.", field: "cv" },
         { status: 400 },
       );
     }
-    if (cvFile.type !== ALLOWED_CV_TYPE) {
-      return NextResponse.json({ error: "El CV debe ser un archivo PDF.", field: "cv" }, { status: 400 });
+    if (cvFile.type !== ALLOWED_CV_TYPE || !(await matchesDeclaredType(cvFile))) {
+      return NextResponse.json({ error: "El CV debe ser un archivo PDF válido.", field: "cv" }, { status: 400 });
     }
   }
 
@@ -142,11 +142,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Máximo ${MAX_ADDITIONAL_FILES} archivos adicionales.` }, { status: 400 });
   }
   for (const file of additionalFiles) {
-    if (file.size > MAX_CV_BYTES) {
-      return NextResponse.json({ error: "Cada archivo adicional pesa como máximo 10 MB." }, { status: 400 });
+    if (file.size > MAX_ADDITIONAL_FILE_BYTES) {
+      return NextResponse.json({ error: "Cada archivo adicional pesa como máximo 1 MB." }, { status: 400 });
     }
-    if (!ALLOWED_ADDITIONAL_TYPES.has(file.type)) {
-      return NextResponse.json({ error: "Los archivos adicionales deben ser PDF, JPG o PNG." }, { status: 400 });
+    if (!ALLOWED_ADDITIONAL_TYPES.has(file.type) || !(await matchesDeclaredType(file))) {
+      return NextResponse.json({ error: "Los archivos adicionales deben ser PDF, JPG o PNG válidos." }, { status: 400 });
     }
   }
   if (
@@ -155,6 +155,21 @@ export async function POST(request: NextRequest) {
     additionalFiles.length === 0
   ) {
     return NextResponse.json({ error: "Adjunta al menos un archivo adicional." }, { status: 400 });
+  }
+
+  // Chequeo combinado: Vercel corta el request completo en 4.5 MB, a nivel
+  // de plataforma, ANTES de que este código corra — un CV de 3.9 MB más
+  // varios adicionales puede sumar más que eso aunque cada archivo por
+  // separado pase su propio límite. Esto solo se alcanza a evaluar cuando el
+  // total ya venía por debajo del techo real de la plataforma; existe para
+  // dar un mensaje claro en el margen, no como defensa principal.
+  const totalUploadBytes =
+    (hasCv ? (cv as File).size : 0) + additionalFiles.reduce((sum, f) => sum + f.size, 0);
+  if (totalUploadBytes > MAX_TOTAL_UPLOAD_BYTES) {
+    return NextResponse.json(
+      { error: "El CV y los archivos adicionales juntos pesan demasiado. Quita alguno e inténtalo de nuevo." },
+      { status: 400 },
+    );
   }
 
   const email = parsed.data.email.toLowerCase();

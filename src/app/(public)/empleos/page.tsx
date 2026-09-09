@@ -1,9 +1,20 @@
-import { createClient } from "@/lib/supabase/server";
-import { getOrganization } from "@/lib/organizations/get-organization";
+import { createPublicClient } from "@/lib/supabase/public";
+import { getPublicOrganization } from "@/lib/organizations/get-organization";
 import { JobsBoard, type FilterOption } from "@/components/empleos/jobs-board";
 import { HeroBackgroundMedia } from "@/components/layout/hero-background-media";
 import { WORK_MODE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode } from "@/lib/jobs/schema";
+
+// Nota: NO hay `export const revalidate` acá a propósito, aunque esta
+// página sea de solo lectura pública. El nonce de CSP por request
+// (src/proxy.ts, decisión ya tomada en Fase 19) fuerza renderizado 100%
+// dinámico en TODO el sitio vía el matcher del proxy — un `revalidate`
+// serviría contenido cacheado con un nonce viejo, o Next lo ignora en
+// silencio. Habilitar ISR de verdad requeriría sacar /empleos* del alcance
+// del nonce, debilitando CSP justo en la superficie pública — cambio de
+// arquitectura de seguridad, no de este ajuste puntual. Lo que sí queda de
+// este cambio: el cliente sin cookies (createPublicClient) evita que esta
+// página dependa de sesión para datos que son públicos de todos modos.
 
 type JobRow = {
   id: string;
@@ -22,7 +33,7 @@ function distinctOptions(values: (string | null)[], labelFor: (v: string) => str
 }
 
 export default async function EmpleosPage() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const [{ data: jobsData }, organization] = await Promise.all([
     supabase
       .from("jobs")
@@ -30,7 +41,7 @@ export default async function EmpleosPage() {
       .eq("status", "abierta")
       .eq("visibility", "publica")
       .order("published_at", { ascending: false }),
-    getOrganization(),
+    getPublicOrganization(),
   ]);
 
   const allJobs = (jobsData ?? []) as JobRow[];

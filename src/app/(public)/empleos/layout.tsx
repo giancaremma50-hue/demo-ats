@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getOrganization } from "@/lib/organizations/get-organization";
+import { getPublicOrganization } from "@/lib/organizations/get-organization";
 
 export default async function EmpleosLayout({ children }: { children: React.ReactNode }) {
-  const organization = await getOrganization();
+  const organization = await getPublicOrganization();
 
   return (
     <div className="min-h-screen bg-background">

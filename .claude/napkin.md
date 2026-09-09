@@ -1,5 +1,5 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (seguimientos en hilo, menciones, y el drawer que no mostraba lo que acababas de registrar)_
+_Última actualización: 2026-09-09 (auditoría de lanzamiento: rate limit compartido en Postgres, límite real de Vercel, validación de archivos por contenido, CI, caché del portal — ver `docs/PENDIENTE.md`)_
 
 ## Hilos de seguimiento, menciones y el drawer que no se refrescaba — MÁXIMA PRIORIDAD
 
@@ -664,9 +664,9 @@ Ambos confirmados por captura del Dashboard de Supabase: "Customize Access Token
    Causa: `handle_new_user` es un trigger `AFTER INSERT` en `auth.users` — solo se dispara una vez, al crear la cuenta. Si el callback rechaza esa sesión sin borrar la cuenta, un reintento de login reutiliza la misma fila de `auth.users` (no hay INSERT nuevo) y el trigger nunca vuelve a correr.
    Do instead: en **todo** camino de rechazo post-login (perfil faltante, dominio no permitido, inactivo no cuenta porque ahí sí hay perfil válido) llamar `createAdminClient().auth.admin.deleteUser(user.id)` antes de redirigir a la página de error — no solo en el caso que se te ocurrió primero. Se encontró porque un review notó que solo la rama de dominio-rechazado borraba la cuenta.
 
-10. **[2026-09-01] BUG REAL (pendiente, no corregido): `error_reports_select`/`error_report_messages_select` no validan `organization_id` en la rama `is_super_admin()`.**
-    Causa: la política es `reporter_id = auth.uid() OR is_super_admin()` — `private.is_super_admin()` solo mira el rol del JWT, nunca la organización. Hoy sin impacto real (un solo tenant), pero es el mismo patrón de fuga cross-tenant que la regla de AGENTS.md pide evitar.
-    Do instead (cuando se apruebe una migración): agregar `organization_id = (select private.auth_org_id())` a ambas políticas. Mientras tanto, Fase 7 lo mitiga filtrando `organization_id` explícito en cada función de `src/lib/errors/get-error-reports.ts` y `src/lib/errors/actions.ts` — mitigación de capa de app, no reemplaza el fix real en la política.
+10. **[2026-09-09] Una función que el CÓDIGO llama con `admin.rpc(...)` tiene que vivir en `public`, nunca en `private` — aunque sea `SECURITY DEFINER` y el resto de `private.*` sea la convención del proyecto.**
+    Causa: PostgREST solo expone RPC del esquema `public` (por eso todo `private.*` existente —`auth_org_id()`, `can_access_job()`, etc.— se usa SOLO dentro de políticas RLS/SQL, nunca desde `admin.rpc()`). Se creó `private.check_rate_limit` para el rate limit compartido en Postgres, pasó el `execute_sql` de prueba, y habría fallado en runtime real con "function not found" apenas la app la llamara vía REST — la diferencia entre "funciona en SQL directo" y "lo puede llamar la app" no se ve hasta probarlo por el canal real.
+    Do instead: cualquier función pensada para `admin.rpc()`/`supabase.rpc()` va en `public`, y si no debe ser invocable por `anon`/`authenticated` (como este rate limit, donde dejar que cualquiera mande su propio `p_max` anula el límite), se cierra con `revoke all ... from public/anon/authenticated` + `grant execute ... to service_role` explícito — no confiar en que "vive en un esquema con nombre serio" alcanza como control de acceso. Verificado con `has_function_privilege('anon', ..., 'execute')` = false antes de dar el fix por bueno. (Reemplaza la lección de `error_reports_select`, ya resuelto en la política real: `organization_id = auth_org_id()` agregado.)
 
 ---
 
@@ -792,6 +792,22 @@ Ambos confirmados por captura del Dashboard de Supabase: "Customize Access Token
 
 5. **[2026-08-31] `react-hooks/set-state-in-effect` es un ERROR duro en este proyecto (rompe el build), no un warning — y no siempre se resuelve igual.**
    Do instead: si el estado que quieres resetear viene de una prop que cambió (ej. el formulario de marca cuando otra pestaña guarda), usa `key={prop}` en el padre para forzar un remount — el patrón oficial de React, sin `useEffect`. Si el estado es un valor genuinamente solo-de-cliente sin prop de la que depender (ej. `new Date()` para el saludo o la fecha de `/inicio` — el reloj del servidor en Vercel es UTC, no el de Centroamérica), no hay prop que "keyear": ahí sí toca `useEffect` + `// eslint-disable-next-line react-hooks/set-state-in-effect` con un comentario que justifique por qué. **Bug real encontrado con el primer patrón**: el `key` del formulario de marca solo incluía `accent_color`, así que un cambio de solo `platform_name` no remontaba el formulario y una pestaña vieja podía pisar el nombre nuevo al guardar — el `key` debe incluir TODAS las props de las que depende el estado interno, no solo la que se probó primero.
+
+---
+
+## Vercel — límites de la plataforma y estado del repo (MÁXIMA PRIORIDAD)
+
+1. **[2026-09-09] `main` local puede estar viendo un repo distinto al que Vercel despliega — verificar ANTES de auditar o arreglar código, no asumir por el nombre del branch.**
+   Causa: una auditoría completa se hizo leyendo `main` local, que estaba 23 commits atrás de `origin/main` (nunca se hizo `git fetch`). El deploy de producción activo (`list_deployments`, `target: "production"`) correspondía al último commit de un branch con nombre de sesión (`claude/context-ats-reclutamiento-review-a2c621`) que en GitHub YA era `origin/main` — la desactualización era solo del checkout local. Si no se hubiera cruzado el `githubCommitMessage` del deployment más reciente contra `git log`, varios hallazgos (falta de checkbox de consentimiento, error sin diagnóstico) se habrían reportado y "arreglado" sobre código que producción ya no tenía, mientras el bug real que SÍ seguía vivo (`/api/postular` con una key rota) no se habría tocado.
+   Do instead: antes de auditar o tocar código pensando en "lo que está en producción", correr `git fetch` y comparar `list_deployments`/`get_git_deployment_context` (Vercel MCP) contra `git log --oneline` — el mensaje de commit del deployment activo identifica el commit exacto, y `git merge-base`/`git log branchA..branchB` confirma si es el mismo repo o uno divergente.
+
+2. **[2026-09-09] `export const revalidate` en una página no sirve de nada si el nonce de CSP por request (`src/proxy.ts`) sigue aplicando sobre esa ruta — y el build NO avisa, solo sigue marcando la ruta `ƒ (Dynamic)`.**
+   Se intentó cachear `/empleos` y `/empleos/[slug]` (portal público, solo lectura) cambiando a un cliente de Supabase sin cookies + `revalidate = 60`. El build siguió mostrando ambas como dinámicas — la causa no era el cliente de datos sino que el nonce de CSP (decisión ya tomada en Fase 19, ver arriba en Next.js 16) exige renderizado 100% dinámico en TODO el sitio vía el matcher del proxy, sin excepción por ruta.
+   Do instead: después de agregar `revalidate` a cualquier página, confirmar en la salida de `next build` (columna de símbolos, leyenda al final) que de verdad cambió de `ƒ` a estático/ISR — no asumir que compiló bien porque compiló. Si el proyecto ya tiene un nonce de CSP por request cubriendo esa ruta, `revalidate` es ruido: hay que sacar la ruta del alcance del nonce (compromiso de seguridad real) o aceptar que esa página no cachea.
+
+3. **[2026-09-09] Vercel Functions rechaza cualquier body de más de 4.5 MB a nivel de plataforma — fijo, no configurable, no cambia con Fluid Compute.**
+   No es lo mismo que `experimental.serverActions.bodySizeLimit` de Next.js (ese es solo para Server Actions, no para Route Handlers como `/api/postular`). Un límite de archivo más generoso en el código (ej. "CV hasta 10 MB") nunca se alcanza a evaluar si el conjunto del multipart pasa los 4.5 MB — Vercel corta antes con un 413 crudo, que además no es JSON (un `res.json()` sin manejo de error en el cliente lo traduce como "se perdió la conexión").
+   Do instead: cualquier techo de subida en un Route Handler público tiene que quedar cómodamente por debajo de 4.5 MB, contando TODOS los archivos del mismo envío combinados, no cada uno por separado. Para archivos de verdad pesados, subir directo del navegador a Storage con URL firmada (patrón ya usado por la subida de video de marca) — el archivo nunca pasa por el cuerpo de la función.
 
 ---
 
