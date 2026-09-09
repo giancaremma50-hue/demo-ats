@@ -3,6 +3,7 @@ import { es } from "date-fns/locale";
 import { ArrowRight } from "lucide-react";
 import { JobStatusBadge } from "@/components/vacantes/job-status-badge";
 import type { JobAuditLogRow } from "@/lib/audit/get-job-audit-log";
+import { JobStatusSchema } from "@/lib/jobs/schema";
 import type { JobStatus } from "@/lib/jobs/get-jobs";
 
 /** "Bitácora dentro de la vacante" — la única bitácora que queda en la app; la pestaña global de Configuración se quitó (Fase 18). */
@@ -37,7 +38,14 @@ export function JobAuditLog({ entries }: { entries: JobAuditLogRow[] }) {
   );
 }
 
-const VALID_STATUSES = new Set<JobStatus>(["borrador", "pendiente_aprobacion", "abierta", "pausada", "cerrada", "cancelada"]);
+// Derivada del enum, NO copiada a mano. La versión anterior era una lista
+// literal y se quedó vieja: `aceptada` se agregó al enum el 2026-09-03 y nadie
+// la sumó acá, así que toda transición que pasara por ese estado fallaba este
+// chequeo y caía al fallback que pinta el nombre técnico crudo
+// ("job_status_changed" en monoespaciada) en vez de las dos insignias. El
+// usuario lo reportó como "se ve feo"; era una lista blanca desincronizada.
+// Así no puede volver a pasar: agregar un valor al enum lo incluye solo.
+const VALID_STATUSES: ReadonlySet<JobStatus> = new Set(JobStatusSchema.options);
 
 // Solo comprobar que existan las claves "antes"/"despues" no alcanza — si
 // algún día otro trigger reusara esta misma forma para una acción distinta

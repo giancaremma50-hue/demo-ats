@@ -4,6 +4,7 @@ import { revalidateApplication } from "@/lib/applications/revalidate";
 import { z } from "zod";
 import { requireProfile } from "@/lib/auth/dal";
 import { ADMIN_ROLES } from "@/lib/auth/role-labels";
+import { canonicalizeMentions, extractMentionIds } from "./mentions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify, notifyBestEffort, getEmailContext } from "@/lib/notifications/notify";
@@ -21,6 +22,9 @@ import { getSignedCvUrl } from "@/lib/candidates/get-signed-cv-url";
 import { NoteSchema, RejectSchema, RATING_MAX, TaskSchema, SendMessageSchema } from "./schema";
 
 export type ApplicationActionResult = { error?: string; success?: string; field?: string };
+
+/** Tope de menciones por nota. Vivía en el schema, junto al campo oculto que ya no existe. */
+const MAX_MENCIONES = 20;
 
 /** Repetido en setRating/rejectApplication/hireApplication/reopenApplication — un solo lugar para no desincronizar el shape de la query. */
 async function requireApplicationJobId(
@@ -233,13 +237,25 @@ export async function addNote(
   // sobre algo que no puede abrir y le revelaría que existe. Se revalida acá
   // contra la misma función que alimenta el formulario: el <select> del cliente
   // nunca es la fuente de verdad.
+  // Los ids se toman del CUERPO, que es la única fuente: lo que se guarda es
+  // lo que la gente lee, así que nadie puede mandar una nota que dice "@Ana"
+  // y notificar a Beto, ni notificar a alguien que no aparece en el texto.
+  const idsEnCuerpo = extractMentionIds(parsed.data.body);
+  // El tope vivía en el schema, junto al campo oculto que ya no existe.
+  if (idsEnCuerpo.length > MAX_MENCIONES) {
+    return { error: `Máximo ${MAX_MENCIONES} menciones por nota.`, field: "body" };
+  }
+
+  // El cuerpo que se GUARDA puede diferir del que llegó: los nombres de los
+  // tokens se reescriben con el nombre real del perfil (ver canonicalizeMentions).
+  let bodyFinal = parsed.data.body;
   let mentions: string[] = [];
-  if (parsed.data.mentions.length > 0) {
+  if (idsEnCuerpo.length > 0) {
     const mentionable = await getMentionableProfiles(noteJobId, profile.organization_id);
     const permitidos = new Map(
       mentionable.filter((m) => !isPrivate || m.isAdminOrAbove).map((m) => [m.id, m.display_name]),
     );
-    const invalido = parsed.data.mentions.find((id) => !permitidos.has(id));
+    const invalido = idsEnCuerpo.find((id) => !permitidos.has(id));
     if (invalido) {
       return {
         error: isPrivate
@@ -249,7 +265,10 @@ export async function addNote(
       };
     }
     // Sin duplicados y sin el propio autor: notificarse a uno mismo es ruido.
-    mentions = [...new Set(parsed.data.mentions)].filter((id) => id !== profile.id);
+    mentions = idsEnCuerpo.filter((id) => id !== profile.id);
+    // `permitidos` ya trae el display_name real de cada uno; hasta ahora ese
+    // nombre se consultaba y se tiraba.
+    bodyFinal = canonicalizeMentions(parsed.data.body, permitidos);
   }
 
   const { data: note, error } = await supabase
@@ -258,7 +277,7 @@ export async function addNote(
       organization_id: profile.organization_id,
       application_id: applicationId,
       author_id: profile.id,
-      body: parsed.data.body,
+      body: bodyFinal,
       is_private: isPrivate,
       parent_id: parsed.data.parent_id ?? null,
       mentions,

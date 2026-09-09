@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { NoteForm } from "./note-form";
+import { NoteBody } from "./note-body";
 import type { ApplicationNote, MentionableProfile } from "@/lib/applications/get-applications";
 
 /** Cuántas respuestas se ven sin expandir. Decisión del usuario: solo las últimas 2. */
@@ -16,7 +17,12 @@ function Meta({ note }: { note: ApplicationNote }) {
           Privada
         </span>
       )}
-      {note.mentionNames.length > 0 && <span>· mencionó a {note.mentionNames.join(", ")}</span>}
+      {/* Quién recibió aviso, resuelto por el SERVIDOR desde `notes.mentions`.
+          Se había quitado al pasar las menciones al cuerpo, y eso dejaba el
+          nombre escrito por el autor como única fuente en pantalla. Con esto,
+          un token que no notificó a nadie (ej. el uuid del propio autor) se
+          nota: sale en negrita arriba y no sale en esta línea. */}
+      {note.mentionNames.length > 0 && <span>· avisó a {note.mentionNames.join(", ")}</span>}
     </p>
   );
 }
@@ -51,7 +57,7 @@ function Hilo({
 
   return (
     <li className="rounded-md border border-border bg-card p-3.5 text-sm">
-      <p className="whitespace-pre-wrap">{raiz.body}</p>
+      <NoteBody body={raiz.body} />
       <Meta note={raiz} />
 
       {respuestas.length > 0 && (
@@ -68,7 +74,7 @@ function Hilo({
           <ul className="flex flex-col gap-2.5">
             {visibles.map((r) => (
               <li key={r.id}>
-                <p className="whitespace-pre-wrap">{r.body}</p>
+                <NoteBody body={r.body} />
                 <Meta note={r} />
               </li>
             ))}
@@ -91,10 +97,11 @@ function Hilo({
       {canWrite && canReply && (
         <div className="mt-3">
           {/* NoteForm va sin `key`: al guardar, `onSaved` hace
-              setRespondiendo(false) y el formulario se desmonta solo, así que
-              no hay estado local que limpiar. Una key basada en el número de
-              respuestas solo servía para borrar un borrador a medio escribir
-              cuando OTRA persona respondía en el mismo hilo. */}
+              setRespondiendo(false) y el formulario se desmonta solo, lo que
+              limpia su estado (cuerpo, menciones) sin tocar setState dentro de
+              un efecto. Una key basada en el número de respuestas solo servía
+              para borrar un borrador a medio escribir cuando OTRA persona
+              respondía en el mismo hilo. */}
           {respondiendo ? (
             <NoteForm
               applicationId={applicationId}

@@ -6,6 +6,7 @@ import { moveApplicationStage } from "@/lib/applications/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { KanbanColumn } from "./kanban-column";
 import { CandidateDrawer } from "@/components/postulaciones/candidate-drawer";
+import { normalizarTexto } from "@/lib/utils";
 import type { KanbanData } from "@/lib/applications/get-applications";
 
 export function KanbanBoard({
@@ -28,6 +29,17 @@ export function KanbanBoard({
   const [cards, setCards] = useState(initialData.cards);
   const [, startTransition] = useTransition();
   const [openApplicationId, setOpenApplicationId] = useState<string | null>(initialOpenApplicationId);
+  const [busqueda, setBusqueda] = useState("");
+  // Qué columnas ya pidieron "ver más". Un Set en el tablero y no estado dentro
+  // de cada columna: así arrastrar una tarjeta (que re-renderiza las columnas)
+  // no colapsa las que el usuario ya había abierto.
+  const [expandidas, setExpandidas] = useState<ReadonlySet<string>>(new Set());
+
+  // Filtra por nombre, sin acentos ni mayúsculas. Con cientos de candidatos,
+  // arrastrar no es cómo se encuentra a alguien — se escribe su nombre.
+  const filtro = normalizarTexto(busqueda);
+  const visibles =
+    filtro === "" ? cards : cards.filter((c) => normalizarTexto(c.candidateName).includes(filtro));
 
   function moveCard(applicationId: string, fromStageId: string, toStageId: string) {
     const previousCards = cards;
@@ -53,15 +65,41 @@ export function KanbanBoard({
   return (
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex h-full gap-4 overflow-x-auto pb-4">
-          {initialData.stages.map((stage) => (
-            <KanbanColumn
-              key={stage.id}
-              stage={stage}
-              cards={cards.filter((c) => c.stageId === stage.id)}
-              onOpenCard={setOpenApplicationId}
+        <div className="flex h-full flex-col">
+          <div className="flex flex-none items-center gap-3 pb-3">
+            <input
+              type="search"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar candidato por nombre…"
+              aria-label="Buscar candidato por nombre"
+              className="h-9 w-full max-w-xs rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
             />
-          ))}
+            {filtro !== "" && (
+              <span className="flex-none text-xs tabular-nums text-muted-foreground">
+                {visibles.length} de {cards.length}
+              </span>
+            )}
+          </div>
+          <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
+            {initialData.stages.map((stage) => (
+              <KanbanColumn
+                key={stage.id}
+                stage={stage}
+                cards={visibles.filter((c) => c.stageId === stage.id)}
+                onOpenCard={setOpenApplicationId}
+                // El tope se aplica SIEMPRE, también con filtro. La versión
+                // anterior lo desactivaba al buscar, asumiendo "ya son pocas"
+                // — falso en el estado más común de escribir un nombre: con
+                // 900 tarjetas, la primera letra casa con casi todas, así que
+                // el filtro montaba 900 <Draggable> de golpe en cada
+                // pulsación. Justo lo que el tope vino a evitar. El contador
+                // "N de M" y el botón "Ver N más" ya dicen que hay más.
+                expandido={expandidas.has(stage.id)}
+                onExpandir={() => setExpandidas((prev) => new Set(prev).add(stage.id))}
+              />
+            ))}
+          </div>
         </div>
       </DragDropContext>
 

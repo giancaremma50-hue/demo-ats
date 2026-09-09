@@ -22,7 +22,20 @@ import { ApplicationTimeline } from "./application-timeline";
 import { MeetingScheduler } from "./meeting-scheduler";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type Tab = "info" | "seguimiento" | "bitacora";
+type Tab = "info" | "seguimiento" | "bitacora" | "actividad";
+
+/**
+ * "Actividad" salió del fondo de Seguimientos a su propia pestaña (decisión del
+ * usuario, 2026-09-09): mezclada ahí abajo obligaba a scrollear por todas las
+ * notas para ver el registro de qué pasó, y son dos cosas distintas — una la
+ * escribe el equipo, la otra la genera el sistema.
+ */
+const TABS: { key: Tab; label: string }[] = [
+  { key: "info", label: "Información" },
+  { key: "seguimiento", label: "Seguimientos" },
+  { key: "bitacora", label: "Bitácora" },
+  { key: "actividad", label: "Actividad" },
+];
 type Panel = null | "tarea" | "mensaje" | "reunion";
 
 export function CandidateDrawer({
@@ -169,28 +182,19 @@ export function CandidateDrawer({
                 </span>
               </div>
 
+              {/* Las 4 pestañas salen de un array: eran 3 bloques repetidos y
+                  agregar "Actividad" a mano habría sido un cuarto. */}
               <div className="mt-4 flex gap-5 border-b border-border">
-                <button
-                  type="button"
-                  onClick={() => setTab("info")}
-                  className={`pb-2.5 text-[13px] ${tab === "info" ? "border-b-2 border-accent font-medium text-foreground" : "text-muted-foreground"}`}
-                >
-                  Información
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTab("seguimiento")}
-                  className={`pb-2.5 text-[13px] ${tab === "seguimiento" ? "border-b-2 border-accent font-medium text-foreground" : "text-muted-foreground"}`}
-                >
-                  Seguimientos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTab("bitacora")}
-                  className={`pb-2.5 text-[13px] ${tab === "bitacora" ? "border-b-2 border-accent font-medium text-foreground" : "text-muted-foreground"}`}
-                >
-                  Bitácora
-                </button>
+                {TABS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setTab(key)}
+                    className={`pb-2.5 text-[13px] ${tab === key ? "border-b-2 border-accent font-medium text-foreground" : "text-muted-foreground"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </>
           )}
@@ -208,6 +212,8 @@ export function CandidateDrawer({
             <InfoView data={data} />
           ) : tab === "seguimiento" ? (
             <SeguimientoView data={data} applicationId={applicationId!} canWrite={canWrite} onChanged={refresh} />
+          ) : tab === "actividad" ? (
+            <ApplicationTimeline events={data.application.events} />
           ) : (
             <BitacoraView
               events={data.application.events}
@@ -420,10 +426,6 @@ function SeguimientoView({
             canMarkPrivate={data.isAdminOrAbove}
             onSaved={onChanged}
           />
-        </div>
-        <div className="mt-6">
-          <p className="mb-2 text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Actividad</p>
-          <ApplicationTimeline events={data.application.events} />
         </div>
       </div>
     </div>

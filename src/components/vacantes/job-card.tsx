@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { JobListItem } from "@/lib/jobs/get-jobs";
 import { JobStatusBadge } from "./job-status-badge";
+import { isDevuelta } from "@/lib/jobs/job-groups";
 
 // Sin pipeline todavía (nadie aceptó la vacante) — ahí sí hace falta el
 // detalle clásico (aceptar/editar/publicar), no un tablero vacío.
@@ -19,7 +20,15 @@ export function JobCard({ job }: { job: JobListItem }) {
           {job.code} · {job.country ?? "Sin país"} · {job.headcount} {job.headcount === 1 ? "plaza" : "plazas"}
         </p>
       </div>
-      <JobStatusBadge status={job.status} />
+      {/* Una devuelta es `borrador` en la base, pero mostrarla como "Borrador"
+          esconde justo lo que importa: que hay que corregirla y reenviarla. */}
+      {isDevuelta(job) ? (
+        <span className="inline-flex flex-none items-center rounded-full border border-destructive/40 px-2.5 py-0.5 text-[11px] text-destructive">
+          Devuelta — corregir
+        </span>
+      ) : (
+        <JobStatusBadge status={job.status} />
+      )}
     </Link>
   );
 }

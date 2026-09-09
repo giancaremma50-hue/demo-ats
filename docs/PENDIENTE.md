@@ -1,6 +1,6 @@
 # Pendiente — ATS Ferco
 
-_Última actualización: 2026-09-09, después de una auditoría de lanzamiento (simulación en vivo del flujo + Vercel + Supabase advisors, apuntando a un pico de 1000+ postulantes)._
+_Última actualización: 2026-09-09, después del lote de menciones con @, kanban con tope y buscador, y vacantes agrupadas por acción._
 
 ## Estado general
 
@@ -287,26 +287,68 @@ efecto en sesiones NUEVAS — los servidores MCP se cargan al arrancar.
 El ATS se opera por el servidor que exige `project_id` en cada llamada, con
 `cgudnnlcwcotovcslgzu`.
 
-### 16. Explícitamente fuera de alcance (no son pendientes)
+### 16. Avisos que no llegan: entrevistas y tareas
 
-- **Agente de match/precalificación con IA** — excluido de forma permanente por
-  decisión del usuario. No volver a proponerlo.
-- **OAuth real de Google Calendar** — se revisó a fondo si ya existía: no, nunca
-  se construyó. Las entrevistas generan un enlace "agregar a calendario", no un
-  evento real ni una sala de reunión. El usuario decidió dejarlo fuera.
-- **Módulo de bajas/terminaciones** — planteado y descartado en la misma sesión.
-- **Refresco visual del panel interno de administración** — pausado por el
-  usuario ("pausemos"), no cancelado.
-- **Assets de portada reales de la marca** — el demo usa imágenes genéricas a
-  propósito hasta que el cliente entregue las suyas.
+Pedido del usuario, dejado aparte a propósito el 2026-09-09 para no mezclarlo
+con el lote de menciones/kanban/vacantes. Son dos huecos reales:
 
-### 17. V2 del plan maestro (no urgente, no empezado)
+**Agendar reunión — los internos no se enteran.** `scheduleInterview` guarda
+`interview_attendees` y después solo le manda correo **al candidato**. Los
+colegas que se agregan como destinatarios no reciben ni campana ni correo.
+Hace falta un valor nuevo en `notification_type` (no existe ninguno de
+entrevista), una plantilla de correo, y la llamada a `notify()`.
 
-- Scorecards de entrevista estructurada con rúbrica fija.
-- Dashboard de métricas (time-to-hire, conversión por etapa, fuente de contratación).
-- Firma de ofertas.
+Y tres cosas más del mismo flujo, menores pero reales:
+- No hay evento de calendario real ni sala de videollamada: es un enlace
+  "agregar a Google Calendar" que cada uno pulsa. El link de Meet/Zoom se pega
+  a mano en "Lugar o enlace". (OAuth de Calendar está fuera de alcance por
+  decisión del usuario.)
+- La hora del correo va en **UTC explícito**, porque no hay columna de zona
+  horaria por organización. Para Centroamérica se lee 6 horas corrido si el
+  lector no ve el "hora UTC". En una invitación a reunión, confunde.
+- No hay recordatorio antes de la reunión.
 
-### 18. ~~Techo de Vercel de 4.5 MB vs. el límite de 10 MB del código~~ — Resuelto 2026-09-09
+**Asignar tarea — el asignado no se entera.** `addTask` no llama a `notify()`
+en absoluto. Mismo requisito: `notification_type` nuevo (`tarea_asignada`),
+plantilla, y la llamada. Es la misma forma que ya quedó construida para
+menciones, así que es rápido.
+
+### 17. El kanban recorta el DOM, no la red
+
+`KanbanColumn` topa a 50 tarjetas por columna, pero `getKanbanData` sigue sin
+`limit`: el payload RSC de `/vacantes/[id]/pipeline` continúa llevando TODAS las
+postulaciones activas. Con el pico de 1000+ postulantes que apunta la auditoría
+de lanzamiento, eso son 1000 tarjetas viajando en cada carga para pintar 50.
+
+El tope resolvió lo que estaba a punto de romperse (el DOM y los `<Draggable>`
+de dnd, que se arrastran mucho antes). Lo de la red necesita paginación real por
+etapa —cursor por `applied_at` y un endpoint para "ver más"— y eso cambia la
+forma de `KanbanData`, así que no entraba en este lote.
+
+Nota de orden: `getKanbanData` ahora ordena `applied_at` ASCENDENTE (más
+antiguas primero), porque con un tope hace falta un orden determinista y en un
+pipeline quien lleva más esperando es por quien hay que actuar. El
+`code-reviewer` sugirió descendente (las 50 más recientes); es defendible para
+triaje de postulaciones frescas. Si se cambia, cambiar también el comentario de
+`kanban-column.tsx`.
+
+### 18. El proyecto no tiene runner de tests
+
+Lo destapó el lote de menciones. `parseMentions` / `activeMentionQuery` son
+regex con offsets y posición de cursor — la clase de código que se rompe en
+silencio. Se verificaron con 20 comprobaciones (`node --experimental-strip-types`
+sobre un script suelto: XSS, correo que no debe abrir el autocompletado,
+uuid en mayúsculas, token malformado, nombre con corchetes, cursor antes del
+`@`), todas verdes, **pero ese script no quedó en el repo**: `node` exige la
+extensión `.ts` en el import y `tsc` la prohíbe (`allowImportingTsExtensions`),
+así que dejarlo habría roto el `typecheck` del CI.
+
+El CI que agregó la otra sesión corre lint + typecheck + build. Falta un runner
+(vitest es el que menos fricción tiene con este stack) y, con él, mover esas 20
+comprobaciones al repo. Mientras no exista, la lógica pura del proyecto no
+tiene red.
+
+### 19. ~~Techo de Vercel de 4.5 MB vs. el límite de 10 MB del código~~ — Resuelto 2026-09-09
 
 Vercel corta cualquier request de función en 4.5 MB a nivel de plataforma —
 fijo, no configurable, no cambia con Fluid Compute. `MAX_CV_BYTES` (10 MB) y
@@ -327,7 +369,7 @@ saca el archivo del cuerpo de la función y permite CVs más pesados de
 verdad. Quedó fuera de esta pasada por ser un cambio de arquitectura del
 flujo público de postulación, no un ajuste de límites.
 
-### 19. ~~Validación de archivo solo por Content-Type declarado~~ — Resuelto 2026-09-09
+### 20. ~~Validación de archivo solo por Content-Type declarado~~ — Resuelto 2026-09-09
 
 `cvFile.type !== "application/pdf"` (y el equivalente para adicionales) solo
 mira la etiqueta que manda el navegador — el endpoint es público, nada obliga
@@ -335,14 +377,14 @@ a pasar por el `<input type="file">` real. `src/lib/jobs/validate-file-signature
 agrega un chequeo de los primeros bytes reales del archivo (`%PDF` para PDF,
 cabeceras JPEG/PNG) antes de aceptarlo, sin depender de ninguna librería nueva.
 
-### 20. CI/CD — agregado 2026-09-09
+### 21. CI/CD — agregado 2026-09-09
 
 No existía `.github/workflows` — nada corría lint/typecheck/build automático
 en un PR. Agregado `.github/workflows/ci.yml`: lint + typecheck + build en
 cada PR contra `main`, con variables `NEXT_PUBLIC_*` de relleno (no secretas)
 solo para que el build no falle si algo las lee en build time.
 
-### 21. Región de la función vs. región de la base — agregado 2026-09-09
+### 22. Región de la función vs. región de la base — agregado 2026-09-09
 
 Sin `vercel.json`, la función corría en la región default de Vercel
 (`iad1`, Virginia) mientras Supabase está en `us-west-2`. Agregado
@@ -350,7 +392,7 @@ Sin `vercel.json`, la función corría en la región default de Vercel
 `us-west-2` entre las disponibles en el plan actual) — reduce la latencia
 cruzada en cada una de las ~6 consultas seguidas que hace `/api/postular`.
 
-### 22. `/empleos` y `/empleos/[slug]` sin caché — investigado 2026-09-09, NO se pudo resolver sin tocar CSP
+### 23. `/empleos` y `/empleos/[slug]` sin caché — investigado 2026-09-09, NO se pudo resolver sin tocar CSP
 
 Intento: cambiar el cliente de sesión (`createClient()`, atado a `cookies()`)
 por uno sin cookies (`src/lib/supabase/public.ts`, `createPublicClient()` +
@@ -373,7 +415,7 @@ superficie pública que va a recibir el tráfico de candidatos, así que es una
 decisión de seguridad, no un ajuste de cache. No se hizo sin que el usuario
 la pida explícitamente.
 
-### 23. Índices en llaves foráneas sin cubrir — Resuelto 2026-09-09
+### 24. Índices en llaves foráneas sin cubrir — Resuelto 2026-09-09
 
 27 llaves foráneas marcadas por el advisor de performance de Supabase sin
 índice (`application_answers`, `job_templates` y sus tablas satélite,
@@ -381,7 +423,7 @@ la pida explícitamente.
 administrativas, ninguna en el camino caliente de `/api/postular`). Agregados
 vía migración `indices_fk_faltantes` — puramente aditivo, no toca RLS.
 
-### 24. Pendiente, requiere el dashboard — no lo puede hacer el agente
+### 25. Pendiente, requiere el dashboard — no lo puede hacer el agente
 
 - **Leaked password protection** (Supabase Auth → Policies) sigue
   desactivado — HaveIBeenPwned check. Un toggle, sin código de por medio.
@@ -408,3 +450,23 @@ vía migración `indices_fk_faltantes` — puramente aditivo, no toca RLS.
 5. Abrir `/privacidad`: si NO muestra el aviso rojo de "borrador, no publicado",
    el punto 8 está resuelto.
 6. `.claude/napkin.md` tiene el detalle técnico de cada hallazgo real detrás de estos pendientes.
+
+
+### 26. Explícitamente fuera de alcance (no son pendientes)
+
+- **Agente de match/precalificación con IA** — excluido de forma permanente por
+  decisión del usuario. No volver a proponerlo.
+- **OAuth real de Google Calendar** — se revisó a fondo si ya existía: no, nunca
+  se construyó. Las entrevistas generan un enlace "agregar a calendario", no un
+  evento real ni una sala de reunión. El usuario decidió dejarlo fuera.
+- **Módulo de bajas/terminaciones** — planteado y descartado en la misma sesión.
+- **Refresco visual del panel interno de administración** — pausado por el
+  usuario ("pausemos"), no cancelado.
+- **Assets de portada reales de la marca** — el demo usa imágenes genéricas a
+  propósito hasta que el cliente entregue las suyas.
+
+### 27. V2 del plan maestro (no urgente, no empezado)
+
+- Scorecards de entrevista estructurada con rúbrica fija.
+- Dashboard de métricas (time-to-hire, conversión por etapa, fuente de contratación).
+- Firma de ofertas.

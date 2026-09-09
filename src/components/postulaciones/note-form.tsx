@@ -1,122 +1,227 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { addNote } from "@/lib/applications/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { activeMentionQuery, buildMentionToken } from "@/lib/applications/mentions";
+import { normalizarTexto } from "@/lib/utils";
 import type { MentionableProfile } from "@/lib/applications/get-applications";
+
+/** Cuántas sugerencias se ofrecen. Más que esto y la lista tapa el drawer. */
+const MAX_SUGERENCIAS = 6;
 
 export function NoteForm({
   applicationId,
   mentionable,
+  /** Solo admin+ puede marcar una nota como privada — ver get-drawer-data.ts. */
   canMarkPrivate,
+  /** Si viene, este formulario es una respuesta dentro de ese hilo. */
   parentId,
   /** Heredado del padre y no editable en una respuesta — la base lo fuerza igual. */
   inheritedPrivate,
-  onSaved,
-  onCancel,
-}: {
-  applicationId: string;
-  mentionable: MentionableProfile[];
-  /** Solo admin+ puede marcar una nota como privada — ver get-drawer-data.ts. */
-  canMarkPrivate: boolean;
-  /** Si viene, este formulario es una respuesta dentro de ese hilo. */
-  parentId?: string;
-  inheritedPrivate?: boolean;
   /**
    * El drawer guarda sus datos en estado local y los lee UNA vez al abrirse,
    * así que sin este aviso la nota recién creada no aparece hasta cerrar y
    * volver a abrir. `revalidatePath` no alcanza: invalida caché de servidor,
    * no toca el `useState` del cliente. Mismo patrón que MeetingScheduler.
    */
+  onSaved,
+  onCancel,
+}: {
+  applicationId: string;
+  mentionable: MentionableProfile[];
+  canMarkPrivate: boolean;
+  parentId?: string;
+  inheritedPrivate?: boolean;
   onSaved?: () => void;
   onCancel?: () => void;
 }) {
-  const action = addNote.bind(null, applicationId);
-  const [state, formAction] = useActionState(action, undefined);
-  const formRef = useRef<HTMLFormElement>(null);
+  const boundAction = addNote.bind(null, applicationId);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
+  // Estable entre renders y único por instancia: hay un NoteForm por hilo.
+  const listaId = useId();
   const isReply = Boolean(parentId);
 
-  // `isPrivate` vive en estado (no solo en el checkbox) porque filtra a quién
-  // se puede mencionar: en una nota privada, solo admin+ puede leerla, así que
-  // solo ellos son mencionables. En una respuesta no se elige, se hereda.
+  // El cuerpo es CONTROLADO porque el autocompletado tiene que insertar el
+  // token `@[Nombre](uuid)` en la posición del cursor. Con un textarea no
+  // controlado no hay forma de reescribir el valor sin perder el cursor.
+  const [body, setBody] = useState("");
+  const [cursor, setCursor] = useState(0);
   const [isPrivate, setIsPrivate] = useState(inheritedPrivate ?? false);
-  const [mentions, setMentions] = useState<string[]>([]);
+  const [elegido, setElegido] = useState(0);
+  // Escape descarta la lista sin borrar el texto. Antes solo reseteaba el
+  // resaltado: la lista seguía montada, así que escribir un poco más y pulsar
+  // Enter insertaba la mención que se acababa de descartar.
+  const [cerrada, setCerrada] = useState(false);
 
+  /**
+   * El envoltorio limpia el cuerpo en el MISMO tick del éxito.
+   *
+   * Al pasar el textarea a controlado se perdió el `formRef.reset()` que había
+   * antes — y con estado controlado ese reset no habría servido igual, porque
+   * el valor vuelve de `body`. Sin esto, tras guardar el texto seguía en
+   * pantalla con el botón ya rehabilitado: se lee como "no guardó", el segundo
+   * clic mete una nota DUPLICADA, y si `refresh()` falla el texto se queda
+   * para siempre. Va acá y no en un `useEffect` porque un setState síncrono
+   * dentro de un efecto es un ERROR de build en este proyecto; es el mismo
+   * patrón que ya usaba `interview-form.tsx` (ver .claude/napkin.md).
+   */
+  const [state, formAction] = useActionState(
+    async (prev: Awaited<ReturnType<typeof boundAction>> | undefined, formData: FormData) => {
+      const resultado = await boundAction(prev, formData);
+      if (resultado?.success) {
+        setBody("");
+        setCursor(0);
+        setElegido(0);
+        setCerrada(false);
+      }
+      return resultado;
+    },
+    undefined,
+  );
+
+
+  // En una nota privada solo admin+ puede leerla (`notes_select`), así que
+  // solo ellos son mencionables — mismo predicado que revalida `addNote`.
   const candidatos = isPrivate ? mentionable.filter((m) => m.isAdminOrAbove) : mentionable;
-  // Si se marca "privada" con un gestor ya elegido, ese gestor deja de ser
-  // mencionable: se descarta al enviar en vez de dejar que el servidor
-  // rechace el formulario completo.
-  const mentionsValidas = mentions.filter((id) => candidatos.some((c) => c.id === id));
+
+  const activa = cerrada ? null : activeMentionQuery(body, cursor);
+  const q = activa ? normalizarTexto(activa.query) : "";
+  // Sin filtrar a los ya mencionados: `addNote` deduplica con un Set, así que
+  // excluirlos solo impedía mencionar a alguien dos veces en la misma nota
+  // ("@Ana revisa esto… y @Ana confirma la fecha") — el segundo quedaba como
+  // texto plano sin negrita.
+  const sugerencias =
+    activa === null ? [] : candidatos.filter((m) => normalizarTexto(m.display_name).includes(q)).slice(0, MAX_SUGERENCIAS);
 
   useEffect(() => {
     if (state?.error) notifyError(state.error);
     else if (state?.success) {
       notifySuccess(state.success);
-      // Solo DOM, no estado de React: limpia el textarea al instante, sin
-      // esperar a que vuelva la recarga. El estado local (menciones, privada)
-      // se limpia por remontaje — el caller le pasa un `key` que cambia
-      // cuando llegan los datos nuevos. Resetearlo acá sería un setState
-      // síncrono dentro de un efecto, que esta regla del proyecto prohíbe
-      // (bloquea el build) por los renders en cascada que provoca.
-      formRef.current?.reset();
       onSaved?.();
     }
     // `onSaved` fuera de las dependencias a propósito: el caller lo pasa como
     // función nueva en cada render, e incluirlo re-dispararía este efecto (y
-    // el aviso) en cada render posterior al éxito.
+    // el aviso) en cada render posterior al éxito. El cuerpo NO se limpia acá
+    // — un setState síncrono dentro de un efecto es un ERROR de build en este
+    // proyecto; el caller remonta el formulario con `key`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
-  function toggleMention(id: string) {
-    setMentions((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function insertarMencion(m: MentionableProfile | undefined) {
+    // `elegido` no se resetea en `onKeyUp`/`onClick`/el check de privada, y
+    // esos tres cambian la lista de sugerencias: mover el cursor con la lista
+    // abierta podía dejar el índice apuntando fuera del array y `undefined`
+    // llegaba hasta `.display_name`. La guarda de antes miraba `length === 0`,
+    // no si el índice seguía siendo válido.
+    if (!m || !activa) return;
+    const token = buildMentionToken(m.display_name, m.id);
+    const nuevo = `${body.slice(0, activa.desde)}${token} ${body.slice(cursor)}`;
+    const posicion = activa.desde + token.length + 1;
+    setBody(nuevo);
+    setElegido(0);
+    // El cursor se reposiciona después del render, si no el navegador lo manda
+    // al final del texto y escribir en medio de una nota se vuelve imposible.
+    requestAnimationFrame(() => {
+      areaRef.current?.setSelectionRange(posicion, posicion);
+      areaRef.current?.focus();
+      setCursor(posicion);
+    });
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (sugerencias.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setElegido((i) => (i + 1) % sugerencias.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setElegido((i) => (i - 1 + sugerencias.length) % sugerencias.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      // Enter elige de la lista en vez de enviar el formulario. Sin esto, el
+      // submit implícito de HTML guardaría la nota a medio escribir — la misma
+      // trampa que ya se documentó con el buscador de MeetingScheduler.
+      e.preventDefault();
+      insertarMencion(sugerencias[elegido] ?? sugerencias[0]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setCerrada(true);
+      setElegido(0);
+    }
   }
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-2.5">
+    <form action={formAction} className="flex flex-col gap-2.5">
       {parentId && <input type="hidden" name="parent_id" value={parentId} />}
-      {/* Un <select multiple> se colapsa a un solo valor en
-          `Object.fromEntries(formData)`, así que los ids viajan unidos en un
-          campo oculto — es lo que `NoteSchema.mentions` espera. */}
-      <input type="hidden" name="mentions" value={mentionsValidas.join(",")} />
-
-      <textarea
-        name="body"
-        required
-        rows={isReply ? 2 : 3}
-        placeholder={isReply ? "Escribe tu respuesta…" : "Escribe una nota sobre este candidato…"}
-        aria-invalid={state?.field === "body"}
-        className={`rounded-md border bg-background px-3 py-2 text-sm ${state?.field === "body" ? "border-destructive" : "border-border"}`}
-      />
-
-      {candidatos.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Mencionar:</span>
-          {/* El error de menciones se pinta ACÁ, junto a los chips. Sin esto el
-              toast decía "solo puedes mencionar a personas asignadas" y el
-              usuario no tenía forma de saber cuál chip sobraba — pasa cuando
-              alguien deja la vacante con el drawer abierto. */}
-          {state?.field === "mentions" && <span className="text-[11px] text-destructive">{state.error}</span>}
-          {candidatos.map((m) => {
-            const elegido = mentions.includes(m.id);
-            return (
-              <button
+      {/* Sin campo oculto de menciones: `addNote` saca los ids del CUERPO, que
+          es la única fuente. Mandarlos también aparte era redundante y encima
+          podía tumbar la nota completa — un fragmento de texto que se pareciera
+          a un token (36 caracteres hex-o-guión) entraba al campo, no pasaba
+          `z.uuid()` y devolvía "Persona inválida." por algo que ni era una
+          mención. */}
+      <div className="relative">
+        <textarea
+          ref={areaRef}
+          name="body"
+          required
+          rows={isReply ? 2 : 3}
+          value={body}
+          onChange={(e) => {
+            setBody(e.target.value);
+            setCursor(e.target.selectionStart);
+            setElegido(0);
+            setCerrada(false);
+          }}
+          onKeyUp={(e) => setCursor(e.currentTarget.selectionStart)}
+          onClick={(e) => setCursor(e.currentTarget.selectionStart)}
+          onKeyDown={handleKeyDown}
+          role="combobox"
+          aria-expanded={sugerencias.length > 0}
+          aria-controls={listaId}
+          aria-activedescendant={
+            sugerencias.length > 0 ? `${listaId}-${(sugerencias[elegido] ?? sugerencias[0]).id}` : undefined
+          }
+          placeholder={isReply ? "Escribe tu respuesta… (@ para mencionar)" : "Escribe una nota… (@ para mencionar)"}
+          aria-invalid={state?.field === "body"}
+          className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${state?.field === "body" ? "border-destructive" : "border-border"}`}
+        />
+        {sugerencias.length > 0 && (
+          // `role="option"` va en el <li>, que es hijo DIRECTO del listbox: con
+          // un <button> intermedio la relación que exige ARIA se rompe y un
+          // lector de pantalla no anuncia ninguna opción. El textarea es el
+          // combobox y `aria-activedescendant` es lo que dice cuál está
+          // resaltada, porque las flechas mueven el resaltado y no el foco.
+          <ul
+            id={listaId}
+            role="listbox"
+            aria-label="Personas que puedes mencionar"
+            className="absolute z-10 mt-1 w-full max-w-xs overflow-hidden rounded-md border border-border bg-card"
+          >
+            {sugerencias.map((m, i) => (
+              <li
                 key={m.id}
-                type="button"
-                aria-pressed={elegido}
-                onClick={() => toggleMention(m.id)}
-                className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
-                  elegido
-                    ? "border-accent bg-accent text-white"
-                    : "border-border text-muted-foreground hover:border-foreground/30"
-                }`}
+                id={`${listaId}-${m.id}`}
+                role="option"
+                aria-selected={i === elegido}
+                onMouseDown={(e) => {
+                  // mouseDown y no click: al hacer click el textarea pierde el
+                  // foco primero, el cursor se resetea y la inserción caería en
+                  // la posición equivocada.
+                  e.preventDefault();
+                  insertarMencion(m);
+                }}
+                className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-[13px] ${i === elegido ? "bg-muted" : ""}`}
               >
-                {m.display_name}
-              </button>
-            );
-          })}
-        </div>
-      )}
+                <span className="truncate">{m.display_name}</span>
+                {m.isAdminOrAbove && <span className="flex-none text-[10px] text-muted-foreground">admin</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {state?.field === "mentions" && <p className="text-[11px] text-destructive">{state.error}</p>}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         {isReply || !canMarkPrivate ? (

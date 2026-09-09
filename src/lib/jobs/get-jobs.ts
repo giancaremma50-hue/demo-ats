@@ -15,6 +15,13 @@ export type JobListItem = {
   country: string | null;
   headcount: number;
   published_at: string | null;
+  /**
+   * Razón por la que RH devolvió la solicitud. La necesita la LISTA, no solo
+   * el detalle: una vacante devuelta vuelve a `borrador`, así que sin este
+   * campo no hay forma de separarla de un borrador normal — y es lo único de
+   * la lista que le pide algo a quien la solicitó. Ver lib/jobs/job-groups.ts.
+   */
+  return_reason: string | null;
 };
 
 export type JobDetail = JobListItem & {
@@ -40,7 +47,7 @@ export async function getJobsForViewer(): Promise<JobListItem[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("jobs")
-    .select("id, code, title, status, country, headcount, published_at")
+    .select("id, code, title, status, country, headcount, published_at, return_reason")
     .order("created_at", { ascending: false });
   return data ?? [];
 }

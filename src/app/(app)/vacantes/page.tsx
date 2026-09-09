@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth/dal";
 import { getJobsForViewer } from "@/lib/jobs/get-jobs";
-import { JobCard } from "@/components/vacantes/job-card";
+import { JobGroupsList } from "@/components/vacantes/job-groups-list";
 
 export default async function VacantesPage() {
   // Sin asignar: acá `requireProfile()` es solo la puerta (redirige si no hay
@@ -31,11 +31,7 @@ export default async function VacantesPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-8 grid gap-3">
-          {jobs.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
-        </div>
+        <JobGroupsList jobs={jobs} />
       )}
     </div>
   );

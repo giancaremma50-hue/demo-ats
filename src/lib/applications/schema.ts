@@ -14,13 +14,11 @@ export const NoteSchema = z.object({
     (v) => (v === "" || v == null ? undefined : v),
     z.uuid({ error: "Nota inválida." }).optional(),
   ),
-  // Lista de ids, separados por coma — es como un <select multiple> llega en
-  // un FormData plano (`Object.fromEntries` colapsa las claves repetidas, así
-  // que el formulario manda un solo campo oculto ya unido).
-  mentions: z.preprocess(
-    (v) => (typeof v === "string" && v.trim() !== "" ? v.split(",").map((s) => s.trim()) : []),
-    z.array(z.uuid({ error: "Persona inválida." })).max(20, { error: "Máximo 20 menciones." }),
-  ),
+  // Las menciones NO son un campo: se leen del propio `body` con
+  // `extractMentionIds`. Tenerlas también como campo oculto era redundante y
+  // hacía que un fragmento de texto parecido a un token tumbara la nota
+  // completa con "Persona inválida.". El tope de 20 vive ahora en `addNote`,
+  // donde está la lista real de menciones.
 });
 
 export const RejectSchema = z.object({
