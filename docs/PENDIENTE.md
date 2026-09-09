@@ -1,6 +1,6 @@
 # Pendiente — ATS Ferco
 
-_Última actualización: 2026-09-09, después del lote de menciones con @, kanban con tope y buscador, y vacantes agrupadas por acción._
+_Última actualización: 2026-09-09, al cerrar los dos bloqueantes de producción (key corrupta y protección de Vercel). **Ya no queda ningún bloqueante técnico**: lo que sigue abierto depende del cliente, del abogado o de una decisión suya._
 
 ## Estado general
 
@@ -18,74 +18,55 @@ Competencias se eliminó del proyecto por decisión del usuario. Detalle en
 
 ## Pendiente real
 
-### 0. BLOQUEANTE — el portal no puede recibir postulaciones EN PRODUCCIÓN
+### 0. ~~El portal no podía recibir postulaciones en producción~~ — Resuelto 2026-09-09
 
-El bug de enrutamiento (`/api/postular` fuera de `PUBLIC_PATHS`) está corregido
-y desplegado (`039dda4`, deployment `dpl_865f9o…`, READY). Pero en producción la
-postulación **sigue fallando** — y el diagnóstico cambió el 2026-09-09: no son
-credenciales inválidas, es una **key con un carácter corrupto**.
+Eran dos cosas encadenadas, las dos ya cerradas:
 
-**Diagnóstico refinado (2026-09-09), leyendo `get_runtime_errors` de Vercel en vivo:**
-el error real no es un 401/404 silencioso — es un `TypeError` explícito, capturado por el
-`console.error` que agregó `075e51d`:
+1. **Enrutamiento**: `/api/postular` no estaba en `PUBLIC_PATHS`
+   (`src/lib/supabase/proxy.ts`), así que el proxy mandaba la postulación a
+   `/login`. Corregido y desplegado (`039dda4`).
+2. **`SUPABASE_SERVICE_ROLE_KEY` corrupta en Vercel**: la key pegada tenía un
+   carácter no-ASCII (`•`, U+2022). El síntoma era un `TypeError` de
+   `ByteString` en el primer uso real del cliente admin — "character at index 8
+   has a value of 8226" — porque la key viaja como header HTTP. El usuario la
+   volvió a pegar desde el campo "reveal" de Supabase y se resolvió.
+
+**Verificado el 2026-09-09** con un POST que lleva solo el `job_id` (no muta
+nada: la única razón de la prueba es que el cliente admin lee la vacante
+*antes* de validar el cuerpo, así que el error de validación ya demuestra que
+la lectura funcionó):
 
 ```
-[postular] no se pudo leer la vacante con el cliente admin {
-  jobId: 'cf2f75cd-bcea-4754-80b5-356e70946d94',
-  code: '',
-  message: 'TypeError: Cannot convert argument to a ByteString because the
-            character at index 8 has a value of 8226 which is greater than 255.'
-}
+POST https://demo-atrio.vercel.app/api/postular  -F job_id=<uuid de vacante abierta>
+-> 400 {"error":"Correo inválido.","field":"email"}
 ```
 
-8226 = `•` (viñeta, típica de copiar/pegar texto con formato — Word, un email,
-una página renderizada). Se descartó que sea contenido de la vacante: las 5
-vacantes de la base (`select id, title, candidacy_fields::text from jobs`) no
-tienen un solo carácter fuera de ASCII/acentos normales en `title` ni
-`candidacy_fields`. El único valor que viaja como HEADER HTTP en esta llamada
-(no como dato) es el `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>` que arma
-el propio cliente admin — un `ByteString` roto ahí explica el `TypeError`
-exactamente en el primer punto donde ese cliente hace una llamada real, sin
-que la vacante tenga nada que ver.
+Un `400` de campo prueba que pasó la lectura de la vacante con el cliente admin
+(línea 80 de `src/app/api/postular/route.ts`, antes del `safeParse` de la
+línea 112). Si la key siguiera rota devolvería `503`.
 
-**Hipótesis concreta: `SUPABASE_SERVICE_ROLE_KEY` en Vercel tiene un carácter
-no-ASCII colado** (una viñeta, una comilla curva) — típico de copiar la key
-desde un lugar con auto-formato en vez del campo de texto plano del dashboard
-de Supabase o la CLI.
+**Lección, también en `.claude/napkin.md`:** una key con un carácter invisible
+no falla como credencial inválida (401/403) — falla como `TypeError` de
+`ByteString` en el fetch, que no se parece en nada a un problema de auth. Si un
+cliente de Supabase tira `Cannot convert argument to a ByteString`, el
+sospechoso es la variable de entorno, no el dato.
 
-**Cómo confirmarlo y arreglarlo (no lo puedo hacer desde acá — es un valor
-secreto, no lo puedo leer ni pegar por el agente):**
-1. Vercel → proyecto `demo-ats` → Settings → Environment Variables → borrar el
-   valor actual de `SUPABASE_SERVICE_ROLE_KEY` y volver a pegarlo — copiado
-   directo del campo "reveal" de Supabase → Settings → API → `service_role`
-   (o con `supabase projects api-keys --project-ref cgudnnlcwcotovcslgzu`), no
-   desde un chat, documento o página con auto-corrección de texto.
-2. De paso, confirmar `NEXT_PUBLIC_SUPABASE_URL` = `https://cgudnnlcwcotovcslgzu.supabase.co`,
-   y que `EMAIL_FROM` y `RESEND_API_KEY` tengan valor (confirmado por separado
-   que faltan del todo en producción — ver punto 3).
-3. Redeploy y comprobar: un POST a `/api/postular` sin la casilla de
-   consentimiento debe devolver
-   `400 {"error":"Tienes que aceptar la política de privacidad para postular."}`.
-   Si devuelve `503`, la key sigue rota. Si devuelve `404`, revisar el estado
-   de la vacante.
+### 0b. ~~Vercel Authentication bloqueaba todo el portal público~~ — Resuelto 2026-09-09
 
-Mientras esto no se resuelva, **ninguna persona externa puede postular**, aunque
-el portal se vea perfecto.
+`ssoProtection` en modo `all_except_custom_domains` dejaba los 4 dominios
+`*.vercel.app` detrás del login de Vercel: un candidato externo chocaba con una
+pantalla que no es suya antes de ver `/empleos`.
 
-### 0b. BLOQUEANTE (nuevo, 2026-09-09) — Vercel Authentication bloquea TODO el portal público
+**Verificado el 2026-09-09:**
 
-Los 4 dominios activos del proyecto (`demo-atrio.vercel.app`,
-`demo-ats-giancarlo-lam.vercel.app`, etc.) son dominios de Vercel, no un
-dominio propio. `ssoProtection` está en modo `all_except_custom_domains` — así
-que los 4 quedan detrás del login de Vercel. Ni siquiera llegando a
-`SUPABASE_SERVICE_ROLE_KEY` arreglado (punto 0) un candidato externo puede
-llegar a ver `/empleos`: primero choca con una pantalla de login que no es
-suya.
+```
+GET https://demo-atrio.vercel.app/empleos              -> 200
+GET https://demo-ats-giancarlo-lam.vercel.app/empleos  -> 200
+```
 
-**Arreglo (dashboard, no código):** agregar un dominio propio en Vercel →
-Settings → Domains (los dominios propios quedan exentos de la protección
-automáticamente) — o desactivar `ssoProtection` en producción si por ahora no
-hay dominio propio listo.
+Los dos responden `200` sin sesión. El dominio propio sigue siendo deseable por
+marca, pero ya no bloquea el acceso — lo que sí sigue abierto del lado de
+Vercel es el punto 0c.
 
 ### 0c. Plan Hobby de Vercel, no apto para lanzamiento comercial real
 
