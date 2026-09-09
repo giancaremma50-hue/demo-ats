@@ -152,17 +152,31 @@ no acepta términos al entrar y no puede consultar nada de lo que guardamos sobr
 
 ### Cookies — la regla que se rompe sin darse cuenta
 
-Hoy **el portal público no pone ni una cookie** (verificado: `Set-Cookie` = 0 en
-`/empleos` y `/login`). No hay analítica, ni píxeles, ni rastreadores, ni recursos
-de terceros — las tipografías se auto-hospedan (`font-src 'self'`). Por eso la
-política solo informa y no hay banner de consentimiento: las cookies de sesión de
-Supabase son estrictamente necesarias y aparecen únicamente tras iniciar sesión.
+Hoy **el portal público no pone ni una cookie** (medido el 2026-09-09:
+`Set-Cookie` = 0 en `/empleos`). Las cookies de sesión de Supabase son
+estrictamente necesarias y aparecen únicamente tras iniciar sesión. Las
+tipografías se auto-hospedan (`font-src 'self'`).
 
-**Agregar Vercel Analytics, Google Analytics, Meta Pixel, Hotjar, Sentry o cualquier
-script de terceros cambia eso y exige banner de consentimiento previo real** (con
-opción de rechazar, y sin cargar el script antes de la respuesta), más actualizar la
-sección 9 de la política. Es un cambio de dos líneas en el código y de categoría
-legal completa. No se agrega sin eso.
+**Hay UNA medición de terceros activa:** `@vercel/speed-insights` en el layout
+raíz — o sea, también en el portal público. Es telemetría de rendimiento sin
+cookies y sin identificador de visitante, así que se **declara** en la sección 9
+de la política pero **no exige banner**.
+
+Al agregar cualquier script de terceros, la pregunta que decide es:
+**¿guarda algo en el navegador, o permite distinguir a un visitante de otro?**
+
+| Caso | Qué exige |
+|---|---|
+| Sin cookies y sin identificador — telemetría agregada de rendimiento | Declararlo en la sección 9 y en `ENCARGADOS`. Nada más. |
+| Pone cookies, usa `localStorage`, o identifica al visitante — Google Analytics, Meta Pixel, Hotjar, Sentry, Vercel Analytics (la de audiencia, distinta de Speed Insights) | **Banner de consentimiento previo real**: con opción de rechazar y sin cargar el script antes de la respuesta. Más la sección 9. |
+
+La versión anterior de esta regla decía "cualquier script de terceros exige
+banner". Era demasiado absoluta: cuando otra sesión agregó Speed Insights la
+regla disparó bien, pero habría pedido un banner que no corresponde. Lo que sí
+falló y no se debe repetir: **la política afirmaba "No usamos analítica" y eso
+quedó falso.** Todo script nuevo obliga a releer la sección 9 antes de subir —
+si el texto afirma algo que el código ya no cumple, el problema no es el script,
+es el texto.
 
 ---
 

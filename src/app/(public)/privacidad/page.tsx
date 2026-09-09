@@ -179,8 +179,15 @@ export default async function PrivacidadPage() {
       <H2>9. Cookies</H2>
       <P>
         <strong>El portal público de empleos no usa cookies.</strong> Puedes ver las vacantes y enviar tu postulación
-        sin que se guarde nada en tu navegador. No usamos analítica, ni publicidad, ni rastreadores de terceros, ni
-        cargamos tipografías o recursos desde servidores externos.
+        sin que se guarde nada en tu navegador. No usamos publicidad ni rastreadores que te sigan entre sitios, y las
+        tipografías se sirven desde nuestro propio servidor, no desde uno externo.
+      </P>
+      <P>
+        <strong>Sí medimos el rendimiento de las páginas.</strong> Usamos Vercel Speed Insights para saber cuánto tarda
+        en cargar cada pantalla. Recoge datos técnicos agregados —tiempos de carga, tipo de dispositivo, la dirección
+        de la página— <strong>sin cookies y sin ningún identificador que te distinga</strong> de otra persona, así que
+        no permite reconocerte ni seguirte. Por eso no te pedimos consentimiento para eso: no hay nada guardado en tu
+        navegador ni un perfil asociado a ti.
       </P>
       <P>
         Las únicas cookies de la plataforma aparecen cuando una persona del equipo interno inicia sesión: son cookies de

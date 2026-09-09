@@ -56,7 +56,7 @@ export const ENCARGADOS = [
   },
   {
     nombre: "Vercel",
-    servicio: "Alojamiento de la aplicación",
+    servicio: "Alojamiento de la aplicación y medición de rendimiento (Speed Insights, sin cookies)",
     ubicacion: "Estados Unidos",
   },
   {
