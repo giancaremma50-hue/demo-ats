@@ -5,9 +5,20 @@ import { WORK_MODE_LABEL, EMPLOYMENT_TYPE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode, EmploymentType } from "@/lib/jobs/schema";
 import { parseCandidacyFields } from "@/lib/job-templates/candidacy-fields";
 
-// Ver el comentario en (public)/empleos/page.tsx: sin `revalidate` a
-// propósito, el nonce de CSP por request de src/proxy.ts fuerza dinámico en
-// todo el sitio. Queda el cliente sin cookies (createPublicClient).
+// Ver el comentario en (public)/empleos/page.tsx.
+export const revalidate = 60;
+
+// Vacío a propósito, no una lista real de slugs: sin esto, una página con
+// segmento dinámico ([slug]) sin generateStaticParams queda "ƒ Dynamic" en
+// el build aunque no use ninguna API dinámica — Next no puede clasificarla
+// como cacheable sin saber que existe este mecanismo. Un array vacío +
+// dynamicParams:true (el default) le dice "no precalcules nada en build,
+// pero cachea cada slug la primera vez que alguien lo pida" — evita que el
+// build (y el CI, que corre con NEXT_PUBLIC_SUPABASE_URL de relleno) tenga
+// que consultar la base real para saber qué vacantes existen hoy.
+export async function generateStaticParams() {
+  return [];
+}
 
 export default async function EmpleoDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
