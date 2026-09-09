@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { addNote } from "@/lib/applications/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { Card } from "@/components/ui/card";
 import { activeMentionQuery, buildMentionToken } from "@/lib/applications/mentions";
 import { normalizarTexto } from "@/lib/utils";
 import type { MentionableProfile } from "@/lib/applications/get-applications";
@@ -192,11 +193,12 @@ export function NoteForm({
           // lector de pantalla no anuncia ninguna opción. El textarea es el
           // combobox y `aria-activedescendant` es lo que dice cuál está
           // resaltada, porque las flechas mueven el resaltado y no el foco.
-          <ul
+          <Card
+            as="ul"
             id={listaId}
             role="listbox"
             aria-label="Personas que puedes mencionar"
-            className="absolute z-10 mt-1 w-full max-w-xs overflow-hidden rounded-md border border-border bg-card"
+            className="absolute z-10 mt-1 w-full max-w-xs rounded-md"
           >
             {sugerencias.map((m, i) => (
               <li
@@ -217,7 +219,7 @@ export function NoteForm({
                 {m.isAdminOrAbove && <span className="flex-none text-[10px] text-muted-foreground">admin</span>}
               </li>
             ))}
-          </ul>
+          </Card>
         )}
       </div>
 
@@ -250,7 +252,7 @@ export function NoteForm({
               Cancelar
             </button>
           )}
-          <ActionButton className="h-9 rounded-md px-4 text-xs">
+          <ActionButton className="h-9 px-4 text-xs">
             {isReply ? "Responder" : "Agregar nota"}
           </ActionButton>
         </div>

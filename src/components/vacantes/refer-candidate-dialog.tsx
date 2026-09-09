@@ -40,7 +40,7 @@ export function ReferCandidateDialog({ jobId }: { jobId: string }) {
         }}
         // w-[calc(100%-2rem)], no w-full: ver el comentario en DialogShell —
         // sin esto el diálogo toca los bordes de la pantalla en un celular.
-        className="w-[calc(100%-2rem)] max-w-[440px] rounded-lg border border-border bg-card p-0 text-foreground backdrop:bg-foreground/25"
+        className="w-[calc(100%-2rem)] max-w-[440px] rounded-lg bg-card p-0 text-foreground shadow-elevated backdrop:bg-foreground/25"
       >
         <div className="p-7">
           <div className="flex items-start justify-between gap-5">
@@ -49,7 +49,7 @@ export function ReferCandidateDialog({ jobId }: { jobId: string }) {
               type="button"
               aria-label="Cerrar"
               onClick={() => dialogRef.current?.close()}
-              className="flex size-[30px] flex-none items-center justify-center rounded-md border border-border bg-card"
+              className="flex size-[30px] flex-none items-center justify-center rounded-full bg-muted"
             >
               <X className="size-3.5 text-muted-foreground" aria-hidden />
             </button>

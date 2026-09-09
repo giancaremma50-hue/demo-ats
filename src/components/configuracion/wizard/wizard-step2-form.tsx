@@ -5,6 +5,7 @@ import Link from "next/link";
 import { updateTemplateStep2 } from "@/lib/job-templates/wizard-actions";
 import { notifyError } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { Card } from "@/components/ui/card";
 import { CANDIDACY_FIELD_LABEL, CANDIDACY_STATE_LABEL, type CandidacyFields, type CandidacyFieldKey } from "@/lib/job-templates/candidacy-fields";
 
 const FIELD_KEYS = Object.keys(CANDIDACY_FIELD_LABEL) as CandidacyFieldKey[];
@@ -19,7 +20,7 @@ export function WizardStep2Form({ templateId, initialFields }: { templateId: str
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <div className="flex flex-col divide-y divide-border rounded-md border border-border" data-tour="w2-campos">
+      <Card className="flex flex-col divide-y divide-border rounded-md" data-tour="w2-campos">
         <div className="flex items-center justify-between px-4 py-3">
           <span className="text-sm">Correo electrónico</span>
           <span className="text-xs text-muted-foreground">Obligatorio — no se puede cambiar</span>
@@ -40,12 +41,12 @@ export function WizardStep2Form({ templateId, initialFields }: { templateId: str
             </select>
           </div>
         ))}
-      </div>
+      </Card>
 
       <div className="mt-6 flex justify-end gap-2.5">
         <Link
           href={`/configuracion/plantillas-vacante/${templateId}/paso-1`}
-          className="inline-flex h-[42px] items-center rounded-md border border-border px-5 text-sm text-muted-foreground hover:bg-muted"
+          className="inline-flex h-[42px] items-center rounded-full border border-border px-5 text-sm text-muted-foreground hover:bg-muted"
         >
           Atrás
         </Link>

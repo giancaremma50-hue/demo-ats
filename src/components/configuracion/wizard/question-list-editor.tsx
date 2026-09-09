@@ -112,7 +112,7 @@ export function QuestionListEditor({ initialQuestions }: { initialQuestions: Que
                   type="button"
                   onClick={() => removeQuestion(i)}
                   aria-label="Quitar pregunta"
-                  className="flex size-9 flex-none items-center justify-center rounded-md border border-destructive text-destructive"
+                  className="flex size-9 flex-none items-center justify-center rounded-full border border-destructive text-destructive"
                 >
                   <X className="size-3.5" aria-hidden />
                 </button>
@@ -140,7 +140,7 @@ export function QuestionListEditor({ initialQuestions }: { initialQuestions: Que
                         type="button"
                         onClick={() => removeOption(i, j)}
                         aria-label="Quitar opción"
-                        className="flex size-7 flex-none items-center justify-center rounded-md border border-destructive text-destructive"
+                        className="flex size-7 flex-none items-center justify-center rounded-full border border-destructive text-destructive"
                       >
                         <X className="size-3" aria-hidden />
                       </button>

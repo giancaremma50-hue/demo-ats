@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { NotificationItem } from "./notification-item";
+import { Card } from "@/components/ui/card";
 import type { NotificationItem as NotificationItemType } from "@/lib/notifications/get-notifications";
 
 type NotificationRow = {
@@ -100,7 +101,7 @@ export function NotificationBell({
         onClick={() => setOpen((v) => !v)}
         aria-label="Notificaciones"
         data-tour="bell"
-        className="relative flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground"
+        className="relative flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
       >
         <Bell className="size-4" aria-hidden />
         {unreadCount > 0 && (
@@ -110,7 +111,7 @@ export function NotificationBell({
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-card">
+        <Card className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-md">
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
               <p className="p-4 text-sm text-muted-foreground">Sin notificaciones todavía.</p>
@@ -126,7 +127,7 @@ export function NotificationBell({
           >
             Ver todas
           </a>
-        </div>
+        </Card>
       )}
     </div>
   );

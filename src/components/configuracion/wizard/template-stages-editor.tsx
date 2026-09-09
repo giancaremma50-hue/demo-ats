@@ -17,7 +17,7 @@ type StageRow = TemplateStageDraft & { key: string };
 
 function FixedStagePill({ label }: { label: string }) {
   return (
-    <div className="flex h-10 items-center rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground">
+    <div className="flex h-10 items-center rounded-full border border-border bg-muted/40 px-3 text-sm text-muted-foreground">
       {label}
     </div>
   );
@@ -136,7 +136,7 @@ export function TemplateStagesEditor({
               onClick={() => moveStage(i, -1)}
               disabled={i === 0}
               aria-label="Mover arriba"
-              className="flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground disabled:opacity-30"
+              className="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30"
             >
               <ArrowUp className="size-3.5" aria-hidden />
             </button>
@@ -145,7 +145,7 @@ export function TemplateStagesEditor({
               onClick={() => moveStage(i, 1)}
               disabled={i === stages.length - 1}
               aria-label="Mover abajo"
-              className="flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground disabled:opacity-30"
+              className="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30"
             >
               <ArrowDown className="size-3.5" aria-hidden />
             </button>
@@ -153,7 +153,7 @@ export function TemplateStagesEditor({
               type="button"
               onClick={() => removeStage(i)}
               aria-label="Quitar etapa"
-              className="flex size-8 items-center justify-center rounded-md border border-destructive text-destructive"
+              className="flex size-8 items-center justify-center rounded-full border border-destructive text-destructive"
             >
               <X className="size-3.5" aria-hidden />
             </button>

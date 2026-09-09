@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { replyToErrorReport } from "@/lib/errors/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { Card } from "@/components/ui/card";
 import type { ErrorReportMessageRow } from "@/lib/errors/get-error-reports";
 
 export function ErrorThread({
@@ -57,23 +58,28 @@ export function ErrorThread({
         ))}
       </div>
 
-      <form ref={formRef} action={formAction} className="mt-6 rounded-md border border-border bg-background">
-        <textarea
-          name="body"
-          required
-          minLength={1}
-          maxLength={4000}
-          rows={2}
-          placeholder="Responde…"
-          className="w-full resize-none rounded-t-md p-3 text-sm outline-none"
-        />
-        <div className="flex items-center justify-between border-t border-border px-3 py-2">
-          <span className="text-xs text-muted-foreground">Se notifica dentro de la plataforma.</span>
-          <ActionButton type="submit" variant="primary" className="h-8 px-4 text-xs" pendingLabel="Enviando…">
-            Responder
-          </ActionButton>
-        </div>
-      </form>
+      <Card className="mt-6 rounded-md">
+        {/* Card no reenvía ref (no usa forwardRef) — el form vive adentro,
+            sin estilos propios, solo para que formRef.current?.reset() siga
+            apuntando a un nodo real. */}
+        <form ref={formRef} action={formAction}>
+          <textarea
+            name="body"
+            required
+            minLength={1}
+            maxLength={4000}
+            rows={2}
+            placeholder="Responde…"
+            className="w-full resize-none p-3 text-sm outline-none"
+          />
+          <div className="flex items-center justify-between border-t border-border px-3 py-2">
+            <span className="text-xs text-muted-foreground">Se notifica dentro de la plataforma.</span>
+            <ActionButton type="submit" variant="primary" className="h-8 px-4 text-xs" pendingLabel="Enviando…">
+              Responder
+            </ActionButton>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }

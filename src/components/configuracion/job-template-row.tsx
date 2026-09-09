@@ -26,7 +26,7 @@ export function JobTemplateRow({ template }: { template: JobTemplate }) {
               ? `/configuracion/plantillas-vacante/${template.id}/paso-${template.wizard_step}`
               : `/configuracion/plantillas-vacante/${template.id}/paso-1`
           }
-          className="flex h-8 items-center rounded-md border border-border px-3 text-xs"
+          className="flex h-8 items-center rounded-full border border-border px-3 text-xs"
         >
           {template.status === "draft" ? "Continuar" : "Editar"}
         </Link>

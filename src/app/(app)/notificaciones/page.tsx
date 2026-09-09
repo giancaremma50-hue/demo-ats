@@ -2,6 +2,7 @@ import { requireProfile } from "@/lib/auth/dal";
 import { getAllNotifications } from "@/lib/notifications/get-notifications";
 import { NotificationItem } from "@/components/layout/notification-item";
 import { MarkAllReadButton } from "@/components/layout/mark-all-read-button";
+import { Card } from "@/components/ui/card";
 
 export default async function NotificacionesPage() {
   await requireProfile();
@@ -17,11 +18,11 @@ export default async function NotificacionesPage() {
       {notifications.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">Sin notificaciones todavía.</p>
       ) : (
-        <div className="mt-8 rounded-md border border-border bg-card">
+        <Card className="mt-8 rounded-md">
           {notifications.map((item) => (
             <NotificationItem key={item.id} item={item} />
           ))}
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { JobListItem } from "@/lib/jobs/get-jobs";
 import { JobStatusBadge } from "./job-status-badge";
 import { isDevuelta } from "@/lib/jobs/job-groups";
+import { Card } from "@/components/ui/card";
 
 // Sin pipeline todavía (nadie aceptó la vacante) — ahí sí hace falta el
 // detalle clásico (aceptar/editar/publicar), no un tablero vacío.
@@ -10,9 +11,10 @@ const NO_PIPELINE_YET = new Set(["borrador", "pendiente_aprobacion"]);
 export function JobCard({ job }: { job: JobListItem }) {
   const href = NO_PIPELINE_YET.has(job.status) ? `/vacantes/${job.id}` : `/vacantes/${job.id}/pipeline`;
   return (
-    <Link
+    <Card
+      as={Link}
       href={href}
-      className="flex items-center justify-between gap-4 rounded-md border border-border bg-card px-5 py-4 transition-colors hover:border-foreground/30"
+      className="flex items-center justify-between gap-4 rounded-md border border-transparent px-5 py-4 transition-colors hover:border-foreground/30"
     >
       <div className="min-w-0">
         <p className="font-serif truncate text-lg">{job.title}</p>
@@ -29,6 +31,6 @@ export function JobCard({ job }: { job: JobListItem }) {
       ) : (
         <JobStatusBadge status={job.status} />
       )}
-    </Link>
+    </Card>
   );
 }

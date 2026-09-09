@@ -9,6 +9,7 @@ import { AvatarField } from "@/components/mi-cuenta/avatar-field";
 import { getInitials } from "@/lib/profile/initials";
 import { getMyErrorReports } from "@/lib/errors/get-error-reports";
 import { ERROR_STATUS_LABEL } from "@/lib/errors/schema";
+import { Card } from "@/components/ui/card";
 
 export default async function MiCuentaPage() {
   const profile = await requireProfile();
@@ -40,7 +41,7 @@ export default async function MiCuentaPage() {
         <p className="mt-1.5 text-sm text-muted-foreground">
           Elige por qué canal quieres enterarte de cada tipo de aviso.
         </p>
-        <div className="mt-5 rounded-md border border-border bg-card px-4">
+        <Card className="mt-5 rounded-md px-4">
           {PREFERENCE_TYPES.map((type) => {
             const pref = byType.get(type);
             return (
@@ -53,7 +54,7 @@ export default async function MiCuentaPage() {
               />
             );
           })}
-        </div>
+        </Card>
       </section>
 
       <section className="mt-10">
@@ -65,7 +66,7 @@ export default async function MiCuentaPage() {
             pantalla de error y aparecerá aquí.
           </p>
         ) : (
-          <div className="mt-5 rounded-md border border-border bg-card">
+          <Card className="mt-5 rounded-md">
             {myReports.map((r) => (
               <Link
                 key={r.id}
@@ -84,7 +85,7 @@ export default async function MiCuentaPage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </Card>
         )}
       </section>
     </div>

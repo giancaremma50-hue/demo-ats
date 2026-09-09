@@ -162,7 +162,7 @@ export function CandidateDrawer({
               type="button"
               aria-label="Cerrar"
               onClick={handleClose}
-              className="flex size-[30px] flex-none items-center justify-center rounded-md border border-border"
+              className="flex size-[30px] flex-none items-center justify-center rounded-full bg-muted"
             >
               <X className="size-3.5 text-muted-foreground" aria-hidden />
             </button>

@@ -4,6 +4,7 @@ import { deleteDepartment } from "@/lib/departments/actions";
 import { DepartmentDialog } from "@/components/configuracion/department-dialog";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { ActionButton } from "@/components/ui/action-button";
+import { Card } from "@/components/ui/card";
 
 export default async function DepartamentosPage() {
   const profile = await requireAdminOrAbove();
@@ -13,7 +14,7 @@ export default async function DepartamentosPage() {
   ]);
 
   return (
-    <section className="rounded-md border border-border bg-card">
+    <Card as="section" className="rounded-md">
       <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-serif text-2xl">Departamentos</h2>
@@ -70,6 +71,6 @@ export default async function DepartamentosPage() {
           ))}
         </div>
       )}
-    </section>
+    </Card>
   );
 }

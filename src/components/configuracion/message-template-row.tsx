@@ -2,6 +2,7 @@
 
 import { deleteMessageTemplate } from "@/lib/message-templates/actions";
 import { DeleteButton } from "@/components/ui/delete-button";
+import { ActionButton } from "@/components/ui/action-button";
 import { MessageTemplateDialog } from "./message-template-dialog";
 import type { MessageTemplate } from "@/lib/message-templates/get-message-templates";
 
@@ -16,9 +17,9 @@ export function MessageTemplateRow({ template }: { template: MessageTemplate }) 
         <MessageTemplateDialog
           template={template}
           trigger={
-            <button type="button" className="h-8 rounded-md border border-border px-3 text-xs">
+            <ActionButton type="button" variant="secondary" className="h-8 px-3 text-xs">
               Editar
-            </button>
+            </ActionButton>
           }
         />
         <DeleteButton

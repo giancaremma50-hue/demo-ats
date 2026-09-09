@@ -6,6 +6,7 @@ import { getErrorReportsInbox, getErrorReportMessages } from "@/lib/errors/get-e
 import { ERROR_STATUS_LABEL, ERROR_SEVERITY_LABEL } from "@/lib/errors/schema";
 import { ErrorThread } from "@/components/errors/error-thread";
 import { ErrorStatusActions } from "@/components/errors/error-status-actions";
+import { Card } from "@/components/ui/card";
 
 // Función de módulo, no parte del cuerpo del componente — Date.now() ahí
 // dispara react-hooks/purity aunque sea un Server Component sin estado.
@@ -71,7 +72,7 @@ export default async function CentroErroresPage({
           seleccionado) — el panel de 380px fijo solo tiene sentido con
           espacio de escritorio de sobra. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
-        <div className="rounded-md border border-border bg-card">
+        <Card className="rounded-md">
           <div className="flex gap-1.5 border-b border-border p-3">
             {[
               { key: "sin_resolver", label: "Sin resolver" },
@@ -123,9 +124,9 @@ export default async function CentroErroresPage({
               <span className="text-[11px] text-muted-foreground">{ERROR_STATUS_LABEL[r.status]}</span>
             </Link>
           ))}
-        </div>
+        </Card>
 
-        <div className="rounded-md border border-border bg-card">
+        <Card className="rounded-md">
           {!selected ? (
             <p className="p-8 text-sm text-muted-foreground">Elige un reporte de la lista.</p>
           ) : (
@@ -179,7 +180,7 @@ export default async function CentroErroresPage({
               </div>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

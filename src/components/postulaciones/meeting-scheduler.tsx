@@ -70,14 +70,14 @@ export function MeetingScheduler({
   );
 
   return (
-    <div className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-[420px] flex-col border-l border-border bg-card p-5">
+    <div className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-[420px] flex-col bg-card p-5 shadow-[-8px_0_24px_rgba(0,0,0,0.25)]">
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-serif text-xl">Agendar reunión</h3>
         <button
           type="button"
           aria-label="Cerrar"
           onClick={onClose}
-          className="flex size-[30px] flex-none items-center justify-center rounded-md border border-border"
+          className="flex size-[30px] flex-none items-center justify-center rounded-full bg-muted"
         >
           <X className="size-3.5 text-muted-foreground" aria-hidden />
         </button>

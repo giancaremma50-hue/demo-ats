@@ -3,13 +3,14 @@ import { getMessageTemplates } from "@/lib/message-templates/get-message-templat
 import { MessageTemplateRow } from "@/components/configuracion/message-template-row";
 import { MessageTemplateDialog } from "@/components/configuracion/message-template-dialog";
 import { ActionButton } from "@/components/ui/action-button";
+import { Card } from "@/components/ui/card";
 
 export default async function PlantillasMensajePage() {
   const profile = await requireAdminOrAbove();
   const templates = await getMessageTemplates(profile.organization_id);
 
   return (
-    <section className="rounded-md border border-border bg-card p-5">
+    <Card as="section" className="rounded-md p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-serif text-2xl">Plantillas de mensaje</h2>
@@ -27,6 +28,6 @@ export default async function PlantillasMensajePage() {
           templates.map((t) => <MessageTemplateRow key={t.id} template={t} />)
         )}
       </div>
-    </section>
+    </Card>
   );
 }

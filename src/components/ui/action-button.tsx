@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 type Variant = "primary" | "secondary" | "ghost" | "destructive";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary:
-    "bg-primary text-primary-foreground border-primary hover:opacity-90",
+  primary: "bg-primary text-primary-foreground border-transparent shadow-elevated hover:opacity-90",
   secondary: "bg-card text-foreground border-border hover:bg-muted",
   ghost: "bg-transparent text-muted-foreground border-transparent hover:bg-muted",
-  destructive: "bg-destructive text-destructive-foreground border-destructive hover:opacity-90",
+  destructive:
+    "bg-destructive text-destructive-foreground border-transparent shadow-elevated hover:opacity-90",
 };
 
 /**
@@ -41,7 +41,7 @@ export const ActionButton = forwardRef<
       aria-busy={isPending}
       disabled={disabled || isPending}
       className={cn(
-        "inline-flex h-[42px] items-center justify-center gap-2 rounded-md border px-5 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-[42px] items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
         VARIANT_CLASSES[variant],
         className,
       )}

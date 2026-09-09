@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toggleTask, deleteTask } from "@/lib/applications/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { DeleteButton } from "@/components/ui/delete-button";
+import { Card } from "@/components/ui/card";
 import { dueDateLabel } from "@/lib/org-today";
 import type { ApplicationTask } from "@/lib/applications/get-applications";
 
@@ -44,7 +45,7 @@ function TaskRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3.5 py-2.5 text-sm">
+    <Card as="li" className="flex items-center justify-between gap-3 rounded-md px-3.5 py-2.5 text-sm">
       <label className="flex min-w-0 items-center gap-2.5">
         <input
           type="checkbox"
@@ -70,7 +71,7 @@ function TaskRow({
           successMessage="Tarea eliminada"
         />
       </div>
-    </li>
+    </Card>
   );
 }
 

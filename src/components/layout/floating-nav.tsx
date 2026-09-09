@@ -67,7 +67,7 @@ export function FloatingNav({ role }: { role: Role }) {
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           className="fixed inset-x-0 bottom-6 z-40 flex justify-center"
         >
-          <div className="flex items-center gap-0.5 rounded-full border border-primary bg-primary p-1.5">
+          <div className="flex items-center gap-0.5 rounded-full bg-primary p-1.5 shadow-nav">
             {items.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;

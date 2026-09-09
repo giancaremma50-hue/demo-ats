@@ -1,22 +1,23 @@
 import Link from "next/link";
 import type { PendingRequest, MyRequest } from "@/lib/dashboard/get-inbox";
 import { JobStatusBadge } from "@/components/vacantes/job-status-badge";
+import { Card } from "@/components/ui/card";
 
 /** RH: bandeja de solicitudes por resolver — dos grupos, dos acciones distintas (aceptar/devolver vs. publicar). */
 export function PendingApprovalsInbox({ requests }: { requests: PendingRequest[] }) {
   if (requests.length === 0) {
     return (
-      <div className="rounded-md border border-border bg-card p-5">
+      <Card className="rounded-md p-5">
         <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Solicitudes pendientes</p>
         <p className="mt-2 text-sm text-muted-foreground">Sin solicitudes esperando resolución.</p>
-      </div>
+      </Card>
     );
   }
   const awaitingReview = requests.filter((r) => r.status === "pendiente_aprobacion");
   const awaitingPublish = requests.filter((r) => r.status === "aceptada");
 
   return (
-    <div className="rounded-md border border-border bg-card p-5">
+    <Card className="rounded-md p-5">
       <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">
         Solicitudes pendientes <span className="tabular-nums">({requests.length})</span>
       </p>
@@ -34,7 +35,7 @@ export function PendingApprovalsInbox({ requests }: { requests: PendingRequest[]
           <RequestList requests={awaitingPublish} />
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -63,17 +64,17 @@ function RequestList({ requests }: { requests: PendingRequest[] }) {
 export function MyRequestsInbox({ requests }: { requests: MyRequest[] }) {
   if (requests.length === 0) {
     return (
-      <div className="rounded-md border border-border bg-card p-5">
+      <Card className="rounded-md p-5">
         <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Mis solicitudes</p>
         <p className="mt-2 text-sm text-muted-foreground">Todavía no has solicitado ninguna vacante.</p>
         <Link href="/vacantes/nueva" className="mt-2 inline-block text-sm font-medium text-accent underline">
           Solicitar vacante
         </Link>
-      </div>
+      </Card>
     );
   }
   return (
-    <div className="rounded-md border border-border bg-card p-5">
+    <Card className="rounded-md p-5">
       <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Mis solicitudes</p>
       <div className="mt-3 divide-y divide-border/60">
         {requests.map((r) => (
@@ -88,6 +89,6 @@ export function MyRequestsInbox({ requests }: { requests: MyRequest[] }) {
           </Link>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }

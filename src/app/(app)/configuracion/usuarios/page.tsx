@@ -7,6 +7,7 @@ import { UserRow } from "@/components/configuracion/user-row";
 import { CopyLoginLink } from "@/components/configuracion/copy-login-link";
 import { InviteForm } from "@/components/configuracion/invite-form";
 import { InviteRow } from "@/components/configuracion/invite-row";
+import { Card } from "@/components/ui/card";
 
 export default async function UsuariosPage() {
   const profile = await requireAdminOrAbove();
@@ -24,7 +25,7 @@ export default async function UsuariosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-md border border-border bg-card">
+      <Card as="section" className="rounded-md">
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
             <h2 className="font-serif text-2xl">Usuarios y roles</h2>
@@ -73,10 +74,10 @@ export default async function UsuariosPage() {
             </>
           )}
         </div>
-      </section>
+      </Card>
 
       {profile.role === "super_admin" && (
-        <section className="rounded-md border border-border bg-card">
+        <Card as="section" className="rounded-md">
           <div className="border-b border-border p-5">
             <h2 className="font-serif text-2xl">Invitar por correo</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
@@ -94,7 +95,7 @@ export default async function UsuariosPage() {
               </div>
             )}
           </div>
-        </section>
+        </Card>
       )}
     </div>
   );
