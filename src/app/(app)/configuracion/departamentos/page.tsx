@@ -13,7 +13,7 @@ export default async function DepartamentosPage() {
   ]);
 
   return (
-    <section className="border border-border bg-card">
+    <section className="rounded-md border border-border bg-card">
       <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-serif text-2xl">Departamentos</h2>

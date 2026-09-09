@@ -8,7 +8,7 @@ export default async function MotivosRechazoPage() {
   const reasons = await getRejectionReasonsAdmin(profile.organization_id);
 
   return (
-    <section className="border border-border bg-card p-5">
+    <section className="rounded-md border border-border bg-card p-5">
       <h2 className="font-serif text-2xl">Motivos de rechazo</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">
         Un motivo desactivado deja de ofrecerse, pero las postulaciones ya rechazadas con él lo siguen mostrando.

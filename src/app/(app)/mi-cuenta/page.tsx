@@ -40,7 +40,7 @@ export default async function MiCuentaPage() {
         <p className="mt-1.5 text-sm text-muted-foreground">
           Elige por qué canal quieres enterarte de cada tipo de aviso.
         </p>
-        <div className="mt-5 border border-border bg-card px-4">
+        <div className="mt-5 rounded-md border border-border bg-card px-4">
           {PREFERENCE_TYPES.map((type) => {
             const pref = byType.get(type);
             return (
@@ -65,7 +65,7 @@ export default async function MiCuentaPage() {
             pantalla de error y aparecerá aquí.
           </p>
         ) : (
-          <div className="mt-5 border border-border bg-card">
+          <div className="mt-5 rounded-md border border-border bg-card">
             {myReports.map((r) => (
               <Link
                 key={r.id}

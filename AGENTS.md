@@ -96,6 +96,7 @@ gradientes morados o multicolor · glassmorphism · sombras difusas de color · 
 **Sí:**
 - Fondo blanco hueso `#FAF9F7`, superficies blancas. Nada de blanco puro de fondo.
 - **La elevación se hace con un borde de 1px, no con sombra.**
+- **Toda tarjeta lleva `rounded-md`** (8px, el token `--radius` del proyecto). Ni cuadrada ni muy redonda: el patrón es `rounded-md border border-border bg-card`. Unificado el 2026-09-09 — antes 36 tarjetas iban cuadradas y 15 redondeadas, sin criterio.
 - Un solo color de acento, usado con moderación. Es configurable por organización.
 - Serif editorial en títulos de página y cifras destacadas; sans neutro en interfaz y datos.
 - `font-variant-numeric: tabular-nums` en toda métrica y tabla.

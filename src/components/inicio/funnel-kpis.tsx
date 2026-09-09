@@ -30,7 +30,7 @@ export function FunnelKpiStrip({ data }: { data: FunnelData }) {
 export function FunnelKpis({ data }: { data: FunnelData }) {
   const maxCount = Math.max(1, ...data.byStageType.map((s) => s.count));
   return (
-    <div className="border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Candidatos por etapa</p>
       <div className="mt-3 flex flex-col gap-2">
         {data.byStageType.map((s) => (

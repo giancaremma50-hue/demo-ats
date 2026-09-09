@@ -2,6 +2,66 @@
 
 **Proyecto**: `V1-motoslam` (ref `cgudnnlcwcotovcslgzu`), reutilizado y limpiado por indicación del usuario — tenía un sistema de vacaciones "PCG" sin uso que se eliminó por completo (tablas, tipos, función y políticas de storage) antes de montar el esquema del ATS.
 
+## Seguimientos en hilo, menciones y el drawer que no se refrescaba (post-Fase 19, sin número de fase)
+
+2 migraciones: `notas_en_hilo_un_nivel` y `endurecer_notes_update_own`.
+
+**`notes.parent_id`** (FK a `notes.id`, nullable). Un solo nivel por decisión del
+usuario: anidar sin límite se vuelve ilegible en un drawer angosto y complica el
+query. Índice parcial `notes_parent_id_created_at_idx` sobre las respuestas.
+
+**Tres reglas del hilo, en la base y no solo en TypeScript** — trigger
+`private.notes_hilo_un_nivel` (BEFORE INSERT OR UPDATE):
+1. No se responde a una respuesta.
+2. La respuesta **hereda `is_private` del padre**, forzado (se corrige en
+   silencio si el cliente manda otro valor; el valor correcto no es ambiguo).
+3. La respuesta vive en la misma postulación que su padre.
+
+Y `private.notes_no_borrar_con_respuestas` (BEFORE DELETE) bloquea borrar una
+nota que tiene respuestas — decisión del usuario. Verificado con un bloque
+`DO` y rollback: las 6 reglas (incluida la herencia) se comportan como se
+espera.
+
+**LA PREMISA CON LA QUE SE DECIDIÓ ERA FALSA, y la encontró `/code-review`.**
+Se dio por bueno que "una nota privada solo la pueden leer los admins, así que
+un gestor no la vería". `notes_select` dice otra cosa: deja pasar a admin+ **y
+al propio autor**. O sea, un gestor podía crear una nota privada y verla él
+solo; un admin le respondía, la respuesta heredaba `is_private`, y el gestor
+no vería nunca esa respuesta — se quedaba hablando solo sin enterarse.
+Se cerró en el origen: **solo admin+ puede marcar una nota como privada**
+(`isAdminOrAbove` en `DrawerData`, la casilla no se muestra a los demás, y
+`addNote` lo revalida server-side). Con eso "privada = solo admins" pasa a ser
+verdad, que es lo que el usuario había descrito.
+
+**Menciones.** `notes.mentions` (`text[]` de ids de perfil) existía desde Fase 5
+y nunca se escribía: faltaba el selector. Ahora `getMentionableProfiles` da los
+participantes de esa vacante **incluyendo los de solo lectura** (a diferencia de
+`getAssignableProfiles`, que los excluye porque no pueden cerrar una tarea —
+mencionarlos sí tiene sentido, pueden leer). En una nota privada solo admin+ es
+mencionable, filtrado en el formulario y revalidado en `addNote`. El aviso va
+por campana **y correo** (`emails/mencion-nota.tsx`), así que los dos
+interruptores de esa fila en `/mi-cuenta` hacen algo — por eso `mencion_nota`
+volvió a `PREFERENCE_TYPES`. El correo **no incluye el texto de la nota**: puede
+ser privada, y el correo sale sin los controles de `notes_select`.
+
+**`notes_update_own` endurecida.** Solo miraba `author_id = auth.uid()`: sin
+`organization_id` y sin revalidar `can_write_application`. Inofensivo hoy (una
+sola organización, ninguna pantalla edita notas), pero con hilos la tabla gana
+superficie y el hueco no debía quedar esperando.
+
+**El bug del refresco, que era el pedido original.** Nada de lo que se agregaba
+desde el drawer aparecía hasta cerrarlo y volver a abrirlo. Dos causas:
+- Las **13 llamadas a `revalidatePath`** apuntaban a `/postulaciones/[id]`, que
+  desde el rediseño del drawer es solo un `redirect()`. Se invalidaba una ruta
+  que no muestra datos. Ahora `revalidateApplication()` invalida el pipeline y
+  `/inicio` (la agenda vive de estas mismas tareas y entrevistas), y recibe el
+  `jobId` que 11 de 13 llamadores ya tenían en la mano.
+- **La causa real:** el drawer es un componente de cliente que lee
+  `getApplicationDrawerData` UNA vez y lo guarda en `useState`.
+  `revalidatePath` invalida caché de servidor, no toca ese estado. Se resolvió
+  con callbacks `onSaved`/`onChanged` que vuelven a leer — el patrón que
+  `MeetingScheduler` ya usaba, y que es por lo que las reuniones sí aparecían.
+
 ## Consentimiento de privacidad y cierre de un bucket público (post-Fase 19, sin número de fase)
 
 Migración `consentimiento_de_privacidad_en_postulaciones`, más un cambio de

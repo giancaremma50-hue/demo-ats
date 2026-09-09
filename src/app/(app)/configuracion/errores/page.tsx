@@ -71,7 +71,7 @@ export default async function CentroErroresPage({
           seleccionado) — el panel de 380px fijo solo tiene sentido con
           espacio de escritorio de sobra. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
-        <div className="border border-border bg-card">
+        <div className="rounded-md border border-border bg-card">
           <div className="flex gap-1.5 border-b border-border p-3">
             {[
               { key: "sin_resolver", label: "Sin resolver" },
@@ -125,7 +125,7 @@ export default async function CentroErroresPage({
           ))}
         </div>
 
-        <div className="border border-border bg-card">
+        <div className="rounded-md border border-border bg-card">
           {!selected ? (
             <p className="p-8 text-sm text-muted-foreground">Elige un reporte de la lista.</p>
           ) : (

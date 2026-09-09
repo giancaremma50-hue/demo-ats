@@ -20,7 +20,7 @@ export default async function PlantillasVacantePage({
   const templates = await getJobTemplates(profile.organization_id);
 
   return (
-    <section className="border border-border bg-card p-5">
+    <section className="rounded-md border border-border bg-card p-5">
       {borrador && <NotifyOnMount message="Guardada como borrador" />}
       {publicada && <NotifyOnMount message="Plantilla publicada" />}
       {confidencial && <NotifyOnMount message="Guardado — como no la creaste vos, ya no te aparece" />}

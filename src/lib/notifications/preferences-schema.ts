@@ -2,12 +2,15 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type NotificationType = Database["public"]["Enums"]["notification_type"];
 
-// mencion_nota queda fuera: Fase 5 nunca construyó un selector de @mención
-// en NoteForm, así que ese tipo nunca se dispara todavía — no tiene sentido
-// mostrar una preferencia para un evento que no ocurre.
+// `mencion_nota` estuvo fuera de esta lista hasta 2026-09-09 porque el
+// selector de mención no existía y el tipo nunca se disparaba — no tiene
+// sentido ofrecer una preferencia para un evento que no ocurre. Ya existe
+// (NoteForm), y `addNote` manda campana Y correo, así que los dos
+// interruptores de esa fila hacen algo real.
 export const PREFERENCE_TYPES: NotificationType[] = [
   "nueva_postulacion",
   "cambio_etapa",
+  "mencion_nota",
   "vacante_pendiente_aprobacion",
   "vacante_cambio_estado",
   "movimiento_referido",

@@ -1,7 +1,15 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { ADMIN_ROLES } from "@/lib/auth/role-labels";
 import type { Database } from "@/lib/supabase/database.types";
-import { getApplicationDetail, getAssignableProfiles, type ApplicationDetail, type AssignableProfile } from "./get-applications";
+import {
+  getApplicationDetail,
+  getAssignableProfiles,
+  getMentionableProfiles,
+  type ApplicationDetail,
+  type AssignableProfile,
+  type MentionableProfile,
+} from "./get-applications";
 import { getApplicationInterviews, type ApplicationInterview } from "@/lib/interviews/get-interviews";
 import { getMessageTemplates, type MessageTemplate } from "@/lib/message-templates/get-message-templates";
 import { getApplicationPermissions } from "./permissions";
@@ -24,6 +32,20 @@ export type DrawerData = {
   additionalFiles: AdditionalFile[];
   interviews: ApplicationInterview[];
   assignable: AssignableProfile[];
+  /** A quién se puede mencionar en un seguimiento — incluye solo lectura, a diferencia de `assignable`. */
+  mentionable: MentionableProfile[];
+  /**
+   * Si el actor es admin o superior. NO es lo mismo que `canDecide`, que
+   * también es true para el reclutador asignado aunque sea gestor.
+   *
+   * Gobierna quién puede marcar una nota como PRIVADA. `notes_select` deja
+   * leer una nota privada a admin+ **y a su propio autor**, así que si un
+   * gestor pudiera crear una privada la vería él solo: un admin le
+   * respondería, la respuesta heredaría `is_private`, y el gestor no vería esa
+   * respuesta nunca — se quedaría hablando solo sin saberlo. Restringir la
+   * creación a admin+ hace que "privada = solo admins" sea verdad de verdad.
+   */
+  isAdminOrAbove: boolean;
   rejectionReasons: { id: string; label: string }[];
   messageTemplates: MessageTemplate[];
   /** Descartar/Siguiente etapa/Agendar reunión/Mensaje exigen el mismo nivel — Tareas y Seguimientos no. */
@@ -45,8 +67,16 @@ export async function getDrawerData(
   if (!application) return null;
 
   const supabase = await createClient();
-  const [{ data: answerRows }, { data: fileRows }, interviews, assignable, { data: reasons }, messageTemplates, permissions] =
-    await Promise.all([
+  const [
+    { data: answerRows },
+    { data: fileRows },
+    interviews,
+    assignable,
+    mentionable,
+    { data: reasons },
+    messageTemplates,
+    permissions,
+  ] = await Promise.all([
       supabase
         .from("application_answers")
         .select("job_question_id, answer_text, selected_option_id, job_questions(prompt, type)")
@@ -58,6 +88,7 @@ export async function getDrawerData(
         .eq("kind", "adicional"),
       getApplicationInterviews(applicationId),
       getAssignableProfiles(application.jobId, actor.organizationId),
+      getMentionableProfiles(application.jobId, actor.organizationId),
       supabase.from("rejection_reasons").select("id, label").eq("is_active", true),
       getMessageTemplates(actor.organizationId).catch(() => []),
       getApplicationPermissions(actor.role, actor.id, application.jobId),
@@ -87,6 +118,8 @@ export async function getDrawerData(
     additionalFiles: (fileRows ?? []).map((f) => ({ id: f.id, fileName: f.file_name, filePath: f.file_path })),
     interviews,
     assignable,
+    mentionable,
+    isAdminOrAbove: ADMIN_ROLES.has(actor.role),
     rejectionReasons: reasons ?? [],
     messageTemplates,
     canDecide: permissions.canDecide,

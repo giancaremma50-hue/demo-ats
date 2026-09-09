@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateApplication } from "@/lib/applications/revalidate";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email/send-email";
@@ -113,7 +113,7 @@ export async function scheduleInterview(
     ),
   );
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, application.job_id);
   return { success: "Entrevista agendada" };
 }
 
@@ -167,7 +167,7 @@ export async function updateInterviewStatus(
     .single();
   if (error || !data) return { error: "Alguien más ya actualizó esta entrevista. Actualiza la página." };
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId);
   return { success: status === "completada" ? "Entrevista marcada como completada" : "Entrevista cancelada" };
 }
 
@@ -188,5 +188,5 @@ export async function deleteInterview(interviewId: string, applicationId: string
 
   const { error } = await supabase.from("interviews").delete().eq("id", interviewId).eq("application_id", applicationId);
   if (error) throw new Error("No se pudo eliminar la entrevista.");
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId);
 }

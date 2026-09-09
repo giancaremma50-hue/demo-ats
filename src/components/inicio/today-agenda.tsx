@@ -13,7 +13,7 @@ export function TodayAgenda({ data }: { data: AgendaData }) {
   const isEmpty = data.interviews.length === 0 && data.tasks.length === 0;
 
   return (
-    <div className="border border-border bg-card p-5 sm:p-6">
+    <div className="rounded-md border border-border bg-card p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-[22px]">Tu agenda de hoy</h2>
         {!isEmpty && (

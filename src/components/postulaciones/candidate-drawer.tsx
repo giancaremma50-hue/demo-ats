@@ -66,6 +66,21 @@ export function CandidateDrawer({
       });
   }, [applicationId]);
 
+  /**
+   * Vuelve a leer todo el drawer. Es la pieza que faltaba: este componente
+   * carga sus datos UNA vez (el useEffect de arriba) y los guarda en estado
+   * local, así que nada de lo que se agrega desde dentro —nota, tarea— aparece
+   * solo. `revalidatePath` no sirve para esto: invalida caché de servidor, no
+   * toca este `useState`. MeetingScheduler ya lo hacía bien con `onScheduled`;
+   * ahora lo comparten todos.
+   */
+  function refresh() {
+    if (!applicationId) return;
+    getApplicationDrawerData(applicationId).then(setData).catch(() => {
+      notifyError("No se pudo actualizar la vista. Cierra y vuelve a abrir.");
+    });
+  }
+
   if (!applicationId) return null;
 
   const stageIndex = stages.findIndex((s) => s.id === currentStageId);
@@ -192,7 +207,7 @@ export function CandidateDrawer({
           ) : tab === "info" ? (
             <InfoView data={data} />
           ) : tab === "seguimiento" ? (
-            <SeguimientoView data={data} applicationId={applicationId!} canWrite={canWrite} />
+            <SeguimientoView data={data} applicationId={applicationId!} canWrite={canWrite} onChanged={refresh} />
           ) : (
             <BitacoraView
               events={data.application.events}
@@ -205,10 +220,10 @@ export function CandidateDrawer({
             <section className="mt-8 border-t border-border pt-5">
               <h3 className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Tareas</h3>
               <div className="mt-3">
-                <TaskForm applicationId={applicationId!} assignable={data.assignable} />
+                <TaskForm applicationId={applicationId!} assignable={data.assignable} onSaved={refresh} />
               </div>
               <div className="mt-4">
-                <TaskList tasks={data.application.tasks} applicationId={applicationId!} />
+                <TaskList tasks={data.application.tasks} applicationId={applicationId!} onChanged={refresh} />
               </div>
             </section>
           )}
@@ -261,7 +276,7 @@ export function CandidateDrawer({
           onClose={() => setPanel(null)}
           onScheduled={() => {
             setPanel(null);
-            getApplicationDrawerData(applicationId!).then(setData);
+            refresh();
           }}
         />
       )}
@@ -356,7 +371,18 @@ function jobTitleFallback(application: DrawerData["application"]): string {
   return application.jobTitle ?? "";
 }
 
-function SeguimientoView({ data, applicationId, canWrite }: { data: DrawerData; applicationId: string; canWrite: boolean }) {
+function SeguimientoView({
+  data,
+  applicationId,
+  canWrite,
+  onChanged,
+}: {
+  data: DrawerData;
+  applicationId: string;
+  canWrite: boolean;
+  /** Recarga del drawer, ver `refresh()` en CandidateDrawer. */
+  onChanged: () => void;
+}) {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <div>
@@ -371,13 +397,29 @@ function SeguimientoView({ data, applicationId, canWrite }: { data: DrawerData; 
         <p className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Seguimiento</p>
         {canWrite ? (
           <div className="mt-2">
-            <NoteForm applicationId={applicationId} />
+            <NoteForm
+              // Cuenta solo las notas RAÍZ, no el total. Con el total, una
+              // respuesta en cualquier hilo cambiaba esta key y borraba el
+              // borrador que el usuario tuviera escrito acá arriba.
+              key={data.application.notes.filter((n) => !n.parentId).length}
+              applicationId={applicationId}
+              mentionable={data.mentionable}
+              canMarkPrivate={data.isAdminOrAbove}
+              onSaved={onChanged}
+            />
           </div>
         ) : (
           <p className="mt-2 text-xs text-muted-foreground">Tu nivel en esta vacante es de solo lectura.</p>
         )}
         <div className="mt-4">
-          <NoteList notes={data.application.notes} />
+          <NoteList
+            notes={data.application.notes}
+            applicationId={applicationId}
+            mentionable={data.mentionable}
+            canWrite={canWrite}
+            canMarkPrivate={data.isAdminOrAbove}
+            onSaved={onChanged}
+          />
         </div>
         <div className="mt-6">
           <p className="mb-2 text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Actividad</p>

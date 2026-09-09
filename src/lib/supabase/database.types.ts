@@ -1555,6 +1555,7 @@ export type Database = {
           is_private: boolean
           mentions: string[]
           organization_id: string
+          parent_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1566,6 +1567,7 @@ export type Database = {
           is_private?: boolean
           mentions?: string[]
           organization_id: string
+          parent_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1577,6 +1579,7 @@ export type Database = {
           is_private?: boolean
           mentions?: string[]
           organization_id?: string
+          parent_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1599,6 +1602,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
             referencedColumns: ["id"]
           },
         ]

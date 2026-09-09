@@ -23,7 +23,7 @@ export function ErrorCard({
 }) {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-6">
-      <div className="border border-border bg-card p-11">
+      <div className="rounded-md border border-border bg-card p-11">
         <div className="mb-5 flex size-10 items-center justify-center rounded-full border border-destructive">
           <AlertTriangle className="size-5 text-destructive" aria-hidden />
         </div>

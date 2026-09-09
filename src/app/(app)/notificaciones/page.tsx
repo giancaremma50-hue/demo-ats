@@ -17,7 +17,7 @@ export default async function NotificacionesPage() {
       {notifications.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">Sin notificaciones todavía.</p>
       ) : (
-        <div className="mt-8 border border-border bg-card">
+        <div className="mt-8 rounded-md border border-border bg-card">
           {notifications.map((item) => (
             <NotificationItem key={item.id} item={item} />
           ))}

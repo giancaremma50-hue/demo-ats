@@ -24,7 +24,7 @@ export default async function UsuariosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="border border-border bg-card">
+      <section className="rounded-md border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
             <h2 className="font-serif text-2xl">Usuarios y roles</h2>
@@ -76,7 +76,7 @@ export default async function UsuariosPage() {
       </section>
 
       {profile.role === "super_admin" && (
-        <section className="border border-border bg-card">
+        <section className="rounded-md border border-border bg-card">
           <div className="border-b border-border p-5">
             <h2 className="font-serif text-2xl">Invitar por correo</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">

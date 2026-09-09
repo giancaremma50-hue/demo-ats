@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateApplication } from "@/lib/applications/revalidate";
 import { z } from "zod";
 import { requireProfile } from "@/lib/auth/dal";
+import { ADMIN_ROLES } from "@/lib/auth/role-labels";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify, notifyBestEffort, getEmailContext } from "@/lib/notifications/notify";
@@ -11,8 +12,10 @@ import { sendEmail } from "@/lib/email/send-email";
 import { CambioEtapaEmail } from "@/emails/cambio-etapa";
 import { MovimientoReferidoEmail } from "@/emails/movimiento-referido";
 import { MensajeCandidatoEmail } from "@/emails/mensaje-candidato";
+import { MencionNotaEmail } from "@/emails/mencion-nota";
 import { canDecideApplication, canWriteApplication } from "./permissions";
 import { isProfileAssignable } from "./get-applications";
+import { getMentionableProfiles } from "./get-applications";
 import { getDrawerData, type DrawerData } from "./get-drawer-data";
 import { getSignedCvUrl } from "@/lib/candidates/get-signed-cv-url";
 import { NoteSchema, RejectSchema, RATING_MAX, TaskSchema, SendMessageSchema } from "./schema";
@@ -178,7 +181,7 @@ export async function moveApplicationStage(
     notifyStageChange(applicationId, application.job_id, application.candidate_id, toStageId, profile.id, data.organization_id),
   );
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, application.job_id);
   return { success: "Etapa actualizada" };
 }
 
@@ -200,6 +203,55 @@ export async function addNote(
   if (!(await canWriteApplication(profile.role, profile.id, noteJobId))) {
     return { error: "Tu perfil solo puede leer esta postulación." };
   }
+  // Si es respuesta, el padre manda: tiene que ser una nota RAÍZ de ESTA
+  // postulación, y su `is_private` se hereda. El trigger
+  // `notes_hilo_un_nivel` vuelve a imponer las tres reglas en la base — esto
+  // es para poder devolver un mensaje entendible en vez de un error de
+  // Postgres, no para reemplazarlo.
+  // Solo admin+ crea notas privadas — ver el comentario de `isAdminOrAbove` en
+  // get-drawer-data.ts. El formulario ni muestra la casilla, esto es la
+  // revalidación server-side de siempre.
+  let isPrivate = parsed.data.is_private && ADMIN_ROLES.has(profile.role);
+  if (parsed.data.parent_id) {
+    const { data: parent } = await supabase
+      .from("notes")
+      .select("id, parent_id, is_private, application_id")
+      .eq("id", parsed.data.parent_id)
+      .maybeSingle();
+    if (!parent || parent.application_id !== applicationId) {
+      return { error: "No se encontró la nota que estás respondiendo." };
+    }
+    if (parent.parent_id) {
+      return { error: "Solo se puede responder a la nota principal del hilo." };
+    }
+    isPrivate = parent.is_private;
+  }
+
+  // Menciones: solo gente que PARTICIPA en esta vacante, y en una nota privada
+  // solo admin+ — una nota privada únicamente la pueden leer ellos
+  // (`notes_select`), así que mencionar a un gestor ahí le mandaría un aviso
+  // sobre algo que no puede abrir y le revelaría que existe. Se revalida acá
+  // contra la misma función que alimenta el formulario: el <select> del cliente
+  // nunca es la fuente de verdad.
+  let mentions: string[] = [];
+  if (parsed.data.mentions.length > 0) {
+    const mentionable = await getMentionableProfiles(noteJobId, profile.organization_id);
+    const permitidos = new Map(
+      mentionable.filter((m) => !isPrivate || m.isAdminOrAbove).map((m) => [m.id, m.display_name]),
+    );
+    const invalido = parsed.data.mentions.find((id) => !permitidos.has(id));
+    if (invalido) {
+      return {
+        error: isPrivate
+          ? "En una nota privada solo puedes mencionar a admins."
+          : "Solo puedes mencionar a personas asignadas a esta vacante.",
+        field: "mentions",
+      };
+    }
+    // Sin duplicados y sin el propio autor: notificarse a uno mismo es ruido.
+    mentions = [...new Set(parsed.data.mentions)].filter((id) => id !== profile.id);
+  }
+
   const { data: note, error } = await supabase
     .from("notes")
     .insert({
@@ -207,7 +259,9 @@ export async function addNote(
       application_id: applicationId,
       author_id: profile.id,
       body: parsed.data.body,
-      is_private: parsed.data.is_private,
+      is_private: isPrivate,
+      parent_id: parsed.data.parent_id ?? null,
+      mentions,
     })
     .select("id")
     .single();
@@ -219,11 +273,59 @@ export async function addNote(
     application_id: applicationId,
     type: "nota_agregada",
     actor_id: profile.id,
-    payload: { is_private: parsed.data.is_private },
+    payload: { is_private: isPrivate, es_respuesta: Boolean(parsed.data.parent_id) },
   });
 
-  revalidatePath(`/postulaciones/${applicationId}`);
-  return { success: "Nota agregada" };
+  // Un aviso por mencionado. `notifyBestEffort`: la nota ya quedó guardada, un
+  // fallo de correo no puede convertir eso en un error de cara al usuario.
+  if (mentions.length > 0) {
+    const candidateName = await noteCandidateName(supabase, applicationId);
+    notifyBestEffort(async () => {
+      const { platformName, siteUrl } = await getEmailContext();
+      const applicationUrl = `${siteUrl}/postulaciones/${applicationId}`;
+      await Promise.all(
+        mentions.map((recipientId) =>
+          notify({
+            organizationId: profile.organization_id,
+            recipientId,
+            type: "mencion_nota",
+            title: `${profile.display_name} te mencionó`,
+            body: `En el seguimiento de ${candidateName}.`,
+            url: applicationUrl,
+            // Con correo, no solo campana: /mi-cuenta ofrece los dos canales
+            // por tipo, y sin esto el interruptor de correo de "Menciones"
+            // no haría nada. El correo NO incluye el texto de la nota — puede
+            // ser privada, ver el comentario en emails/mencion-nota.tsx.
+            email: {
+              subject: `${profile.display_name} te mencionó — ${candidateName}`,
+              react: MencionNotaEmail({
+                platformName,
+                authorName: profile.display_name,
+                candidateName,
+                applicationUrl,
+              }),
+            },
+          }),
+        ),
+      );
+    });
+  }
+
+  await revalidateApplication(applicationId, noteJobId);
+  return { success: parsed.data.parent_id ? "Respuesta agregada" : "Nota agregada" };
+}
+
+/** Nombre del candidato para el texto del aviso de mención — una consulta mínima, solo cuando hay a quién avisar. */
+async function noteCandidateName(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  applicationId: string,
+): Promise<string> {
+  const { data } = await supabase
+    .from("applications")
+    .select("candidates(full_name)")
+    .eq("id", applicationId)
+    .maybeSingle();
+  return data?.candidates?.full_name ?? "un candidato";
 }
 
 export async function setRating(applicationId: string, rating: number): Promise<ApplicationActionResult> {
@@ -257,7 +359,7 @@ export async function setRating(applicationId: string, rating: number): Promise<
     payload: { rating: value },
   });
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, jobId);
   return { success: "Calificación guardada" };
 }
 
@@ -297,7 +399,7 @@ export async function rejectApplication(
     payload: { rejection_reason_id: parsed.data.rejection_reason_id },
   });
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, jobId);
   return { success: "Postulación rechazada" };
 }
 
@@ -322,7 +424,7 @@ export async function hireApplication(applicationId: string): Promise<Applicatio
 
   if (error || !data) return { error: "Esta postulación ya no está activa." };
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, jobId);
   return { success: "Candidato contratado" };
 }
 
@@ -347,7 +449,7 @@ export async function reopenApplication(applicationId: string): Promise<Applicat
 
   if (error || !data) return { error: "Esta postulación no está rechazada." };
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, jobId);
   return { success: "Postulación reabierta" };
 }
 
@@ -389,7 +491,7 @@ export async function addTask(
   });
   if (error) return { error: "No se pudo agregar la tarea." };
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, taskJobId);
   return { success: "Tarea agregada" };
 }
 
@@ -416,7 +518,7 @@ export async function toggleTask(taskId: string, applicationId: string, isDone: 
     .select("id");
   if (error || !updated || updated.length === 0) return { error: "No se pudo actualizar la tarea." };
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, jobId);
   return { success: isDone ? "Tarea completada" : "Tarea reabierta" };
 }
 
@@ -468,7 +570,7 @@ export async function sendCandidateMessage(
     payload: { subject: parsed.data.subject },
   });
 
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, application.job_id);
   return { success: "Mensaje enviado" };
 }
 
@@ -488,7 +590,7 @@ export async function deleteTask(taskId: string, applicationId: string): Promise
     .eq("application_id", applicationId)
     .select("id");
   if (error || !deleted || deleted.length === 0) throw new Error("No se pudo eliminar la tarea.");
-  revalidatePath(`/postulaciones/${applicationId}`);
+  await revalidateApplication(applicationId, jobId);
 }
 
 /**

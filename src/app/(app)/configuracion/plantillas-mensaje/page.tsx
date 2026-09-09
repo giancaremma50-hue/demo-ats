@@ -9,7 +9,7 @@ export default async function PlantillasMensajePage() {
   const templates = await getMessageTemplates(profile.organization_id);
 
   return (
-    <section className="border border-border bg-card p-5">
+    <section className="rounded-md border border-border bg-card p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-serif text-2xl">Plantillas de mensaje</h2>

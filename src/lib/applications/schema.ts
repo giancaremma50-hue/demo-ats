@@ -7,6 +7,20 @@ export const RATING_MAX = 5;
 export const NoteSchema = z.object({
   body: z.string().trim().min(3, { error: "Escribe una nota." }).max(2000, { error: "La nota es muy larga." }),
   is_private: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
+  // Nota raíz a la que esta responde. Un solo nivel: el trigger
+  // `notes_hilo_un_nivel` rechaza responder a una respuesta, y `addNote` no
+  // confía en que el cliente mande un padre válido.
+  parent_id: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.uuid({ error: "Nota inválida." }).optional(),
+  ),
+  // Lista de ids, separados por coma — es como un <select multiple> llega en
+  // un FormData plano (`Object.fromEntries` colapsa las claves repetidas, así
+  // que el formulario manda un solo campo oculto ya unido).
+  mentions: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.split(",").map((s) => s.trim()) : []),
+    z.array(z.uuid({ error: "Persona inválida." })).max(20, { error: "Máximo 20 menciones." }),
+  ),
 });
 
 export const RejectSchema = z.object({

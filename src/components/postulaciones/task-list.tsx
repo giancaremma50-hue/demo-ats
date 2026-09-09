@@ -13,7 +13,15 @@ function DueDate({ dueDate }: { dueDate: string }) {
   return <span className={due.overdue ? "text-destructive" : undefined}>{due.text}</span>;
 }
 
-function TaskRow({ task, applicationId }: { task: ApplicationTask; applicationId: string }) {
+function TaskRow({
+  task,
+  applicationId,
+  onChanged,
+}: {
+  task: ApplicationTask;
+  applicationId: string;
+  onChanged?: () => void;
+}) {
   const [isDone, setIsDone] = useState(task.isDone);
   const [pending, startTransition] = useTransition();
 
@@ -27,12 +35,16 @@ function TaskRow({ task, applicationId }: { task: ApplicationTask; applicationId
         notifyError(result.error);
       } else {
         notifySuccess(result.success ?? "Actualizado");
+        // El check ya se pintó optimista arriba; esto es para lo DERIVADO
+        // (contadores del tablero, "vencidas" de la agenda), que sale de la
+        // misma consulta del drawer.
+        onChanged?.();
       }
     });
   }
 
   return (
-    <li className="flex items-center justify-between gap-3 border border-border bg-card px-3.5 py-2.5 text-sm">
+    <li className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3.5 py-2.5 text-sm">
       <label className="flex min-w-0 items-center gap-2.5">
         <input
           type="checkbox"
@@ -49,7 +61,12 @@ function TaskRow({ task, applicationId }: { task: ApplicationTask; applicationId
         <DeleteButton
           itemLabel="esta tarea"
           iconOnly
-          onDelete={() => deleteTask(task.id, applicationId)}
+          // Sin esto la fila borrada se queda en pantalla: la lista viene de
+          // props y el drawer no vuelve a leer por su cuenta.
+          onDelete={async () => {
+            await deleteTask(task.id, applicationId);
+            onChanged?.();
+          }}
           successMessage="Tarea eliminada"
         />
       </div>
@@ -57,14 +74,23 @@ function TaskRow({ task, applicationId }: { task: ApplicationTask; applicationId
   );
 }
 
-export function TaskList({ tasks, applicationId }: { tasks: ApplicationTask[]; applicationId: string }) {
+export function TaskList({
+  tasks,
+  applicationId,
+  onChanged,
+}: {
+  tasks: ApplicationTask[];
+  applicationId: string;
+  /** Ver el comentario en NoteForm: el drawer no se refresca solo. */
+  onChanged?: () => void;
+}) {
   if (tasks.length === 0) {
     return <p className="text-sm text-muted-foreground">Sin tareas todavía. Agrega la primera arriba.</p>;
   }
   return (
     <ul className="flex flex-col gap-2">
       {tasks.map((task) => (
-        <TaskRow key={task.id} task={task} applicationId={applicationId} />
+        <TaskRow key={task.id} task={task} applicationId={applicationId} onChanged={onChanged} />
       ))}
     </ul>
   );

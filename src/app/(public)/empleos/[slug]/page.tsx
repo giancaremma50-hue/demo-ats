@@ -47,7 +47,7 @@ export default async function EmpleoDetailPage({ params }: { params: Promise<{ s
         </section>
       </div>
 
-      <div className="h-fit border border-border bg-card p-6">
+      <div className="h-fit rounded-md border border-border bg-card p-6">
         <h2 className="font-serif text-xl">Postula a esta vacante</h2>
         <div className="mt-5">
           <ApplicationForm

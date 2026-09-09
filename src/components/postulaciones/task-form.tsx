@@ -6,7 +6,16 @@ import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import type { AssignableProfile } from "@/lib/applications/get-applications";
 
-export function TaskForm({ applicationId, assignable }: { applicationId: string; assignable: AssignableProfile[] }) {
+export function TaskForm({
+  applicationId,
+  assignable,
+  onSaved,
+}: {
+  applicationId: string;
+  assignable: AssignableProfile[];
+  /** Ver el comentario en NoteForm: el drawer no se refresca solo. */
+  onSaved?: () => void;
+}) {
   const action = addTask.bind(null, applicationId);
   const [state, formAction] = useActionState(action, undefined);
   const formRef = useRef<HTMLFormElement>(null);
@@ -16,7 +25,9 @@ export function TaskForm({ applicationId, assignable }: { applicationId: string;
     else if (state?.success) {
       notifySuccess(state.success);
       formRef.current?.reset();
+      onSaved?.();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (

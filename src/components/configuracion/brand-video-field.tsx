@@ -88,7 +88,7 @@ export function BrandVideoField({
           única de escritorio no cabe en un teléfono. */}
       <div className="flex flex-col gap-3 rounded-md border border-dashed bg-background p-3.5 sm:flex-row sm:items-center sm:gap-3.5">
         <div className="flex min-w-0 items-center gap-3.5 sm:flex-1">
-          <div className="flex h-11 w-[62px] flex-none items-center justify-center border border-border bg-card">
+          <div className="flex h-11 w-[62px] flex-none items-center justify-center rounded-md border border-border bg-card">
             <Video className="size-4 text-muted-foreground" aria-hidden />
           </div>
           <p className="min-w-0 flex-1 text-xs leading-snug text-muted-foreground">{hint}</p>

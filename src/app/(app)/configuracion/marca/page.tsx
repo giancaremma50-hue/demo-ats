@@ -23,7 +23,7 @@ export default async function MarcaPage() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[560px_1fr]">
-      <section className="border border-border bg-card p-6">
+      <section className="rounded-md border border-border bg-card p-6">
         <h2 className="font-serif text-2xl">Identidad visual</h2>
         <p className="mt-1 mb-6 text-[13px] leading-relaxed text-muted-foreground">
           Los cambios se aplican de inmediato para todos al guardar.
@@ -108,7 +108,7 @@ export default async function MarcaPage() {
           </div>
         </div>
 
-        <div className="border border-border bg-card p-5">
+        <div className="rounded-md border border-border bg-card p-5">
           <p className="mb-3.5 text-[11px] tracking-[0.13em] text-muted-foreground uppercase">
             Cómo se ven los componentes con este acento
           </p>
