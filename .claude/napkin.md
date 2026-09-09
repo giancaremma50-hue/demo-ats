@@ -1,5 +1,16 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (menciones en negrita EN VIVO en NoteForm, técnica de textarea con overlay)_
+_Última actualización: 2026-09-09 (el primer overlay de menciones tenía un bug real de largo — corregido)_
+
+## El primer overlay de menciones tenía un bug real: el cursor se corría (2026-09-09)
+
+1. **BUG REAL, encontrado por el usuario apenas lo probó: la técnica de "textarea con overlay" (ver la entrada de más abajo) exige que el overlay y el textarea muestren EXACTAMENTE el mismo string, mismo largo — la primera versión no cumplía eso.** `body` guardaba el token completo `@[Carlos Mauricio Sandoval](uuid)` (lo que de verdad hay en el textarea), pero el overlay lo pintaba pasado por `parseMentions()`, que lo reduce a solo "Carlos Mauricio Sandoval" para mostrar. Dos strings de largo distinto, mismo contenedor: el textarea (más largo, invisible) posiciona el cursor real según SU longitud, el overlay (más corto, visible) pinta el nombre en negrita terminando mucho antes — el cursor visualmente quedaba lejos del texto pintado. Screenshot del usuario lo mostró de inmediato.
+   Do instead: en cualquier técnica de "overlay sobre un input real", el overlay tiene que ser una función *puramente visual* del MISMO string que el input — nunca una transformación que cambie caracteres o longitud (recortar, reemplazar, resumir). Si hace falta mostrar algo más corto que el dato real (acá: el nombre en vez del token), el dato-completo tiene que vivir APARTE (ver el punto 2) y reconstruirse recién al final, no dentro del string que comparten las dos capas.
+2. **La corrección: `body` pasa a ser el texto que se VE (el nombre, nunca el token), y un array `mentions` aparte guarda en qué rango de `body` vive cada mención real — el token `@[Nombre](uuid)` se arma recién al enviar (`serializar()`).** Cada edición del textarea (tipear, borrar, pegar — todo entra por el mismo `onChange`) recalcula qué rangos siguen siendo válidos comparando el `body` viejo contra el nuevo por prefijo/sufijo común (`tramoCambiado`): lo que quedó antes o después del tramo editado se conserva (corriéndose por el delta de longitud si hace falta), lo que se solapa con la edición se descarta — si alguien escribe o borra ENCIMA de un nombre mencionado, deja de ser una mención y pasa a ser texto plano, no queda apuntando a un tramo que ya no dice ese nombre. Verificado con 6 casos de prueba (insertar, tipear antes, tipear después, editar adentro, serializar, largo body=overlay) antes de tocar el componente real.
+3. **`react-mentions` se probó y se descartó por deprecado (`npm install` avisó "no longer supported" + 4 vulnerabilidades) antes de llegar a integrarlo — ver el resto del feedback de esta sesión, sección de arriba, para el detalle completo.**
+
+---
+
+## Menciones en negrita EN VIVO en NoteForm — técnica de textarea con overlay (2026-09-09, primera versión — corregida arriba)
 
 ## Negrita en vivo al mencionar: textarea con overlay, no un editor nuevo (2026-09-09)
 
