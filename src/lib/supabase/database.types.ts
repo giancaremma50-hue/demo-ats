@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_rate_limits: {
+        Row: {
+          count: number
+          key: string
+          reset_at: string
+          updated_at: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          reset_at: string
+          updated_at?: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          reset_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       application_answers: {
         Row: {
           answer_text: string | null
@@ -1997,6 +2018,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: { p_key: string; p_max: number; p_window_seconds: number }
+        Returns: boolean
+      }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
     }
     Enums: {

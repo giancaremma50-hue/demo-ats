@@ -1,6 +1,6 @@
 # Pendiente — ATS Ferco
 
-_Última actualización: 2026-09-08, después de la auditoría legal (privacidad, copyright, cookies) y de arreglar el portal público de postulaciones._
+_Última actualización: 2026-09-09, después de una auditoría de lanzamiento (simulación en vivo del flujo + Vercel + Supabase advisors, apuntando a un pico de 1000+ postulantes)._
 
 ## Estado general
 
@@ -22,40 +22,80 @@ Competencias se eliminó del proyecto por decisión del usuario. Detalle en
 
 El bug de enrutamiento (`/api/postular` fuera de `PUBLIC_PATHS`) está corregido
 y desplegado (`039dda4`, deployment `dpl_865f9o…`, READY). Pero en producción la
-postulación **sigue fallando, por otra causa: las credenciales**.
+postulación **sigue fallando** — y el diagnóstico cambió el 2026-09-09: no son
+credenciales inválidas, es una **key con un carácter corrupto**.
 
-Medido en `https://demo-atrio.vercel.app`:
+**Diagnóstico refinado (2026-09-09), leyendo `get_runtime_errors` de Vercel en vivo:**
+el error real no es un 401/404 silencioso — es un `TypeError` explícito, capturado por el
+`console.error` que agregó `075e51d`:
 
-| Cliente | Misma vacante, misma base | Resultado |
-|---|---|---|
-| anón/sesión — `/empleos/analista-operaciones-demo-62b930` | la lee | página y casilla renderizan |
-| admin/service role — `POST /api/postular` | **no la encuentra** | `404 "Esta vacante ya no está disponible."` |
+```
+[postular] no se pudo leer la vacante con el cliente admin {
+  jobId: 'cf2f75cd-bcea-4754-80b5-356e70946d94',
+  code: '',
+  message: 'TypeError: Cannot convert argument to a ByteString because the
+            character at index 8 has a value of 8226 which is greater than 255.'
+}
+```
 
-La vacante está `abierta` + `publica` en la base, y `/empleos` la lista. El
-cliente admin salta RLS, así que la única variable que difiere entre ambos es
-**`SUPABASE_SERVICE_ROLE_KEY` en las variables de entorno de Vercel**: si es
-inválida o pertenece a otro proyecto, PostgREST responde 401, `data` vuelve
-`null` y la ruta lo reportaba como "vacante no disponible".
+8226 = `•` (viñeta, típica de copiar/pegar texto con formato — Word, un email,
+una página renderizada). Se descartó que sea contenido de la vacante: las 5
+vacantes de la base (`select id, title, candidacy_fields::text from jobs`) no
+tienen un solo carácter fuera de ASCII/acentos normales en `title` ni
+`candidacy_fields`. El único valor que viaja como HEADER HTTP en esta llamada
+(no como dato) es el `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>` que arma
+el propio cliente admin — un `ByteString` roto ahí explica el `TypeError`
+exactamente en el primer punto donde ese cliente hace una llamada real, sin
+que la vacante tenga nada que ver.
 
-**Cómo confirmarlo y arreglarlo (no lo puedo hacer desde acá, no puedo leer las
-variables de Vercel):**
-1. Vercel → proyecto `demo-ats` → Settings → Environment Variables.
-2. Comparar `SUPABASE_SERVICE_ROLE_KEY` contra Supabase → proyecto
-   `cgudnnlcwcotovcslgzu` → Settings → API → `service_role`. **Ojo:** este
-   proyecto de Supabase se reutilizó de un sistema anterior, así que es
-   plausible que ahí siga una key de otro proyecto.
-3. Verificar también `NEXT_PUBLIC_SUPABASE_URL` = `https://cgudnnlcwcotovcslgzu.supabase.co`,
-   y que `EMAIL_FROM` y `RESEND_API_KEY` tengan valor (sin ellos el correo de
-   confirmación al candidato falla en silencio, por `notifyBestEffort`).
-4. Redeploy y comprobar: un POST a `/api/postular` sin la casilla de
+**Hipótesis concreta: `SUPABASE_SERVICE_ROLE_KEY` en Vercel tiene un carácter
+no-ASCII colado** (una viñeta, una comilla curva) — típico de copiar la key
+desde un lugar con auto-formato en vez del campo de texto plano del dashboard
+de Supabase o la CLI.
+
+**Cómo confirmarlo y arreglarlo (no lo puedo hacer desde acá — es un valor
+secreto, no lo puedo leer ni pegar por el agente):**
+1. Vercel → proyecto `demo-ats` → Settings → Environment Variables → borrar el
+   valor actual de `SUPABASE_SERVICE_ROLE_KEY` y volver a pegarlo — copiado
+   directo del campo "reveal" de Supabase → Settings → API → `service_role`
+   (o con `supabase projects api-keys --project-ref cgudnnlcwcotovcslgzu`), no
+   desde un chat, documento o página con auto-corrección de texto.
+2. De paso, confirmar `NEXT_PUBLIC_SUPABASE_URL` = `https://cgudnnlcwcotovcslgzu.supabase.co`,
+   y que `EMAIL_FROM` y `RESEND_API_KEY` tengan valor (confirmado por separado
+   que faltan del todo en producción — ver punto 3).
+3. Redeploy y comprobar: un POST a `/api/postular` sin la casilla de
    consentimiento debe devolver
    `400 {"error":"Tienes que aceptar la política de privacidad para postular."}`.
-   Si devuelve `503`, la key sigue mal (ese código se agregó justo para
-   distinguir los dos casos). Si devuelve `404`, revisar el estado de la
-   vacante.
+   Si devuelve `503`, la key sigue rota. Si devuelve `404`, revisar el estado
+   de la vacante.
 
 Mientras esto no se resuelva, **ninguna persona externa puede postular**, aunque
 el portal se vea perfecto.
+
+### 0b. BLOQUEANTE (nuevo, 2026-09-09) — Vercel Authentication bloquea TODO el portal público
+
+Los 4 dominios activos del proyecto (`demo-atrio.vercel.app`,
+`demo-ats-giancarlo-lam.vercel.app`, etc.) son dominios de Vercel, no un
+dominio propio. `ssoProtection` está en modo `all_except_custom_domains` — así
+que los 4 quedan detrás del login de Vercel. Ni siquiera llegando a
+`SUPABASE_SERVICE_ROLE_KEY` arreglado (punto 0) un candidato externo puede
+llegar a ver `/empleos`: primero choca con una pantalla de login que no es
+suya.
+
+**Arreglo (dashboard, no código):** agregar un dominio propio en Vercel →
+Settings → Domains (los dominios propios quedan exentos de la protección
+automáticamente) — o desactivar `ssoProtection` en producción si por ahora no
+hay dominio propio listo.
+
+### 0c. Plan Hobby de Vercel, no apto para lanzamiento comercial real
+
+Confirmado vía API de Vercel: team `Lam's Projects`, plan `hobby`. El techo de
+concurrencia de funciones (30 000, auto-scaling) es igual en Hobby y Pro — no
+es el cuello de botella real. El riesgo real: Hobby es para uso personal
+según los términos de Vercel (no uso comercial), logs de runtime de solo 1
+hora (justo cuando más hacen falta si algo se cae durante el pico de 1000+
+postulantes) y sin soporte prioritario. Subir a Pro antes de lanzar — tiene
+costo, decisión del usuario.
 
 ### 1. Dominio corporativo aún sin definir
 
@@ -169,15 +209,20 @@ No existe ningún mecanismo de borrado ni expiración. Depende del plazo del pun
 pasado el plazo desde la última actividad. Sin esto, la sección 6 de la política
 promete algo que el sistema no cumple.
 
-### 10. Rate limit del endpoint público, a almacenamiento compartido
+### 10. ~~Rate limit del endpoint público, a almacenamiento compartido~~ — Resuelto 2026-09-09
 
-`src/lib/rate-limit.ts` es un `Map` en memoria del proceso (5/min). Se justificaba
-con "no hay tráfico real todavía" — premisa que era cierta solo porque
-`/api/postular` estaba inalcanzable por un bug, ya corregido. Ahora el endpoint
-recibe de verdad y es el único camino por el que entrada anónima escribe en
-Storage con service role (PDFs de hasta 10 MB). En Vercel el contador se reinicia
-por instancia y no se comparte entre regiones. Siguiente paso cuando haya
-volumen: tabla en Postgres o Upstash Redis.
+Movido a Postgres: tabla `public.api_rate_limits` + función `public.check_rate_limit`
+(SECURITY DEFINER, `EXECUTE` revocado a `anon`/`authenticated`/`PUBLIC`, solo
+`service_role` puede llamarla — verificado con `has_function_privilege`). El
+UPSERT (`INSERT ... ON CONFLICT DO UPDATE`) es atómico entre instancias y
+regiones, a diferencia del `Map` anterior. `src/lib/rate-limit.ts` ahora es
+`async` y llama `admin.rpc("check_rate_limit", ...)`.
+
+**Gotcha real encontrado al construirlo:** la primera versión puso la función
+en `private` (la convención del resto del proyecto para helpers de RLS) y
+habría fallado en producción — PostgREST no expone RPC de `private`, así que
+`admin.rpc()` nunca la habría encontrado, aunque `execute_sql` la probara bien
+en SQL directo. Detalle en `.claude/napkin.md`.
 
 ### 11. ~~Bucket `archivos`~~ — Resuelto 2026-09-08
 
@@ -260,6 +305,94 @@ El ATS se opera por el servidor que exige `project_id` en cada llamada, con
 - Scorecards de entrevista estructurada con rúbrica fija.
 - Dashboard de métricas (time-to-hire, conversión por etapa, fuente de contratación).
 - Firma de ofertas.
+
+### 18. ~~Techo de Vercel de 4.5 MB vs. el límite de 10 MB del código~~ — Resuelto 2026-09-09
+
+Vercel corta cualquier request de función en 4.5 MB a nivel de plataforma —
+fijo, no configurable, no cambia con Fluid Compute. `MAX_CV_BYTES` (10 MB) y
+`MAX_ADDITIONAL_FILES` (5, sin techo individual real) permitían armar un
+envío que la plataforma rechaza con un 413 crudo ANTES de que el código
+corriera — el candidato veía "se perdió la conexión", atribuyendo a su red un
+problema que era del tamaño del archivo.
+
+Bajado a techos reales: CV 4 MB, cada archivo adicional 1 MB, más un tope
+combinado de 4.3 MB (CV + adicionales juntos) chequeado en el cliente ANTES
+de subir y de nuevo en el servidor. `application-form.tsx` ya no asume que la
+respuesta es JSON (un 413 de la plataforma no lo es) — cae a un mensaje según
+el código de estado en vez de un catch genérico.
+
+**Arreglo real, no hecho todavía:** subir CV directo del navegador a Storage
+con URL firmada (mismo patrón que ya usa la subida de video de marca) —
+saca el archivo del cuerpo de la función y permite CVs más pesados de
+verdad. Quedó fuera de esta pasada por ser un cambio de arquitectura del
+flujo público de postulación, no un ajuste de límites.
+
+### 19. ~~Validación de archivo solo por Content-Type declarado~~ — Resuelto 2026-09-09
+
+`cvFile.type !== "application/pdf"` (y el equivalente para adicionales) solo
+mira la etiqueta que manda el navegador — el endpoint es público, nada obliga
+a pasar por el `<input type="file">` real. `src/lib/jobs/validate-file-signature.ts`
+agrega un chequeo de los primeros bytes reales del archivo (`%PDF` para PDF,
+cabeceras JPEG/PNG) antes de aceptarlo, sin depender de ninguna librería nueva.
+
+### 20. CI/CD — agregado 2026-09-09
+
+No existía `.github/workflows` — nada corría lint/typecheck/build automático
+en un PR. Agregado `.github/workflows/ci.yml`: lint + typecheck + build en
+cada PR contra `main`, con variables `NEXT_PUBLIC_*` de relleno (no secretas)
+solo para que el build no falle si algo las lee en build time.
+
+### 21. Región de la función vs. región de la base — agregado 2026-09-09
+
+Sin `vercel.json`, la función corría en la región default de Vercel
+(`iad1`, Virginia) mientras Supabase está en `us-west-2`. Agregado
+`vercel.json` con `"regions": ["pdx1"]` (Portland, la más cercana a
+`us-west-2` entre las disponibles en el plan actual) — reduce la latencia
+cruzada en cada una de las ~6 consultas seguidas que hace `/api/postular`.
+
+### 22. `/empleos` y `/empleos/[slug]` sin caché — investigado 2026-09-09, NO se pudo resolver sin tocar CSP
+
+Intento: cambiar el cliente de sesión (`createClient()`, atado a `cookies()`)
+por uno sin cookies (`src/lib/supabase/public.ts`, `createPublicClient()` +
+`getPublicOrganization()`) y agregar `export const revalidate = 60`, para que
+estas dos páginas de solo lectura pública no le pegaran a Postgres en cada
+visita.
+
+**No funcionó, y quedó documentado por qué en vez de reportarlo como
+resuelto sin verificar:** el build sigue marcando ambas rutas `ƒ (Dynamic)`.
+Causa real: el nonce de CSP por request (`src/proxy.ts`, Fase 19) fuerza
+renderizado 100% dinámico en TODO el sitio vía el matcher del proxy — un
+`revalidate` ahí no tiene efecto (o serviría un nonce viejo, peor). Se dejó
+el cliente sin cookies (mejora real y sin riesgo: la página ya no depende de
+sesión para datos públicos) pero se sacó el `revalidate`, que era ruido
+engañoso.
+
+**Para lograr caché real haría falta** sacar `/empleos*` del alcance del
+nonce de CSP en el matcher de `proxy.ts` — eso debilita CSP justo en la
+superficie pública que va a recibir el tráfico de candidatos, así que es una
+decisión de seguridad, no un ajuste de cache. No se hizo sin que el usuario
+la pida explícitamente.
+
+### 23. Índices en llaves foráneas sin cubrir — Resuelto 2026-09-09
+
+27 llaves foráneas marcadas por el advisor de performance de Supabase sin
+índice (`application_answers`, `job_templates` y sus tablas satélite,
+`interviews`, `candidate_tasks`, `profile_invites`, etc. — tablas
+administrativas, ninguna en el camino caliente de `/api/postular`). Agregados
+vía migración `indices_fk_faltantes` — puramente aditivo, no toca RLS.
+
+### 24. Pendiente, requiere el dashboard — no lo puede hacer el agente
+
+- **Leaked password protection** (Supabase Auth → Policies) sigue
+  desactivado — HaveIBeenPwned check. Un toggle, sin código de por medio.
+- **Extensión `pg_net` en el esquema `public`**: aceptado, Postgres no
+  permite moverla (`ALTER EXTENSION ... SET SCHEMA` falla con `0A000`).
+- **RLS con políticas permisivas repetidas** (`jobs` tiene 3 políticas de
+  SELECT que se evalúan todas para `authenticated`, patrón similar en
+  `profiles`/`departments`/etc.) — real pero de bajo impacto con el volumen
+  de hoy, y tocar la lógica de una política sin poder simular cada rol a
+  fondo en esta pasada es más riesgo del que vale la pena correr sin pedirlo
+  explícitamente. Documentado, no corregido.
 
 ## Cómo verificar que sigue al día
 

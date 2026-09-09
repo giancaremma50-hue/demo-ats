@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import type { CandidacyFields } from "@/lib/job-templates/candidacy-fields";
+import { MAX_TOTAL_UPLOAD_BYTES } from "@/lib/jobs/upload-limits";
 
 export type PublicQuestion = {
   id: string;
@@ -37,11 +38,35 @@ export function ApplicationForm({
     const formData = new FormData(e.currentTarget);
     formData.set("job_id", jobId);
 
+    // Chequeo del lado del cliente antes de mandar nada: Vercel corta
+    // cualquier request de función en 4.5 MB a nivel de plataforma, con un
+    // error crudo que no es JSON — mejor avisar acá, antes de subir, que
+    // dejar que la plataforma responda con una página que el catch de abajo
+    // solo puede traducir como "se perdió la conexión".
+    const totalBytes = [...formData.values()].reduce(
+      (sum, value) => sum + (value instanceof File ? value.size : 0),
+      0,
+    );
+    if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
+      setError("El CV y los archivos adicionales juntos pesan demasiado. Quita alguno e inténtalo de nuevo.");
+      setPending(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/postular", { method: "POST", body: formData });
-      const body = await res.json();
+
+      // La respuesta puede no ser JSON: un 413 de la plataforma (payload
+      // demasiado grande) llega como página de error de Vercel, no como el
+      // cuerpo que arma esta ruta.
+      const body: { error?: string; field?: string } = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        setError(body.error ?? "No se pudo enviar tu postulación.");
+        const fallback =
+          res.status === 413
+            ? "El CV o los archivos adicionales pesan demasiado para enviarse."
+            : "No se pudo enviar tu postulación.";
+        setError(body.error ?? fallback);
         setErrorField(body.field ?? null);
         return;
       }
@@ -104,7 +129,7 @@ export function ApplicationForm({
 
       {candidacyFields.resume !== "hidden" && (
         <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-          Currículum (PDF, máx. 10 MB){candidacyFields.resume === "optional" && " — opcional"}
+          Currículum (PDF, máx. 4 MB){candidacyFields.resume === "optional" && " — opcional"}
           <input
             name="cv"
             type="file"
@@ -130,7 +155,7 @@ export function ApplicationForm({
 
       {candidacyFields.additional_files !== "hidden" && (
         <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-          Archivos adicionales (PDF, JPG o PNG){candidacyFields.additional_files === "optional" && " — opcional"}
+          Archivos adicionales (PDF, JPG o PNG, máx. 1 MB cada uno){candidacyFields.additional_files === "optional" && " — opcional"}
           <input
             name="additional_files"
             type="file"

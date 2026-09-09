@@ -45,6 +45,11 @@ export function HeroBackgroundMedia({
     return (
       <video
         src={videoUrl}
+        // La misma imagen de portada (cuando la organización subió una)
+        // sirve de cuadro visible mientras el video todavía está bajando —
+        // sin esto, la sección se ve vacía sobre el color de fondo hasta que
+        // el video carga lo suficiente para pintar su primer frame.
+        poster={imageUrl ?? undefined}
         autoPlay
         loop
         muted
@@ -55,7 +60,10 @@ export function HeroBackgroundMedia({
   }
 
   if (imageUrl) {
-    return <Image src={imageUrl} alt="" fill className="object-cover" priority={priority} />;
+    // Hero a todo el ancho del viewport, siempre — sin `sizes`, next/image
+    // ignora el viewport real y sirve el tamaño más grande configurado
+    // (gasta ancho de banda de más en cada visita a un portal público).
+    return <Image src={imageUrl} alt="" fill sizes="100vw" className="object-cover" priority={priority} />;
   }
 
   return null;
