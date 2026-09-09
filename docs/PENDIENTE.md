@@ -80,9 +80,9 @@ costo, decisión del usuario.
 
 ### 1. Dominio corporativo aún sin definir
 
-`organizations.allowed_email_domain` sigue vacío. Mientras tanto, **cualquier cuenta de Google puede entrar** a la app — no solo las del dominio de la empresa. El mecanismo de restricción y su lista de excepciones (`profile_invites`, para invitar puntualmente a alguien fuera del dominio) ya están construidos y activos en `src/app/auth/callback/route.ts`; falta solo:
+`organizations.allowed_email_domain` sigue vacío. **Ya no es un problema de acceso** (corregido 2026-09-09, hallazgo H1 de `CLAUDE-SECURITY-20260902-095525/REPORT.md` — la lógica era fail-open: sin dominio configurado, el chequeo de invitación se saltaba entero y cualquier cuenta de Google entraba). Ahora es fail-closed: sin dominio, solo entra quien tenga invitación explícita en `profile_invites` (o sea `super_admin`). Falta solo:
 - Que el usuario confirme el dominio real de la empresa.
-- Cargarlo en `organizations.allowed_email_domain` (hoy solo se puede por SQL/MCP de Supabase — no hay campo en `/configuracion` para editarlo).
+- Cargarlo en `organizations.allowed_email_domain` (hoy solo se puede por SQL/MCP de Supabase — no hay campo en `/configuracion` para editarlo) — mientras tanto, cada persona nueva necesita una invitación manual desde `/configuracion/usuarios`.
 - (Opcional, mejora futura) Agregar ese campo a `/configuracion/marca` o una sección nueva, para que el super admin lo edite sin depender de un agente.
 
 ### 2. ~~Fase 19 — Endurecimiento y despliegue~~ — Resuelto 2026-09-02
@@ -91,6 +91,7 @@ costo, decisión del usuario.
 - **Auditoría completa de políticas RLS**: hecho. Las 17 tablas de Fases 8-18 (candidate_tasks, application_competency_scores, message_templates, interviews, candidate_segments, job_templates y sus 3 tablas satélite, employment_reasons, job_questions/options, application_answers, job_collaborators, audit_log, profile_invites) leídas y contrastadas contra la matriz de roles — todas correctas, deny-by-default, org-scoped. De paso se encontró y se cerró un gap real que quedaba abierto de Fase 7 (no era parte de Fases 8-18, pero es la misma clase de bug): `error_reports_select`/`update`/`delete` y `error_report_messages_select` solo miraban `is_super_admin()`, nunca `organization_id` — verificado el fix con simulación de rol (super_admin de otra organización ahora ve 0 filas).
 - **`/security-review` completo**: hecho — sweep de todo `src/` (Zod en Server Actions/Route Handlers, uso de `createAdminClient()`, XSS, inyección SQL, open redirect, rate limiting, autorización en Server Actions). Sin hallazgos.
 - Rate limiting y cabeceras básicas: ya estaban hechos.
+- **Corrección 2026-09-09**: este sweep no atrapó todo. `CLAUDE-SECURITY-20260902-095525/REPORT.md` (pipeline `claude-security:scan`, panel adversarial de 3 votos, alcance repo completo) encontró 9 hallazgos reales el mismo 2026-09-02, con solapamiento de alcance pero método distinto (IDOR/SSRF vía simulación adversarial, no un sweep de patrones). Estado real hoy: **H1** (login fail-open, arriba) y **M1/M3/M4** (wildcard SSRF en `next.config.ts`, `addJobCollaborator`/`rejectApplication` sin chequeo de organización) corregidos 2026-09-09. **M2/M5** (enumeración de candidatos, sobrescritura de CV) ya estaban corregidos desde el 2026-09-08 (commits `b8ee7da`/`895622c`). **H2/M7** (link de correo a RH con `Host` falsificable si falta `NEXT_PUBLIC_SITE_URL`) sigue abierto, decisión explícita de no bloquear por esto — ver `.claude/napkin.md`.
 
 ### 3. Correo real y parseo de CV
 

@@ -7,6 +7,7 @@ import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { DialogShell, type DialogShellHandle } from "@/components/ui/dialog-shell";
+import { Card } from "@/components/ui/card";
 import type { JobCollaboratorRow, AddableProfile } from "@/lib/jobs/get-collaborators";
 import type { TeamMemberOption } from "@/lib/jobs/get-team-options";
 
@@ -67,7 +68,7 @@ export function CollaboratorsPanel({
           Todavía no hay miembros agregados. Agrega uno con el formulario de abajo.
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-border/60 border border-border">
+        <Card as="ul" className="mt-4 divide-y divide-border/60 rounded-md">
           {collaborators.map((c) => {
             const badge = roleBadge(c.profile_id, ownerId, requesterId);
             const isRecruiter = c.profile_id === ownerId;
@@ -110,7 +111,7 @@ export function CollaboratorsPanel({
               </li>
             );
           })}
-        </ul>
+        </Card>
       )}
 
       {addable.length > 0 && (

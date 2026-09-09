@@ -3,6 +3,7 @@
 import { HelpCircle } from "lucide-react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { ActionButton } from "@/components/ui/action-button";
 
 export type HelpTourStep = { selector: string; title: string; description: string };
 
@@ -33,13 +34,9 @@ export function HelpTourButton({ intro, steps }: { intro?: { title: string; desc
   }
 
   return (
-    <button
-      type="button"
-      onClick={start}
-      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs text-muted-foreground hover:bg-muted"
-    >
+    <ActionButton type="button" variant="secondary" onClick={start} className="h-8 gap-1.5 px-3 text-xs text-muted-foreground">
       <HelpCircle className="size-3.5" aria-hidden />
       ¿Cómo funciona esto?
-    </button>
+    </ActionButton>
   );
 }

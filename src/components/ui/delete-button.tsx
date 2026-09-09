@@ -56,8 +56,8 @@ export function DeleteButton({
         aria-label={iconOnly ? `Eliminar ${itemLabel}` : undefined}
         className={cn(
           iconOnly
-            ? "flex size-8 items-center justify-center rounded-md border border-destructive text-destructive"
-            : "inline-flex h-[38px] items-center gap-2 rounded-md border border-destructive bg-card px-4 text-sm font-medium text-destructive",
+            ? "flex size-8 items-center justify-center rounded-full border border-destructive text-destructive"
+            : "inline-flex h-[38px] items-center gap-2 rounded-full bg-destructive px-4 text-sm font-semibold text-destructive-foreground shadow-elevated",
           className,
         )}
       >

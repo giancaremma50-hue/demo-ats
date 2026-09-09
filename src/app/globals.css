@@ -4,14 +4,15 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Sistema visual — "editorial sobrio".
-  La elevación se hace con un borde de 1px, NO con sombra.
-  Un solo color de acento, configurable por organización en tiempo de ejecución
-  (el configurador sobreescribe --accent con un style inline en <html>).
+  Sistema visual — "AJE look" (ref. ajegroup.com, ver AGENTS.md).
+  La elevación se hace con sombra difusa, NO con borde de 1px.
+  Paleta fija de marca; el acento sigue configurable por organización en
+  tiempo de ejecución (el configurador sobreescribe --accent con un style
+  inline en <html>).
 */
 :root {
   /* Superficies */
-  --background: #faf9f7;          /* blanco hueso, nunca blanco puro */
+  --background: #ffffff;          /* blanco puro */
   --foreground: #14140f;          /* tinta */
   --card: #ffffff;
   --card-foreground: #14140f;
@@ -24,26 +25,38 @@
   --secondary: #f2f0ec;
   --secondary-foreground: #14140f;
 
-  /* Acento — un solo color, usado con moderación */
-  --accent: #1f4d3d;
-  --accent-foreground: #faf9f7;
-  --primary: #14140f;
-  --primary-foreground: #faf9f7;
+  /* Acento — paleta AJE, el primario es configurable por organización */
+  --accent: #00b348;
+  --accent-foreground: #ffffff;
+  --primary: #00b348;
+  --primary-foreground: #ffffff;
 
   /* Semánticos */
-  --success: #2f6f4e;
+  --success: #00b348;
   --success-foreground: #ffffff;
-  --warning: #9a6b1f;
-  --warning-foreground: #ffffff;
-  --destructive: #b3261e;
+  --warning: #ffb81c;
+  --warning-foreground: #14140f;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  /* Trazos */
+  /* Paleta de marca AJE — uso puntual por contexto/marca, no mezclar
+     más de dos tokens en un mismo componente. */
+  --aje-green: #00b348;
+  --aje-red: #ef4444;
+  --aje-yellow: #ffb81c;
+  --aje-orange: #ef7834;
+  --aje-dark: #0f172a;
+
+  /* Trazos — quedan para separadores e inputs, no para elevación */
   --border: #e4e1da;
   --input: #e4e1da;
   --ring: var(--accent);
 
   --radius: 0.5rem;
+
+  /* Sombra — elevación de tarjetas, diálogos y menús flotantes */
+  --shadow-elevated-raw: 0 20px 50px 0 rgb(0 0 0 / 0.35);
+  --shadow-nav-raw: 0 -8px 24px 0 rgb(0 0 0 / 0.25);
 }
 
 .dark {
@@ -59,21 +72,24 @@
   --secondary: #252520;
   --secondary-foreground: #f5f3ee;
 
-  --accent: #4f9e80;
+  --accent: #2fd66f;
   --accent-foreground: #14140f;
-  --primary: #f5f3ee;
+  --primary: #2fd66f;
   --primary-foreground: #14140f;
 
-  --success: #4f9e80;
+  --success: #2fd66f;
   --success-foreground: #14140f;
-  --warning: #d3a34a;
+  --warning: #ffcc55;
   --warning-foreground: #14140f;
-  --destructive: #e5645c;
+  --destructive: #ff6b6b;
   --destructive-foreground: #14140f;
 
   --border: #33332c;
   --input: #33332c;
   --ring: var(--accent);
+
+  --shadow-elevated-raw: 0 20px 50px 0 rgb(0 0 0 / 0.6);
+  --shadow-nav-raw: 0 -8px 24px 0 rgb(0 0 0 / 0.5);
 }
 
 @theme inline {
@@ -101,12 +117,21 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-aje-green: var(--aje-green);
+  --color-aje-red: var(--aje-red);
+  --color-aje-yellow: var(--aje-yellow);
+  --color-aje-orange: var(--aje-orange);
+  --color-aje-dark: var(--aje-dark);
+
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
+
+  --shadow-elevated: var(--shadow-elevated-raw);
+  --shadow-nav: var(--shadow-nav-raw);
 }
 
 @layer base {
@@ -148,5 +173,25 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* La elevación del look AJE es sombra, no borde — pero una sombra es
+   decoración a ojos del navegador: Windows "Contraste alto" (forced-colors)
+   y la vista de impresión la descartan junto con cualquier color de fondo
+   propio, y --card ya es idéntico a --background (ambos blanco puro), así
+   que sin esto una tarjeta/diálogo/menú se vuelve indistinguible de la
+   página en esos dos modos. Un borde real sí sobrevive ambos. */
+@media (forced-colors: active) {
+  .shadow-elevated,
+  .shadow-nav {
+    border: 1px solid CanvasText;
+  }
+}
+
+@media print {
+  .shadow-elevated,
+  .shadow-nav {
+    border: 1px solid var(--border);
   }
 }

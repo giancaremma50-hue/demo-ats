@@ -2,13 +2,14 @@ import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getRejectionReasonsAdmin } from "@/lib/rejection-reasons/get-rejection-reasons-admin";
 import { RejectionReasonRow } from "@/components/configuracion/rejection-reason-row";
 import { AddRejectionReasonForm } from "@/components/configuracion/add-rejection-reason-form";
+import { Card } from "@/components/ui/card";
 
 export default async function MotivosRechazoPage() {
   const profile = await requireAdminOrAbove();
   const reasons = await getRejectionReasonsAdmin(profile.organization_id);
 
   return (
-    <section className="rounded-md border border-border bg-card p-5">
+    <Card as="section" className="rounded-md p-5">
       <h2 className="font-serif text-2xl">Motivos de rechazo</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">
         Un motivo desactivado deja de ofrecerse, pero las postulaciones ya rechazadas con él lo siguen mostrando.
@@ -25,6 +26,6 @@ export default async function MotivosRechazoPage() {
           reasons.map((r) => <RejectionReasonRow key={r.id} reason={r} />)
         )}
       </div>
-    </section>
+    </Card>
   );
 }

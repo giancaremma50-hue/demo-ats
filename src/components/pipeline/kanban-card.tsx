@@ -25,7 +25,11 @@ export function KanbanCard({
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onOpen(card.id)}
-          className={`w-full rounded-md border border-border bg-card px-3 py-2.5 text-left text-sm transition-colors hover:border-accent ${snapshot.isDragging ? "border-foreground/40" : ""}`}
+          className={`w-full rounded-md border bg-card px-3 py-2.5 text-left text-sm transition-shadow ${
+            snapshot.isDragging
+              ? "border-transparent shadow-elevated"
+              : "border-border hover:border-transparent hover:shadow-elevated"
+          }`}
         >
           <p className="font-medium">{card.candidateName}</p>
           <div className="mt-1 flex items-center justify-between">

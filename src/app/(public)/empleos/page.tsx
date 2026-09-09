@@ -4,6 +4,7 @@ import { JobsBoard, type FilterOption } from "@/components/empleos/jobs-board";
 import { HeroBackgroundMedia } from "@/components/layout/hero-background-media";
 import { WORK_MODE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode } from "@/lib/jobs/schema";
+import { Card } from "@/components/ui/card";
 
 // Portal público de solo lectura, sin sesión — cachear 60s evita que cada
 // visita (antes incluso de postular) le pegue en vivo a Postgres. El nonce
@@ -104,7 +105,7 @@ export default async function EmpleosPage() {
             {allJobs.length > 0 ? (
               <a
                 href="#vacantes"
-                className="mt-7 inline-flex w-fit items-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-medium text-accent-foreground"
+                className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground"
               >
                 Ver vacantes abiertas
               </a>
@@ -130,14 +131,14 @@ export default async function EmpleosPage() {
             </p>
           )}
           {stats.length > 0 && (
-            <div className="mt-8 flex border border-border">
+            <Card className="mt-8 flex rounded-md">
               {stats.map((s) => (
                 <div key={s.label} className="flex-1 border-r border-border p-4 last:border-r-0" data-numeric>
                   <span className="font-serif block text-2xl leading-none">{s.n}</span>
                   <span className="mt-1.5 block text-[11.5px] text-muted-foreground">{s.label}</span>
                 </div>
               ))}
-            </div>
+            </Card>
           )}
         </div>
       )}

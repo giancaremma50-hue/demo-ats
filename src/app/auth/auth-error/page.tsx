@@ -28,7 +28,7 @@ export default async function AuthErrorPage({
       ) : (
         <Link
           href="/login"
-          className="inline-flex h-[42px] items-center justify-center rounded-md border border-primary bg-primary px-5 text-sm font-medium text-primary-foreground"
+          className="inline-flex h-[42px] items-center justify-center rounded-full border border-primary bg-primary px-5 text-sm font-medium text-primary-foreground"
         >
           Volver a intentar
         </Link>

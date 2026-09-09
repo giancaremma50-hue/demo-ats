@@ -30,7 +30,7 @@ export function WizardStep5Form({ templateId, isConfidential }: { templateId: st
       <div className="mt-6 flex justify-end gap-2.5">
         <Link
           href={`/configuracion/plantillas-vacante/${templateId}/paso-4`}
-          className="inline-flex h-[42px] items-center rounded-md border border-border px-5 text-sm text-muted-foreground hover:bg-muted"
+          className="inline-flex h-[42px] items-center rounded-full border border-border px-5 text-sm text-muted-foreground hover:bg-muted"
         >
           Atrás
         </Link>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { NoteForm } from "./note-form";
 import { NoteBody } from "./note-body";
+import { Card } from "@/components/ui/card";
 import type { ApplicationNote, MentionableProfile } from "@/lib/applications/get-applications";
 
 /** Cuántas respuestas se ven sin expandir. Decisión del usuario: solo las últimas 2. */
@@ -56,7 +57,7 @@ function Hilo({
   const visibles = expandido ? respuestas : respuestas.slice(-RESPUESTAS_VISIBLES);
 
   return (
-    <li className="rounded-md border border-border bg-card p-3.5 text-sm">
+    <Card as="li" className="rounded-md p-3.5 text-sm">
       <NoteBody body={raiz.body} />
       <Meta note={raiz} />
 
@@ -127,7 +128,7 @@ function Hilo({
           )}
         </div>
       )}
-    </li>
+    </Card>
   );
 }
 

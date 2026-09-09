@@ -75,7 +75,7 @@ export default async function CandidatosPage({
             ))}
           </select>
         </label>
-        <button type="submit" className="h-9 rounded-md border border-border bg-card px-4 text-xs font-medium">
+        <button type="submit" className="h-9 rounded-full border border-border bg-card px-4 text-xs font-medium">
           Filtrar
         </button>
         {(filters.job_id || filters.stage_type || filters.status || filters.q) && (

@@ -27,7 +27,7 @@ export function JobInfoModal({ job, collaborators }: { job: JobDetail; collabora
       <button
         type="button"
         onClick={() => dialogRef.current?.showModal()}
-        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs text-muted-foreground hover:border-accent hover:text-accent"
+        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground hover:border-accent hover:text-accent"
       >
         <Info className="size-3.5" aria-hidden />
         Info de la vacante
@@ -40,7 +40,7 @@ export function JobInfoModal({ job, collaborators }: { job: JobDetail; collabora
         }}
         // w-[calc(100%-2rem)], no w-full: ver el comentario en DialogShell —
         // sin esto el diálogo toca los bordes de la pantalla en un celular.
-        className="w-[calc(100%-2rem)] max-w-[560px] rounded-lg border border-border bg-card p-0 text-foreground backdrop:bg-foreground/25"
+        className="w-[calc(100%-2rem)] max-w-[560px] rounded-lg border-0 bg-card p-0 text-foreground shadow-elevated backdrop:bg-foreground/25"
       >
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
@@ -54,7 +54,7 @@ export function JobInfoModal({ job, collaborators }: { job: JobDetail; collabora
                 type="button"
                 aria-label="Cerrar"
                 onClick={() => dialogRef.current?.close()}
-                className="flex size-[30px] items-center justify-center rounded-md border border-border"
+                className="flex size-[30px] items-center justify-center rounded-full bg-muted"
               >
                 <X className="size-3.5 text-muted-foreground" aria-hidden />
               </button>

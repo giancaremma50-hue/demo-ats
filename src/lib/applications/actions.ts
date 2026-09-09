@@ -394,11 +394,29 @@ export async function rejectApplication(
 
   const supabase = await createClient();
 
-  const jobId = await requireApplicationJobId(supabase, applicationId);
+  // Un id hijo no prueba pertenencia al padre correcto — mismo patrón que
+  // department_id/employment_reason_id/pipeline_template_id. Se valida
+  // is_active aparte de assertBelongsToOrg (las demás tablas de
+  // TableWithOrg no tienen esa columna): un motivo desactivado deja de
+  // ofrecerse para selecciones nuevas, no solo de mostrarse. Va en paralelo
+  // con requireApplicationJobId: ninguna de las dos depende de la otra,
+  // ambas solo necesitan datos ya disponibles (profile.organization_id /
+  // applicationId).
+  const [jobId, reasonRow] = await Promise.all([
+    requireApplicationJobId(supabase, applicationId),
+    supabase
+      .from("rejection_reasons")
+      .select("id")
+      .eq("id", parsed.data.rejection_reason_id)
+      .eq("organization_id", profile.organization_id)
+      .eq("is_active", true)
+      .maybeSingle(),
+  ]);
   if (!jobId) return { error: "No se encontró la postulación." };
   if (!(await canDecideApplication(profile.role, profile.id, jobId))) {
     return { error: "Tu perfil no puede rechazar postulaciones en esta vacante." };
   }
+  if (!reasonRow.data) return { error: "Ese motivo de rechazo no es válido.", field: "rejection_reason_id" };
 
   const { data, error } = await supabase
     .from("applications")

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { dueDateLabel, isTaskOverdue } from "@/lib/org-today";
 import type { AgendaData } from "@/lib/dashboard/get-agenda";
+import { Card } from "@/components/ui/card";
 
 /**
  * Bloque protagonista de Inicio: es lo único que responde "qué tengo que
@@ -13,7 +14,7 @@ export function TodayAgenda({ data }: { data: AgendaData }) {
   const isEmpty = data.interviews.length === 0 && data.tasks.length === 0;
 
   return (
-    <div className="rounded-md border border-border bg-card p-5 sm:p-6">
+    <Card className="rounded-md p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-[22px]">Tu agenda de hoy</h2>
         {!isEmpty && (
@@ -95,6 +96,6 @@ export function TodayAgenda({ data }: { data: AgendaData }) {
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

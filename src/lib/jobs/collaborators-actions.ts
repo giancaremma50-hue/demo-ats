@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { assertBelongsToOrg } from "@/lib/assert-belongs-to-org";
 import { AddCollaboratorSchema } from "./collaborators-schema";
 
 export type CollaboratorActionResult = { error?: string; success?: string };
@@ -20,16 +21,21 @@ export async function addJobCollaborator(
   const supabase = await createClient();
 
   // El cliente nunca es fuente de verdad: profile_id llega como texto de un
-  // <select>, sin garantía de que sea alguien de ESTA organización — el
-  // <select> del panel ya lo filtra, pero un POST directo a esta action no
-  // pasa por ahí. Confirmar server-side antes de insertar.
-  const { data: targetProfile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", parsed.data.profile_id)
-    .eq("organization_id", profile.organization_id)
-    .maybeSingle();
+  // <select> y jobId de la URL de la página, ninguno con garantía de ser de
+  // ESTA organización — un POST directo a esta action no pasa por el
+  // <select> que ya filtra. Ninguna de las dos consultas depende del
+  // resultado de la otra, van en paralelo.
+  const [{ data: targetProfile }, jobError] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", parsed.data.profile_id)
+      .eq("organization_id", profile.organization_id)
+      .maybeSingle(),
+    assertBelongsToOrg(supabase, "jobs", jobId, profile.organization_id, "No se encontró la vacante."),
+  ]);
   if (!targetProfile) return { error: "Esa persona no pertenece a tu organización." };
+  if (jobError) return { error: jobError };
 
   const { error } = await supabase.from("job_collaborators").insert({
     organization_id: profile.organization_id,

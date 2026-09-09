@@ -55,16 +55,22 @@ export async function GET(request: NextRequest) {
 
   const allowedDomain = profile.organizations?.allowed_email_domain;
   const emailDomain = profile.email.split("@")[1]?.toLowerCase();
-  const domainMismatch = !!allowedDomain && emailDomain !== allowedDomain.toLowerCase();
+  // Fail-closed: sin dominio configurado (allowed_email_domain vacío — el
+  // estado real hoy, ver README.md/docs/PENDIENTE.md) ningún correo
+  // "coincide" por defecto. Antes esto exigía un dominio configurado que
+  // no calzara para activar el chequeo de invitación — con el dominio
+  // vacío ese chequeo se saltaba entero y cualquier cuenta de Google
+  // entraba como colaborador (hallazgo H1,
+  // CLAUDE-SECURITY-20260902-095525/REPORT.md).
+  const domainAllowed = !!allowedDomain && emailDomain === allowedDomain.toLowerCase();
 
-  // profile_invites es la lista de excepciones: correos puntuales (fuera
-  // del dominio corporativo) a los que un super admin les asignó un rol de
-  // antemano — mismo trato que el correo del super admin, que ya está
-  // exento arriba. Solo importa cuando el dominio no calza — si coincide,
-  // no hay nada que decidir aquí (y de paso se evita una consulta extra en
+  // profile_invites es la lista de excepciones: correos puntuales a los
+  // que un super admin les asignó un rol de antemano — mismo trato que el
+  // correo del super admin, que ya está exento arriba. Solo se salta
+  // cuando el dominio sí calza (y de paso se evita una consulta extra en
   // el camino común: casi todos los logins son de gente cuyo correo sí es
-  // del dominio corporativo).
-  if (domainMismatch && profile.role !== "super_admin") {
+  // del dominio corporativo, una vez que esté configurado).
+  if (!domainAllowed && profile.role !== "super_admin") {
     // Cliente ADMIN, no el de sesión: la única política de profile_invites
     // exige ser super_admin (`profile_invites_super_admin`), así que un
     // invitado como colaborador/gestor/admin nunca podría leer su propia

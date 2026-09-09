@@ -6,6 +6,7 @@ import { buildInterviewCalendarUrl } from "@/lib/interviews/calendar-link";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { DeleteButton } from "@/components/ui/delete-button";
+import { Card } from "@/components/ui/card";
 import type { ApplicationInterview } from "@/lib/interviews/get-interviews";
 
 const STATUS_LABEL: Record<ApplicationInterview["status"], string> = {
@@ -41,7 +42,7 @@ function InterviewRow({
   const calendarUrl = buildInterviewCalendarUrl(jobTitle, interview);
 
   return (
-    <div className="rounded-md border border-border bg-card p-3.5 text-sm">
+    <Card className="rounded-md p-3.5 text-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium tabular-nums">
@@ -64,7 +65,7 @@ function InterviewRow({
           href={calendarUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="h-8 rounded-md border border-border px-3 text-xs leading-8"
+          className="h-8 rounded-full border border-border px-3 text-xs leading-8"
         >
           Agregar a mi calendario
         </a>
@@ -100,7 +101,7 @@ function InterviewRow({
           successMessage="Entrevista eliminada"
         />
       </div>
-    </div>
+    </Card>
   );
 }
 

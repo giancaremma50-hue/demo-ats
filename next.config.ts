@@ -33,9 +33,25 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      // Logos, portadas y fotos de perfil subidas, servidas desde buckets
-      // públicos de Supabase Storage.
-      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
+      // Logos, portadas y fotos de perfil subidas, servidas desde el bucket
+      // público de Supabase Storage de ESTE proyecto — hostname derivado de
+      // NEXT_PUBLIC_SUPABASE_URL (única fuente de verdad, la misma que usan
+      // server.ts/client.ts/admin.ts) en vez de un wildcard: "*.supabase.co"
+      // aceptaba cualquier proyecto Supabase del mundo como origen de
+      // /_next/image, un proxy abierto gratis (hallazgo M1 del reporte de
+      // seguridad). URL.canParse (no un truthy-check + new URL sin guardar)
+      // evita que next.config.ts, que se evalúa al arrancar next dev/build,
+      // tumbe el proceso entero con "Invalid URL" si la variable falta O
+      // si alguien la llena con un valor que no es una URL real.
+      ...(process.env.NEXT_PUBLIC_SUPABASE_URL && URL.canParse(process.env.NEXT_PUBLIC_SUPABASE_URL)
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname,
+              pathname: "/storage/v1/object/public/**",
+            },
+          ]
+        : []),
       // Foto de perfil de Google, la que trae la cuenta por defecto antes
       // de que alguien suba una propia — sin este patrón, next/image
       // bloquea el host y avatar_url nunca se muestra para nadie que no

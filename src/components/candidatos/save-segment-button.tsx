@@ -24,13 +24,9 @@ export function SaveSegmentButton({ filters }: { filters: CandidateFilters }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => dialogRef.current?.open()}
-        className="h-9 rounded-md border border-border px-3 text-xs text-muted-foreground"
-      >
+      <ActionButton type="button" variant="secondary" onClick={() => dialogRef.current?.open()} className="h-9 px-3 text-xs">
         Guardar como segmento
-      </button>
+      </ActionButton>
       <DialogShell ref={dialogRef} title="Guardar segmento" maxWidthClassName="max-w-[380px]">
         <form action={formAction}>
           {activeFilters.map(([key, value]) => (

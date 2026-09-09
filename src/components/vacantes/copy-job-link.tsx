@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { ActionButton } from "@/components/ui/action-button";
 
 /** Para publicar en bolsas externas (LinkedIn, Computrabajo, etc.) con los métodos que la organización ya use hoy. */
 export function CopyJobLink({ url }: { url: string }) {
@@ -26,14 +27,15 @@ export function CopyJobLink({ url }: { url: string }) {
         onFocus={(e) => e.target.select()}
         className="h-9 flex-1 truncate rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground outline-none"
       />
-      <button
+      <ActionButton
         type="button"
+        variant="secondary"
         onClick={handleCopy}
-        className="flex h-9 flex-none items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium"
+        className="h-9 flex-none gap-1.5 px-3 text-xs font-medium"
       >
         {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
         {copied ? "Copiado" : "Copiar"}
-      </button>
+      </ActionButton>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { ApplicationForm } from "@/components/empleos/application-form";
 import { WORK_MODE_LABEL, EMPLOYMENT_TYPE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode, EmploymentType } from "@/lib/jobs/schema";
 import { parseCandidacyFields } from "@/lib/job-templates/candidacy-fields";
+import { Card } from "@/components/ui/card";
 
 // Ver el comentario en (public)/empleos/page.tsx.
 export const revalidate = 60;
@@ -62,7 +63,7 @@ export default async function EmpleoDetailPage({ params }: { params: Promise<{ s
         </section>
       </div>
 
-      <div className="h-fit rounded-md border border-border bg-card p-6">
+      <Card className="h-fit rounded-md p-6">
         <h2 className="font-serif text-xl">Postula a esta vacante</h2>
         <div className="mt-5">
           <ApplicationForm
@@ -71,7 +72,7 @@ export default async function EmpleoDetailPage({ params }: { params: Promise<{ s
             questions={questions ?? []}
           />
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

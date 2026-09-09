@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import type { ErrorEntry } from "@/lib/errors/catalog";
 import { ReportErrorDialog } from "@/components/errors/report-error-dialog";
+import { Card } from "@/components/ui/card";
 
 /**
  * Markup compartido por src/app/error.tsx y /auth/auth-error — un solo
@@ -23,7 +24,7 @@ export function ErrorCard({
 }) {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-6">
-      <div className="rounded-md border border-border bg-card p-11">
+      <Card className="rounded-md p-11">
         <div className="mb-5 flex size-10 items-center justify-center rounded-full border border-destructive">
           <AlertTriangle className="size-5 text-destructive" aria-hidden />
         </div>
@@ -36,7 +37,7 @@ export function ErrorCard({
             <ReportErrorDialog motivo={motivo} titulo={entry.titulo} technicalDetail={technicalDetail} />
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

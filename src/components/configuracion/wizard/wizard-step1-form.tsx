@@ -79,7 +79,7 @@ export function WizardStep1Form({
       <div className="mt-6 flex justify-end gap-2.5">
         <Link
           href="/configuracion/plantillas-vacante"
-          className="inline-flex h-[42px] items-center rounded-md border border-transparent px-5 text-sm text-muted-foreground hover:bg-muted"
+          className="inline-flex h-[42px] items-center rounded-full border border-transparent px-5 text-sm text-muted-foreground hover:bg-muted"
         >
           Cancelar
         </Link>

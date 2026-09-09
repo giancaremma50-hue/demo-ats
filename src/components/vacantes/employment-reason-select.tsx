@@ -93,9 +93,9 @@ export function EmploymentReasonSelect({ initialReasons }: { initialReasons: Emp
           >
             Agregar
           </ActionButton>
-          <button type="button" onClick={() => setAdding(false)} className="h-9 rounded-md px-2 text-xs text-muted-foreground">
+          <ActionButton type="button" variant="ghost" onClick={() => setAdding(false)} className="h-9 px-2 text-xs">
             Cancelar
-          </button>
+          </ActionButton>
         </div>
       ) : (
         <button

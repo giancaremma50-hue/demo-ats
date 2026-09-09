@@ -46,7 +46,7 @@ export const ConfirmDialog = forwardRef<
         // w-[calc(100%-2rem)], no w-full: ver el mismo comentario en
         // DialogShell — sin esto el diálogo toca los bordes de la pantalla
         // en un celular angosto.
-        "w-[calc(100%-2rem)] max-w-[440px] rounded-lg border border-border bg-card p-0 text-foreground",
+        "w-[calc(100%-2rem)] max-w-[440px] rounded-lg border-0 bg-card p-0 text-foreground shadow-elevated",
         "backdrop:bg-foreground/25",
       )}
       onClick={(e) => {
@@ -60,7 +60,7 @@ export const ConfirmDialog = forwardRef<
             type="button"
             aria-label="Cerrar"
             onClick={() => dialogRef.current?.close()}
-            className="flex size-[30px] flex-none items-center justify-center rounded-md border border-border bg-card"
+            className="flex size-[30px] flex-none items-center justify-center rounded-full bg-muted"
           >
             <X className="size-3.5 text-muted-foreground" aria-hidden />
           </button>
@@ -75,13 +75,9 @@ export const ConfirmDialog = forwardRef<
           >
             {confirmLabel}
           </ActionButton>
-          <button
-            type="button"
-            onClick={() => dialogRef.current?.close()}
-            className="h-[42px] rounded-md border border-border bg-card px-5 text-sm text-foreground"
-          >
+          <ActionButton type="button" variant="secondary" onClick={() => dialogRef.current?.close()}>
             {cancelLabel}
-          </button>
+          </ActionButton>
         </div>
       </div>
     </dialog>

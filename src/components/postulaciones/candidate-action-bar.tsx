@@ -22,7 +22,7 @@ export function CandidateActionBar({ actions }: { actions: CandidateAction[] }) 
   const visible = actions.filter((a) => !a.hidden);
   return (
     <div className="absolute inset-x-0 bottom-5 flex justify-center px-4">
-      <div className="flex items-center gap-0.5 rounded-full border border-primary bg-primary p-1.5">
+      <div className="flex items-center gap-0.5 rounded-full bg-primary p-1.5 shadow-nav">
         {visible.map((action) => {
           const Icon = action.icon;
           return (

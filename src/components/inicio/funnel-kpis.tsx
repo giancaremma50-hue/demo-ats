@@ -1,4 +1,5 @@
 import type { FunnelData } from "@/lib/dashboard/get-funnel";
+import { Card } from "@/components/ui/card";
 
 /**
  * Las cifras van como tira de números en el encabezado, sin tarjeta —
@@ -30,7 +31,7 @@ export function FunnelKpiStrip({ data }: { data: FunnelData }) {
 export function FunnelKpis({ data }: { data: FunnelData }) {
   const maxCount = Math.max(1, ...data.byStageType.map((s) => s.count));
   return (
-    <div className="rounded-md border border-border bg-card p-5">
+    <Card className="rounded-md p-5">
       <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Candidatos por etapa</p>
       <div className="mt-3 flex flex-col gap-2">
         {data.byStageType.map((s) => (
@@ -43,6 +44,6 @@ export function FunnelKpis({ data }: { data: FunnelData }) {
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }

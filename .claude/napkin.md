@@ -1,5 +1,20 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (cierre de los bloqueantes de producción: la `SUPABASE_SERVICE_ROLE_KEY` tenía un `•` pegado y fallaba como `ByteString`, no como credencial — ver `docs/PENDIENTE.md` punto 0)_
+_Última actualización: 2026-09-09 (retomó el reporte de seguridad del 2026-09-02 + migración de look AJE, sobre un `main` que había avanzado ~30 commits sin que esta rama los tuviera)_
+
+## Rama de seguridad estancada 30 commits + migración de diseño AJE (2026-09-09) — MÁXIMA PRIORIDAD
+
+Esta rama (`claude/ats-security-audit-cea7ed`) nació de un punto de `main` de
+hace días y nunca se sincronizó — mientras tanto `main` recibió ~30 commits de
+trabajo real (roles sin `colaborador`, drawer de candidato, menciones,
+dashboard, competencias eliminadas, y su propia ronda de seguridad). El PR se
+abrió igual y GitHub lo marcó con decenas de conflictos.
+
+1. **[2026-09-09] Lección de proceso: una rama de vida larga sin sincronizar con `main` no avisa que está podrida hasta que se abre el PR — `git status` en la rama siempre se ve limpio.** `git log HEAD..origin/main --oneline` (o `git branch -vv`, columna `[origin/main: behind N]`) lo muestra al toque, pero nadie lo corrió hasta que GitHub ya mostraba la lista de conflictos. Do instead: antes de empezar cualquier trabajo largo en una rama que no es `main`, correr `git fetch && git log HEAD..origin/main --oneline` — si hay más de un puñado de commits, decidir si conviene rebasar/mergear ANTES de invertir horas, no después.
+2. **[2026-09-09] BUG DE SEGURIDAD REAL, activo en producción: `domainMismatch` en `auth/callback/route.ts` era fail-OPEN, no fail-closed.** Se calculaba como `!!allowedDomain && emailDomain !== allowedDomain.toLowerCase()` — con `allowed_email_domain` vacío (el estado real hoy), la expresión daba `false` y el bloque entero que exige invitación (`profile_invites`) se saltaba, dejando entrar a CUALQUIER cuenta de Google como `colaborador`/`gestor` (según el rol vigente). Corregido invirtiendo a `domainAllowed = !!allowedDomain && emailDomain === allowedDomain.toLowerCase()` y gateando con `!domainAllowed`. Do instead: una condición de seguridad que combina "¿hay una regla configurada?" con "¿la cumple?" en un solo booleano corto-circuita al valor equivocado cuando la regla no existe — separar ambas preguntas y decidir explícitamente el caso "no hay regla todavía" (acá: negar, no permitir).
+3. **[2026-09-09] Dos sesiones en paralelo, mismo día, decisiones de diseño opuestas: una unificó tarjetas bajo "editorial sobrio" (`rounded-md border`), la otra (esta) migró todo a "AJE look" (sombra difusa + píldora).** La de "editorial sobrio" ya estaba en `main` cuando ésta abrió PR. Decisión del usuario: AJE pisa esa unificación (la otra sesión ya había terminado, sin trabajo activo que coordinar). Do instead: cuando dos ramas tocan la MISMA regla de diseño el mismo día, preguntar explícitamente cuál gana antes de mergear — no asumir que "la más reciente en el tiempo de reloj" o "la que se está mergeando ahora" es automáticamente la decisión final.
+4. **[2026-09-09] `docs/PENDIENTE.md` afirmaba "`/security-review` completo... Sin hallazgos" (Fase 19, resuelto 2026-09-02) mientras un reporte real del MISMO día (`CLAUDE-SECURITY-20260902-095525/REPORT.md`, pipeline adversarial de 3 votos) tenía 9 hallazgos confirmados, 2 HIGH.** No es necesariamente falso — parecen alcances distintos (ese sweep cubrió CSP + RLS de tablas nuevas + patrones comunes; el reporte adversarial cazó IDOR/SSRF específicos vía simulación de rol) — pero nadie cruzó los dos documentos hasta hoy. Do instead: un método de review no reemplaza a otro con alcance/técnica distinta — "Sin hallazgos" de un sweep de patrones no es lo mismo que "sin hallazgos" de un panel adversarial con simulación de rol real. Si existen dos reportes de seguridad del mismo período, cruzarlos explícitamente antes de marcar algo "Resuelto".
+
+---
 
 ## Menciones inline, kanban con volumen y lista por acción — MÁXIMA PRIORIDAD
 
@@ -766,9 +781,9 @@ Ambos confirmados por captura del Dashboard de Supabase: "Customize Access Token
 8. **`mencion_nota` y `respuesta_reporte_error` existen en el enum `notification_type` pero no se disparan todavía.**
    Do instead: no armar un selector de preferencias para un tipo que nunca ocurre — `PREFERENCE_TYPES` los excluye a propósito. `mencion_nota` depende de un selector de @mención en `NoteForm` (no construido en Fase 5); `respuesta_reporte_error` es de Fase 7.
 
-9. **Pendiente para Fase 8 (hardening), no bloqueante ahora: `getSiteUrl()` cae al header `Host` del request si falta `NEXT_PUBLIC_SITE_URL`, y Fase 6 empezó a usarlo desde `/api/postular` (ruta pública, sin sesión) para armar el link de "Ver la postulación" en el correo que le llega a RH.**
-   Riesgo: si en producción se olvida configurar `NEXT_PUBLIC_SITE_URL`, un solicitante malicioso podría mandar un `Host` falso y que el correo interno de "nueva postulación" incluya un link de phishing. `getSiteUrl()` documenta que su único uso sensible conocido era `signInWithGoogle()` (protegido por la lista de Redirect URLs de Supabase) — ya no es cierto, revisar ese comentario al tocar Fase 8.
-   Do instead en Fase 8: verificar que `NEXT_PUBLIC_SITE_URL` esté seteado en Vercel antes de desplegar, y considerar que `getSiteUrl()` rechace el fallback a `Host` para cualquier link que salga en un correo (no solo para el OAuth redirect).
+9. **[2026-09-09] Sigue pendiente — confirmado como H2/M7 en `CLAUDE-SECURITY-20260902-095525/REPORT.md`: `getSiteUrl()` cae al header `Host` del request si falta `NEXT_PUBLIC_SITE_URL`, y Fase 6 empezó a usarlo desde `/api/postular` (ruta pública, sin sesión) para armar el link de "Ver la postulación" en el correo que le llega a RH.**
+   Riesgo: si en producción se olvida configurar `NEXT_PUBLIC_SITE_URL`, un solicitante malicioso podría mandar un `Host` falso y que el correo interno de "nueva postulación" incluya un link de phishing. `getSiteUrl()` documenta que su único uso sensible conocido era `signInWithGoogle()` (protegido por la lista de Redirect URLs de Supabase) — ya no es cierto, revisar ese comentario al tocar esto.
+   Do instead: verificar que `NEXT_PUBLIC_SITE_URL` esté seteado en Vercel antes de desplegar, y considerar que `getSiteUrl()` rechace el fallback a `Host` para cualquier link que salga en un correo (no solo para el OAuth redirect). Decisión explícita del usuario 2026-09-09: queda documentado, no corregido — H1, M1, M3, M4 del mismo reporte sí se corrigieron ese día (ver sección de arriba), M2/M5 ya estaban corregidos desde el 2026-09-08 (`b8ee7da`/`895622c`).
 
 ---
 

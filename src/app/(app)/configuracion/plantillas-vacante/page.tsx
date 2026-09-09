@@ -3,6 +3,7 @@ import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getJobTemplates } from "@/lib/job-templates/get-job-templates";
 import { JobTemplateRow } from "@/components/configuracion/job-template-row";
 import { NotifyOnMount } from "@/components/ui/notify-on-mount";
+import { Card } from "@/components/ui/card";
 
 export default async function PlantillasVacantePage({
   searchParams,
@@ -20,7 +21,7 @@ export default async function PlantillasVacantePage({
   const templates = await getJobTemplates(profile.organization_id);
 
   return (
-    <section className="rounded-md border border-border bg-card p-5">
+    <Card as="section" className="rounded-md p-5">
       {borrador && <NotifyOnMount message="Guardada como borrador" />}
       {publicada && <NotifyOnMount message="Plantilla publicada" />}
       {confidencial && <NotifyOnMount message="Guardado — como no la creaste vos, ya no te aparece" />}
@@ -33,7 +34,7 @@ export default async function PlantillasVacantePage({
         </div>
         <Link
           href="/configuracion/plantillas-vacante/nueva"
-          className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-white"
+          className="inline-flex h-10 items-center rounded-full bg-accent px-4 text-sm font-medium text-white"
         >
           Nueva plantilla
         </Link>
@@ -46,6 +47,6 @@ export default async function PlantillasVacantePage({
           templates.map((t) => <JobTemplateRow key={t.id} template={t} />)
         )}
       </div>
-    </section>
+    </Card>
   );
 }

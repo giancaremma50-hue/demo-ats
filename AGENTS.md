@@ -79,7 +79,7 @@ Están codificadas en componentes para que no dependan de la disciplina de nadie
    Se usa `<DeleteButton>`, que abre `<ConfirmDialog>` nombrando el elemento a eliminar. Confirmar en rojo, cancelar neutro. **Nunca se elimina en un solo clic.**
 
 4. **El menú principal es una barra flotante inferior.**
-   Píldora fija en `bottom-6`, centrada, fondo sólido con borde de 1px. Acompaña la pantalla sin invadirla: se oculta al bajar, reaparece al subir, respeta `safe-area-inset-bottom`. Todo el contenido lleva `pb-28` para que nunca quede tapado. Máximo 5 ítems, según rol.
+   Píldora fija en `bottom-6`, centrada, fondo sólido con sombra difusa (`0 -8px 24px rgba(0,0,0,.25)`, ver reglas de diseño visual). Acompaña la pantalla sin invadirla: se oculta al bajar, reaparece al subir, respeta `safe-area-inset-bottom`. Todo el contenido lleva `pb-28` para que nunca quede tapado. Máximo 5 ítems, según rol.
 
 5. **Todo error se captura con un mensaje amigable y reportable.**
    Nada de stacks ni códigos crudos frente al usuario. Ver "Centro de errores" abajo.
@@ -88,19 +88,42 @@ Están codificadas en componentes para que no dependan de la disciplina de nadie
 
 ---
 
-## Reglas de diseño visual — "editorial sobrio"
+## Reglas de diseño visual — "AJE look" (ref. ajegroup.com, adoptado 2026-09-09)
 
-**Prohibido** (esto es lo que hace que una interfaz parezca generada por IA):
-gradientes morados o multicolor · glassmorphism · sombras difusas de color · emojis usados como íconos · tarjetas flotando sobre tarjetas · ilustraciones 3D genéricas · `border-radius` grandes en todo · texto centrado por defecto.
+Reemplaza al esquema anterior ("editorial sobrio", incluida la unificación de tarjetas a `rounded-md border` del mismo día — superada por esta regla). Aplica a **todo el producto**, paneles internos incluidos (tablas de candidatos, dashboards, configurador).
 
-**Sí:**
-- Fondo blanco hueso `#FAF9F7`, superficies blancas. Nada de blanco puro de fondo.
-- **La elevación se hace con un borde de 1px, no con sombra.**
-- **Toda tarjeta lleva `rounded-md`** (8px, el token `--radius` del proyecto). Ni cuadrada ni muy redonda: el patrón es `rounded-md border border-border bg-card`. Unificado el 2026-09-09 — antes 36 tarjetas iban cuadradas y 15 redondeadas, sin criterio.
-- Un solo color de acento, usado con moderación. Es configurable por organización.
-- Serif editorial en títulos de página y cifras destacadas; sans neutro en interfaz y datos.
-- `font-variant-numeric: tabular-nums` en toda métrica y tabla.
-- Escala de espaciado de 4px. Mucho aire. Densidad alta solo en tablas de candidatos.
+**Prohibido ahora:** ilustraciones 3D genéricas · emojis usados como íconos · texto centrado por defecto · mezclar dos familias tipográficas sans distintas en la misma pantalla.
+
+**Color** — paleta fija, no gradientes inventados:
+| Token | Hex | Uso |
+|---|---|---|
+| `--aje-green` | `#00B348` | Acento primario, éxito |
+| `--aje-red` | `#EF4444` | Destructivo (`DeleteButton`), error |
+| `--aje-yellow` | `#FFB81C` | Alertas, pendiente |
+| `--aje-orange` | `#EF7834` | Acento secundario configurable por organización |
+| `--aje-dark` | `#0F172A` | Overlay sobre fotografía, texto sobre imagen |
+
+Multicolor por contexto: cada estado o marca puede tener su color (igual que AJE distingue Amayu/Cielo/Pulp), pero un mismo componente no mezcla más de dos tokens.
+
+**Fondo y superficies**
+- Blanco puro `#FFFFFF` de fondo (ya no blanco hueso).
+- **La elevación se hace con sombra difusa, no con borde de 1px**: `box-shadow: 0 20px 50px rgba(0,0,0,.35)` en tarjetas/modales elevados, `0 -8px 24px rgba(0,0,0,.25)` en barras fijas (la píldora del menú inferior incluida — ver regla de interacción #4). Usar `<Card>` (`src/components/ui/card.tsx`) para toda superficie elevada nueva — encapsula radio + `overflow-hidden` + sombra en un solo lugar.
+
+**Tipografía**
+- Sans corporativo con peso extremo en títulos (equivalente a Gotham-Black: `font-weight: 800-900`), sans regular en cuerpo e interfaz. Sin serif.
+- `font-variant-numeric: tabular-nums` en toda métrica y tabla (esto no cambia, es legibilidad, no estilo).
+
+**Forma**
+- `border-radius` variable según el elemento, no una escala única: `4px` / `6px` / `8px` / `10px` / `12px` en tarjetas y campos.
+- **Píldora completa (`9999px`) en todo botón que pasa por `<ActionButton>`**, sea cual sea su variante (primario, secundario, destructivo, ghost) — en la referencia de AJE hasta el botón secundario de "Entrar con Google" es píldora, no solo el CTA principal.
+- **Círculo (`50%`) en todo ícono suelto de un solo símbolo**: cerrar diálogo, campana de notificaciones, reordenar/quitar una fila, el "+" flotante sobre una foto — no hace falta que "flote sobre una imagen", basta con que sea un ícono de acción aislado (así se ve en AJE: el menú hamburguesa y el selector de idioma también son círculos sobre fondo blanco, no solo los íconos sobre foto).
+- Excepción de densidad: en listas repetidas y densas (tarjetas de kanban, filas de tabla), la tarjeta en reposo usa borde de 1px, no sombra — la sombra difusa se reserva para cuando el elemento se separa de su fila (arrastrando, en hover destacado) para no repintar sombra en decenas de filas a la vez.
+
+**Imagen**
+- Fotografía real a pantalla completa (full-bleed) en héroes y portadas de sección, con overlay `--aje-dark` en degradado y texto blanco encima. Nunca ilustración genérica ni ícono como protagonista de una sección.
+
+**Espaciado**
+- Escala de espaciado de 4px se mantiene. Densidad alta en tablas de candidatos se mantiene: es requisito funcional, no estético.
 
 ---
 

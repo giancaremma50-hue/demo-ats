@@ -35,7 +35,7 @@ export const DialogShell = forwardRef<
         // showModal() se centra con margin:auto, pero width:100% no deja
         // espacio para ese margen — sin este ajuste el diálogo toca los dos
         // bordes de la pantalla en un celular angosto, sin aire alrededor.
-        "w-[calc(100%-2rem)] rounded-lg border border-border bg-card p-0 text-foreground backdrop:bg-foreground/25",
+        "w-[calc(100%-2rem)] rounded-lg border-0 bg-card p-0 text-foreground shadow-elevated backdrop:bg-foreground/25",
         maxWidthClassName,
       )}
     >
@@ -46,7 +46,7 @@ export const DialogShell = forwardRef<
             type="button"
             aria-label="Cerrar"
             onClick={() => dialogRef.current?.close()}
-            className="flex size-[30px] flex-none items-center justify-center rounded-md border border-border bg-card"
+            className="flex size-[30px] flex-none items-center justify-center rounded-full bg-muted"
           >
             <X className="size-3.5 text-muted-foreground" aria-hidden />
           </button>
