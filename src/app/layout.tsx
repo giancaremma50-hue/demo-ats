@@ -3,7 +3,8 @@ import type { CSSProperties } from "react";
 import { Geist, Instrument_Serif } from "next/font/google";
 import { Toaster } from "sonner";
 import { MotionConfig } from "framer-motion";
-import { getOrganization } from "@/lib/organizations/get-organization";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { getPublicOrganization } from "@/lib/organizations/get-organization";
 import "./globals.css";
 
 const geist = Geist({
@@ -26,10 +27,14 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   // Esto es lo que realmente aplica el acento configurable en toda la app,
-  // no solo en la vista previa del configurador. getOrganization() está
-  // memoizado con cache() — layout.tsx, páginas y componentes hijos que la
-  // llamen dentro de la misma request comparten una sola consulta.
-  const organization = await getOrganization();
+  // no solo en la vista previa del configurador. Cliente sin cookies a
+  // propósito: `organizations` tiene una sola fila, RLS `using(true)` para
+  // cualquiera (con o sin sesión) — el resultado es idéntico sin importar
+  // quién pregunta, así que usar el cliente de sesión acá solo obligaba a
+  // TODA página de la app (incluidas las públicas) a ser dinámica sin
+  // ganar nada a cambio. getPublicOrganization() está memoizado con
+  // cache() igual que el original.
+  const organization = await getPublicOrganization();
 
   const accentStyle = organization
     ? ({ "--accent": organization.accent_color } as CSSProperties)
@@ -43,6 +48,12 @@ export default async function RootLayout({
             que la regla CSS de arriba no puede alcanzar. */}
         <MotionConfig reducedMotion="user">{children}</MotionConfig>
         <Toaster position="top-center" richColors closeButton />
+        {/* Sin esto no había forma de medir si la app se siente lenta o
+            no — todo era "se siente lento" sin datos reales. Usa
+            next/script por debajo, que recoge el nonce de CSP (`x-nonce`,
+            ver src/lib/supabase/proxy.ts) automáticamente, sin plumbing
+            manual. */}
+        <SpeedInsights />
       </body>
     </html>
   );

@@ -5,16 +5,16 @@ import { HeroBackgroundMedia } from "@/components/layout/hero-background-media";
 import { WORK_MODE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode } from "@/lib/jobs/schema";
 
-// Nota: NO hay `export const revalidate` acá a propósito, aunque esta
-// página sea de solo lectura pública. El nonce de CSP por request
-// (src/proxy.ts, decisión ya tomada en Fase 19) fuerza renderizado 100%
-// dinámico en TODO el sitio vía el matcher del proxy — un `revalidate`
-// serviría contenido cacheado con un nonce viejo, o Next lo ignora en
-// silencio. Habilitar ISR de verdad requeriría sacar /empleos* del alcance
-// del nonce, debilitando CSP justo en la superficie pública — cambio de
-// arquitectura de seguridad, no de este ajuste puntual. Lo que sí queda de
-// este cambio: el cliente sin cookies (createPublicClient) evita que esta
-// página dependa de sesión para datos que son públicos de todos modos.
+// Portal público de solo lectura, sin sesión — cachear 60s evita que cada
+// visita (antes incluso de postular) le pegue en vivo a Postgres. El nonce
+// de CSP por request (src/proxy.ts) NO bloquea esto — el middleware puede
+// decorar una respuesta ya cacheada con un header nuevo en cada request sin
+// romper el caché de la página. Lo que sí lo bloqueaba: el layout RAÍZ
+// (src/app/layout.tsx) llamaba al cliente de sesión (cookies()) para el
+// acento de marca — eso forzaba dinámico a TODO el sitio, /empleos incluido.
+// Corregido usando createPublicClient() ahí también (organizations tiene
+// una sola fila, RLS pública para cualquiera — mismo resultado sin sesión).
+export const revalidate = 60;
 
 type JobRow = {
   id: string;
