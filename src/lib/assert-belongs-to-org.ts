@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 
-type TableWithOrg = "departments" | "pipeline_templates" | "employment_reasons";
+type TableWithOrg = "departments" | "pipeline_templates" | "employment_reasons" | "jobs";
 
 /**
  * "Un id hijo no prueba pertenencia al padre correcto" — un <select> ya
