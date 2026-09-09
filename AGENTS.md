@@ -79,7 +79,7 @@ Están codificadas en componentes para que no dependan de la disciplina de nadie
    Se usa `<DeleteButton>`, que abre `<ConfirmDialog>` nombrando el elemento a eliminar. Confirmar en rojo, cancelar neutro. **Nunca se elimina en un solo clic.**
 
 4. **El menú principal es una barra flotante inferior.**
-   Píldora fija en `bottom-6`, centrada, fondo sólido con sombra difusa (`0 -8px 24px rgba(0,0,0,.25)`, ver reglas de diseño visual). Acompaña la pantalla sin invadirla: se oculta al bajar, reaparece al subir, respeta `safe-area-inset-bottom`. Todo el contenido lleva `pb-28` para que nunca quede tapado. Máximo 5 ítems, según rol.
+   Píldora fija en `bottom-6`, centrada, fondo sólido con sombra sutil (`0 -1px 6px rgba(0,0,0,.05)`, ver reglas de diseño visual). Acompaña la pantalla sin invadirla: se oculta al bajar, reaparece al subir, respeta `safe-area-inset-bottom`. Todo el contenido lleva `pb-28` para que nunca quede tapado. Máximo 5 ítems, según rol.
 
 5. **Todo error se captura con un mensaje amigable y reportable.**
    Nada de stacks ni códigos crudos frente al usuario. Ver "Centro de errores" abajo.
@@ -107,7 +107,7 @@ Multicolor por contexto: cada estado o marca puede tener su color (igual que AJE
 
 **Fondo y superficies**
 - Blanco puro `#FFFFFF` de fondo (ya no blanco hueso).
-- **La elevación se hace con sombra difusa, no con borde de 1px**: `box-shadow: 0 20px 50px rgba(0,0,0,.35)` en tarjetas/modales elevados, `0 -8px 24px rgba(0,0,0,.25)` en barras fijas (la píldora del menú inferior incluida — ver regla de interacción #4). Usar `<Card>` (`src/components/ui/card.tsx`) para toda superficie elevada nueva — encapsula radio + `overflow-hidden` + sombra en un solo lugar.
+- **La elevación se hace con sombra, no con borde de 1px** — pero sutil, apenas una insinuación de profundidad, nunca la mancha difusa literal de la referencia de AJE (se probó y se veía pesada en una interfaz densa de datos, corregido 2026-09-09): `box-shadow: 0 2px 8px rgba(0,0,0,.06)` en tarjetas/modales elevados, `0 -1px 6px rgba(0,0,0,.05)` en barras fijas (la píldora del menú inferior incluida — ver regla de interacción #4). Usar `<Card>` (`src/components/ui/card.tsx`) para toda superficie elevada nueva — encapsula radio + `overflow-hidden` + sombra en un solo lugar.
 
 **Tipografía**
 - Sans corporativo con peso extremo en títulos (equivalente a Gotham-Black: `font-weight: 800-900`), sans regular en cuerpo e interfaz. Sin serif.

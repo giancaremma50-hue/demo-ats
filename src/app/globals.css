@@ -54,9 +54,13 @@
 
   --radius: 0.5rem;
 
-  /* Sombra — elevación de tarjetas, diálogos y menús flotantes */
-  --shadow-elevated-raw: 0 20px 50px 0 rgb(0 0 0 / 0.35);
-  --shadow-nav-raw: 0 -8px 24px 0 rgb(0 0 0 / 0.25);
+  /* Sombra — elevación de tarjetas, diálogos y menús flotantes. Sutil a
+     propósito (2026-09-09, feedback directo): la mancha difusa original
+     (0 20px 50px / .35, calcada del blur real de ajegroup.com) se veía
+     pesada en una interfaz densa de datos — esto es apenas una insinuación
+     de profundidad, no una sombra proyectada. */
+  --shadow-elevated-raw: 0 2px 8px 0 rgb(0 0 0 / 0.06);
+  --shadow-nav-raw: 0 -1px 6px 0 rgb(0 0 0 / 0.05);
 }
 
 .dark {
@@ -88,8 +92,8 @@
   --input: #33332c;
   --ring: var(--accent);
 
-  --shadow-elevated-raw: 0 20px 50px 0 rgb(0 0 0 / 0.6);
-  --shadow-nav-raw: 0 -8px 24px 0 rgb(0 0 0 / 0.5);
+  --shadow-elevated-raw: 0 2px 8px 0 rgb(0 0 0 / 0.3);
+  --shadow-nav-raw: 0 -1px 6px 0 rgb(0 0 0 / 0.25);
 }
 
 @theme inline {
