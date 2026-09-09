@@ -1,5 +1,18 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (segunda ronda de feedback: botón de tarea que no hacía nada, CC en mensajes al candidato)_
+_Última actualización: 2026-09-09 (menciones en negrita EN VIVO en NoteForm, técnica de textarea con overlay)_
+
+## Negrita en vivo al mencionar: textarea con overlay, no un editor nuevo (2026-09-09)
+
+Pedido del usuario: que `@Nombre` se vea en negrita MIENTRAS se escribe, no
+solo después de publicar (un `<textarea>` no puede pintar texto parcialmente
+en negrita — es una limitación real, no un bug).
+
+1. **Se evaluó `react-mentions` primero y se descartó: `npm install` avisó "Package no longer supported" y sumó 4 vulnerabilidades nuevas.** Do instead: cuando `npm install` imprime `deprecated`/`no longer supported` para el paquete que se acaba de pedir instalar (no una dependencia transitiva vieja, el paquete mismo), no seguir adelante integrándolo — desinstalar y buscar la alternativa sin esa bandera, aunque signifique más código propio. Confirmado con `npm info <paquete> peerDependencies` ANTES de instalar la próxima vez, pero el aviso de deprecación solo aparece al instalar de verdad.
+2. **La solución fue "textarea con overlay", no un editor `contentEditable` nuevo**: un `<div aria-hidden>` detrás pinta el texto real con `parseMentions` (la misma función que ya usa `NoteBody` para el cuerpo publicado — cero lógica de resaltado duplicada) con las menciones en negrita, y el `<textarea>` de encima queda con su propio texto invisible (`text-transparent`) pero el cursor sigue visible (`caret-foreground`, una utilidad real de Tailwind v4 que resuelve al token de color — se verificó con `getComputedStyle(el).caretColor` antes de confiar en que existía). Todo el manejo de cursor/selección/IME/copiar-pegar lo sigue haciendo el textarea nativo gratis — nada de eso se reescribió.
+3. **Los dos elementos necesitan el mismo `rounded-md`/padding/`text-sm`/line-height para calzar pixel a pixel, y el textarea mantiene `border-transparent` (no `border-0`)**: un borde real ocupa espacio en `box-sizing: border-box`, así que quitarlo del todo desalinea el tamaño de caja contra el overlay, que sí lo pinta. El estado de error (`border-destructive`) vive en el overlay, no en el textarea invisible.
+4. **El scroll no se sincroniza solo**: el overlay es un `<div>` normal, no un textarea — necesita `onScroll` en el textarea copiando `scrollTop` al overlay a mano. Verificado en vivo (texto largo que desborda las 3 filas, `scrollHeight > clientHeight`, overlay siguiendo el scroll) antes de darlo por bueno, sin eso una nota larga se ve perfecta hasta que se scrollea y el texto pintado se desalinea del cursor real.
+
+---
 
 ## Segunda ronda de feedback sobre el drawer (2026-09-09)
 

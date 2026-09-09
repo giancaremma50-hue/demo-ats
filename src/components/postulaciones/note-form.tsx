@@ -5,7 +5,7 @@ import { addNote } from "@/lib/applications/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card } from "@/components/ui/card";
-import { activeMentionQuery, buildMentionToken } from "@/lib/applications/mentions";
+import { activeMentionQuery, buildMentionToken, parseMentions } from "@/lib/applications/mentions";
 import { normalizarTexto } from "@/lib/utils";
 import type { MentionableProfile } from "@/lib/applications/get-applications";
 
@@ -40,6 +40,9 @@ export function NoteForm({
 }) {
   const boundAction = addNote.bind(null, applicationId);
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  // Div "espejo" detrás del textarea real, mismo font/padding/línea, que
+  // pinta el @[Nombre](uuid) como negrita — ver el comentario en el JSX.
+  const highlightRef = useRef<HTMLDivElement>(null);
   // Estable entre renders y único por instancia: hay un NoteForm por hilo.
   const listaId = useId();
   const isReply = Boolean(parentId);
@@ -162,6 +165,39 @@ export function NoteForm({
           `z.uuid()` y devolvía "Persona inválida." por algo que ni era una
           mención. */}
       <div className="relative">
+        {/*
+         * Negrita EN VIVO mientras se escribe, no solo después de publicar
+         * (pedido del usuario, 2026-09-09). Un <textarea> no puede pintar
+         * texto parcialmente en negrita — es la técnica estándar de
+         * "textarea con overlay": este div de atrás pinta el mismo texto con
+         * `parseMentions` (la misma función que ya usa NoteBody para el
+         * cuerpo publicado, cero lógica de resaltado duplicada), y el
+         * textarea de encima queda con SU PROPIO texto transparente —
+         * `caret-transparent` no: el cursor (`caret-color`) sigue visible,
+         * solo las letras se vuelven invisibles porque lo que se LEE es este
+         * div de abajo. Mismo font/padding/line-height en los dos a
+         * propósito: si no calzan pixel a pixel, el cursor real cae en un
+         * lugar y el texto pintado en otro.
+         */}
+        <div
+          ref={highlightRef}
+          aria-hidden
+          className={`pointer-events-none absolute inset-0 overflow-hidden rounded-md border bg-background px-3 py-2 text-sm whitespace-pre-wrap break-words ${state?.field === "body" ? "border-destructive" : "border-border"}`}
+        >
+          {parseMentions(body).map((parte, i) =>
+            parte.tipo === "mencion" ? (
+              <strong key={i} className="font-semibold text-accent">
+                {parte.nombre}
+              </strong>
+            ) : (
+              <span key={i}>{parte.valor}</span>
+            ),
+          )}
+          {/* Un textarea cuyo valor termina en "\n" muestra una línea vacía
+              extra — sin esto el div queda una línea más corto que el
+              textarea real y el cursor cae por debajo del texto pintado. */}
+          {body.endsWith("\n") && "​"}
+        </div>
         <textarea
           ref={areaRef}
           name="body"
@@ -177,6 +213,10 @@ export function NoteForm({
           onKeyUp={(e) => setCursor(e.currentTarget.selectionStart)}
           onClick={(e) => setCursor(e.currentTarget.selectionStart)}
           onKeyDown={handleKeyDown}
+          onScroll={(e) => {
+            // El overlay no scrollea solo: es un div normal, no un textarea.
+            if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop;
+          }}
           role="combobox"
           aria-expanded={sugerencias.length > 0}
           aria-controls={listaId}
@@ -185,7 +225,13 @@ export function NoteForm({
           }
           placeholder={isReply ? "Escribe tu respuesta… (@ para mencionar)" : "Escribe una nota… (@ para mencionar)"}
           aria-invalid={state?.field === "body"}
-          className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${state?.field === "body" ? "border-destructive" : "border-border"}`}
+          // Mismo rounded-md/px-3/py-2/text-sm que el overlay, a propósito
+          // (ver el comentario de arriba) — border-transparent en vez de
+          // quitar el borde: mantiene el mismo tamaño de caja que el
+          // overlay (un borde real ocupa espacio en box-sizing:border-box),
+          // solo que invisible, porque el borde "de verdad" ya lo pinta el
+          // overlay de atrás.
+          className="relative w-full rounded-md border border-transparent bg-transparent px-3 py-2 text-sm text-transparent caret-foreground placeholder:text-muted-foreground"
         />
         {sugerencias.length > 0 && (
           // `role="option"` va en el <li>, que es hijo DIRECTO del listbox: con
