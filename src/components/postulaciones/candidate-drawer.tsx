@@ -401,63 +401,55 @@ function SeguimientoView({
   mostrarTarea: boolean;
   onMostrarTareaChange: (value: boolean) => void;
 }) {
+  // Sin columna de "Candidato" (correo/teléfono/etapa) — vivía repetida acá
+  // Y en Información, decisión del usuario 2026-09-09: cada pestaña muestra
+  // solo lo suyo, no un resumen que ya está un clic al lado.
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-      <div>
-        <p className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Candidato</p>
-        <div className="mt-2 flex flex-col gap-2.5 text-sm">
-          <Field k="Correo" v={data.application.candidateEmail} />
-          <Field k="Teléfono" v={data.application.candidatePhone ?? "—"} />
-          <Field k="Etapa" v={data.application.stageName ?? "—"} />
-        </div>
-      </div>
-      <div>
-        <p className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Seguimiento</p>
-        {canWrite ? (
-          <div className="mt-2 flex flex-col gap-2.5">
-            <NoteForm
-              // Cuenta solo las notas RAÍZ, no el total. Con el total, una
-              // respuesta en cualquier hilo cambiaba esta key y borraba el
-              // borrador que el usuario tuviera escrito acá arriba.
-              key={data.application.notes.filter((n) => !n.parentId).length}
-              applicationId={applicationId}
-              mentionable={data.mentionable}
-              canMarkPrivate={data.isAdminOrAbove}
-              onSaved={onChanged}
-            />
-            {mostrarTarea ? (
-              <TaskForm
-                applicationId={applicationId}
-                assignable={data.assignable}
-                onSaved={() => {
-                  onMostrarTareaChange(false);
-                  onChanged();
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => onMostrarTareaChange(true)}
-                className="self-start text-xs font-medium text-accent underline"
-              >
-                + Asignar tarea
-              </button>
-            )}
-          </div>
-        ) : (
-          <p className="mt-2 text-xs text-muted-foreground">Tu nivel en esta vacante es de solo lectura.</p>
-        )}
-        <div className="mt-4">
-          <NoteList
-            notes={data.application.notes}
-            tasks={data.application.tasks}
+    <div>
+      {canWrite ? (
+        <div className="flex flex-col gap-2.5">
+          <NoteForm
+            // Cuenta solo las notas RAÍZ, no el total. Con el total, una
+            // respuesta en cualquier hilo cambiaba esta key y borraba el
+            // borrador que el usuario tuviera escrito acá arriba.
+            key={data.application.notes.filter((n) => !n.parentId).length}
             applicationId={applicationId}
             mentionable={data.mentionable}
-            canWrite={canWrite}
             canMarkPrivate={data.isAdminOrAbove}
             onSaved={onChanged}
           />
+          {mostrarTarea ? (
+            <TaskForm
+              applicationId={applicationId}
+              assignable={data.assignable}
+              onSaved={() => {
+                onMostrarTareaChange(false);
+                onChanged();
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => onMostrarTareaChange(true)}
+              className="self-start text-xs font-medium text-accent underline"
+            >
+              + Asignar tarea
+            </button>
+          )}
         </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Tu nivel en esta vacante es de solo lectura.</p>
+      )}
+      <div className="mt-4">
+        <NoteList
+          notes={data.application.notes}
+          tasks={data.application.tasks}
+          applicationId={applicationId}
+          mentionable={data.mentionable}
+          canWrite={canWrite}
+          canMarkPrivate={data.isAdminOrAbove}
+          onSaved={onChanged}
+        />
       </div>
     </div>
   );
