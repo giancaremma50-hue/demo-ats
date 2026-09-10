@@ -1,5 +1,41 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (segundo bug del overlay de menciones: la negrita en vivo desalinea el cursor por ancho, no por largo)_
+_Última actualización: 2026-09-10 (jsonb_set no crea niveles intermedios — probar `custom_access_token_hook` con un `claims` de mentira lo hace parecer roto sin estarlo)_
+
+## `jsonb_set(..., true)` NO crea niveles intermedios del path — solo el último (2026-09-10) — MÁXIMA PRIORIDAD
+
+Al agregar `department_id` al JWT (mismo mecanismo que ya usan `app_role`/`organization_id`
+en `custom_access_token_hook`), la verificación manual daba `claims: {}` — como si la
+función no encontrara el perfil, pese a que `select role from profiles where id = ...`
+sí lo encontraba perfectamente por fuera.
+
+1. **NO es un bug de la función — es un bug del MÉTODO DE PRUEBA.** `jsonb_set(target, path, new_value, true)`:
+   el 4º argumento (`create_missing`) solo crea el ÚLTIMO elemento del path si falta.
+   Si un nivel INTERMEDIO no existe como objeto, la llamada entera es un no-op silencioso
+   (sin error) y devuelve el `target` sin tocar. Reproducido a mano:
+   `select jsonb_set('{}'::jsonb, '{app_metadata,app_role}', to_jsonb('gestor'::text), true)`
+   → devuelve `{}`, no `{"app_metadata":{"app_role":"gestor"}}`, porque `{}` no tiene
+   `app_metadata`. En producción esto NUNCA pasa porque GoTrue invoca el hook con un
+   `event.claims` que YA trae `app_metadata: {}` poblado de fábrica — pero un test manual
+   armado a mano con `'claims', '{}'::jsonb` no lo tiene, y el resultado vacío se lee
+   como "la función no encuentra el perfil" cuando en realidad el perfil se encontró bien
+   y el problema es un nivel de JSON que el test no sembró.
+   Do instead: para probar `custom_access_token_hook` (o cualquier función que reciba el
+   `event` de un Auth Hook) a mano por SQL, sembrar SIEMPRE
+   `'claims', jsonb_build_object('app_metadata', '{}'::jsonb, 'user_metadata', '{}'::jsonb, 'aud', 'authenticated')`
+   — nunca `'claims', '{}'::jsonb` a secas. Y en general: si un `jsonb_set` con
+   `create_missing = true` "no hace nada" sin tirar error, sospechar primero de un nivel
+   intermedio faltante en el `target`, no de la lógica que arma `new_value`.
+2. **Cómo se descartó paso a paso** (por si vuelve a pasar algo parecido): se aisló primero
+   RLS/roles (descartado: `postgres` tiene `rolbypassrls=true`, y `pg_temp` vs `public`
+   daban resultados distintos con la MISMA lógica, lo cual ya apuntaba a otra cosa). Se
+   fue recortando la función a copias mínimas hasta aislar la única diferencia real: un
+   `select ... into` de una sola columna con `return jsonb_build_object(...)` funcionaba;
+   el mismo `select` de 3 columnas seguido de `jsonb_set` anidado no. El `RAISE`/debug
+   paso a paso (guardar el valor de `claims` en cada línea dentro de un array de debug)
+   ubicó la línea exacta donde `claims` se quedaba en `{}`.
+
+---
+
 
 ## El overlay de menciones tuvo un SEGUNDO bug: negrita = más ancho (2026-09-09)
 
