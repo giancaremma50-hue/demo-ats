@@ -52,7 +52,12 @@ export const MODULES: ModuleConfig[] = [
   },
 ];
 
+// Reclutamiento no tiene un solo prefijo de ruta (/vacantes, /candidatos,
+// /configuracion son hermanas, no hijas de /inicio) — por eso es el
+// fallback, no un match por basePath. La exclusión ata al mismo objeto
+// (MODULES[0]) que el fallback, no a un string "reclutamiento" aparte, para
+// que reordenar/renombrar el id no los desincronice en silencio.
 export function activeModuleFor(pathname: string): ModuleConfig {
-  const match = MODULES.find((m) => m.id !== "reclutamiento" && pathname.startsWith(m.basePath));
+  const match = MODULES.find((m) => m !== MODULES[0] && pathname.startsWith(m.basePath));
   return match ?? MODULES[0];
 }
