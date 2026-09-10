@@ -1,0 +1,58 @@
+import { Briefcase, Home, MessageCircle, Settings, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { ADMIN_ROLES } from "@/lib/auth/role-labels";
+import type { Database } from "@/lib/supabase/database.types";
+
+type Role = Database["public"]["Enums"]["app_role"];
+export type NavItem = { href: string; label: string; icon: LucideIcon };
+
+export type ModuleConfig = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  accentColor: string;
+  basePath: string;
+  itemsForRole: (role: Role) => NavItem[];
+};
+
+function reclutamientoItemsForRole(role: Role): NavItem[] {
+  const base: NavItem[] = [
+    { href: "/inicio", label: "Inicio", icon: Home },
+    { href: "/vacantes", label: "Vacantes", icon: Briefcase },
+  ];
+  if (role === "gestor" || ADMIN_ROLES.has(role)) {
+    base.push({ href: "/candidatos", label: "Candidatos", icon: Users });
+  }
+  if (ADMIN_ROLES.has(role)) {
+    base.push({ href: "/configuracion", label: "Ajustes", icon: Settings });
+  }
+  return base;
+}
+
+function conectadosItemsForRole(): NavItem[] {
+  return [{ href: "/conectados", label: "Inicio", icon: Home }];
+}
+
+export const MODULES: ModuleConfig[] = [
+  {
+    id: "reclutamiento",
+    label: "Reclutamiento AJE",
+    icon: Briefcase,
+    accentColor: "#00B348",
+    basePath: "/inicio",
+    itemsForRole: reclutamientoItemsForRole,
+  },
+  {
+    id: "conectados",
+    label: "AJE Conectados",
+    icon: MessageCircle,
+    accentColor: "#EF7834",
+    basePath: "/conectados",
+    itemsForRole: conectadosItemsForRole,
+  },
+];
+
+export function activeModuleFor(pathname: string): ModuleConfig {
+  const match = MODULES.find((m) => m.id !== "reclutamiento" && pathname.startsWith(m.basePath));
+  return match ?? MODULES[0];
+}
