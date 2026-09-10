@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { moveApplicationStage } from "@/lib/applications/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
@@ -12,10 +12,12 @@ import type { KanbanData } from "@/lib/applications/get-applications";
 export function KanbanBoard({
   initialData,
   jobTitle,
+  jobInfoModal,
   initialOpenApplicationId = null,
 }: {
   initialData: KanbanData;
   jobTitle: string;
+  jobInfoModal: ReactNode;
   /**
    * Candidato a abrir al entrar, desde `?candidato=` — se abre aunque su
    * tarjeta NO esté en el tablero: el kanban solo trae postulaciones
@@ -66,20 +68,27 @@ export function KanbanBoard({
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex h-full flex-col">
-          <div className="flex flex-none items-center gap-3 pb-3">
-            <input
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar candidato por nombre…"
-              aria-label="Buscar candidato por nombre"
-              className="h-9 w-full max-w-xs rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
-            />
-            {filtro !== "" && (
-              <span className="flex-none text-xs tabular-nums text-muted-foreground">
-                {visibles.length} de {cards.length}
-              </span>
-            )}
+          <div className="flex flex-none items-start justify-between gap-4 pb-4">
+            <div>
+              <h1 className="font-serif text-[28px]">{jobTitle}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{cards.length} postulaciones activas</p>
+            </div>
+            <div className="flex flex-none items-center gap-3">
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar candidato por nombre…"
+                aria-label="Buscar candidato por nombre"
+                className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+              />
+              {filtro !== "" && (
+                <span className="flex-none text-xs tabular-nums text-muted-foreground">
+                  {visibles.length} de {cards.length}
+                </span>
+              )}
+              {jobInfoModal}
+            </div>
           </div>
           <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
             {initialData.stages.map((stage) => (

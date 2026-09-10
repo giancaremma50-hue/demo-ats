@@ -28,18 +28,17 @@ export default async function PipelinePage({
     // una página de texto. calc(100vh - 13.5rem) replica exactamente el
     // encabezado (h-16) + el padding vertical de <main> (pt-10 + pb-28) del
     // layout compartido, para que el tablero llene el alto real disponible
-    // sin generar scroll de página (cada columna scrollea la suya).
+    // sin generar scroll de página (cada columna scrollea la suya). El
+    // encabezado (título + buscador) vive DENTRO de KanbanBoard, no acá:
+    // así comparten una sola fila y no se pierde una fila entera de alto
+    // (título arriba, buscador abajo) del poco espacio vertical fijo que hay.
     <div className="mx-[calc(50%-50vw)] flex h-[calc(100vh-13.5rem)] flex-col px-6 lg:px-10">
-      <div className="flex flex-none items-start justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-[28px]">{job.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Pipeline · {data.cards.length} postulaciones activas</p>
-        </div>
-        <JobInfoModal job={job} collaborators={collaborators} />
-      </div>
-      <div className="mt-6 min-h-0 flex-1">
-        <KanbanBoard initialData={data} jobTitle={job.title} initialOpenApplicationId={candidato ?? null} />
-      </div>
+      <KanbanBoard
+        initialData={data}
+        jobTitle={job.title}
+        jobInfoModal={<JobInfoModal job={job} collaborators={collaborators} />}
+        initialOpenApplicationId={candidato ?? null}
+      />
     </div>
   );
 }
