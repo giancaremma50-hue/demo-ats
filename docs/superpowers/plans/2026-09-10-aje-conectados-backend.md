@@ -1275,7 +1275,7 @@ Expected: sin errores.
 **Files:**
 - Modify: `src/components/layout/floating-nav.tsx` (reemplaza todo el archivo)
 
-- [ ] **Paso 1: Reemplazar `floating-nav.tsx`**
+- [x] **Paso 1: Reemplazar `floating-nav.tsx`** (más `rounded-xl` → `rounded-lg` en las filas del popover, mismo motivo de escala que la corrección de Task 16)
 
 ```typescript
 "use client";
@@ -1416,17 +1416,12 @@ export function FloatingNav({ role }: { role: Role }) {
 
 Cambios respecto al original: `itemsForRole` se fue a `src/lib/modules.ts` (Task 15); se agrega el trigger circular + `Popover` con la lista de módulos; el resto (scroll hide/show, tooltip, indicador activo) queda idéntico.
 
-- [ ] **Paso 2: Verificar tipos**
+- [x] **Paso 2: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores.
 
-- [ ] **Paso 3: Commit**
-
-```bash
-git add src/components/layout/floating-nav.tsx
-git commit -m "feat(nav): selector de módulos integrado en la píldora"
-```
+- [x] **Paso 3: Commit** — `3406c5f`
 
 ---
 
