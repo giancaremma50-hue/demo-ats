@@ -143,7 +143,7 @@ Expected: `claims.app_metadata.department_id` es JSON `null` (no ausente, no rom
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `add_auth_department_id_helper`**
+- [x] **Paso 1: Aplicar migración `add_auth_department_id_helper`**
 
 ```sql
 create or replace function private.auth_department_id()
@@ -159,14 +159,14 @@ revoke all on function private.auth_department_id() from public, anon;
 grant execute on function private.auth_department_id() to authenticated;
 ```
 
-- [ ] **Paso 2: Verificar que compila y no rompe el schema `private`**
+- [x] **Paso 2: Verificar que compila y no rompe el schema `private`**
 
 ```sql
 select private.auth_department_id();
 ```
 Expected: corre sin error (devuelve `null` al ejecutarse fuera de un request autenticado real, eso es correcto — no hay JWT en este contexto de consola SQL).
 
-- [ ] **Paso 3: Aplicar migración `add_notification_types_conectados`**
+- [x] **Paso 3: Aplicar migración `add_notification_types_conectados`**
 
 `ALTER TYPE ... ADD VALUE` no puede usarse en la misma transacción en la que luego se referencia el valor — esta migración SOLO agrega valores, no los usa, así que es segura sola:
 
@@ -177,7 +177,7 @@ alter type public.notification_type add value if not exists 'post_reaccion';
 alter type public.notification_type add value if not exists 'post_comentario';
 ```
 
-- [ ] **Paso 4: Verificar los valores nuevos**
+- [x] **Paso 4: Verificar los valores nuevos**
 
 ```sql
 select enumlabel from pg_enum where enumtypid = 'public.notification_type'::regtype order by enumsortorder;
@@ -191,7 +191,7 @@ Expected: incluye `post_nuevo`, `post_mencion`, `post_reaccion`, `post_comentari
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `create_conectados_tables`**
+- [x] **Paso 1: Aplicar migración `create_conectados_tables`**
 
 ```sql
 create table public.posts (
@@ -258,7 +258,7 @@ comment on table public.post_permissions is
   'Permiso por persona, no por rol. Fila ausente = comportamiento por defecto (no puede publicar, sí comentar/reaccionar).';
 ```
 
-- [ ] **Paso 2: Verificar**
+- [x] **Paso 2: Verificar**
 
 ```sql
 select table_name from information_schema.tables
@@ -273,7 +273,7 @@ Expected: las 3 filas.
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `conectados_private_helpers`**
+- [x] **Paso 1: Aplicar migración `conectados_private_helpers`**
 
 ```sql
 create or replace function private.can_post_to_communications()
@@ -344,7 +344,7 @@ grant execute on function private.can_react_to_posts() to authenticated;
 grant execute on function private.can_view_post(uuid) to authenticated;
 ```
 
-- [ ] **Paso 2: Verificar que las 4 funciones existen**
+- [x] **Paso 2: Verificar que las 4 funciones existen**
 
 ```sql
 select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -359,7 +359,7 @@ Expected: `can_post_to_communications`, `can_comment_on_posts`, `can_react_to_po
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `conectados_rls_posts`**
+- [x] **Paso 1: Aplicar migración `conectados_rls_posts`**
 
 ```sql
 alter table public.posts enable row level security;
@@ -407,7 +407,7 @@ using (author_id = (select auth.uid()) or (select private.is_admin_or_above()));
 
 Nota: `publish_at is null or is_admin_or_above()` en `insert`/`update` es el candado de "programar" — por ahora solo admin/super_admin programan (checklist §9 del doc portado: sin sub-permisos jsonb en este proyecto, se simplifica a un rol fijo en vez de un permiso granular nuevo).
 
-- [ ] **Paso 2: Verificar con `get_advisors`**
+- [x] **Paso 2: Verificar con `get_advisors`**
 
 Ejecutar `get_advisors(type: "security")` sobre `cgudnnlcwcotovcslgzu`.
 Expected: sin advertencia nueva de "RLS enabled, no policy" para `posts`.
@@ -419,7 +419,7 @@ Expected: sin advertencia nueva de "RLS enabled, no policy" para `posts`.
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `conectados_rls_post_comments`**
+- [x] **Paso 1: Aplicar migración `conectados_rls_post_comments`**
 
 ```sql
 alter table public.post_comments enable row level security;
@@ -453,7 +453,7 @@ using (
 );
 ```
 
-- [ ] **Paso 2: Verificar**
+- [x] **Paso 2: Verificar**
 
 ```sql
 select policyname, cmd from pg_policies where tablename = 'post_comments' order by policyname;
@@ -467,7 +467,7 @@ Expected: 4 filas (`post_comments_select`, `post_comments_insert`, `post_comment
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `conectados_rls_post_permissions`**
+- [x] **Paso 1: Aplicar migración `conectados_rls_post_permissions`**
 
 ```sql
 alter table public.post_permissions enable row level security;
@@ -483,7 +483,7 @@ using (organization_id = (select private.auth_org_id()) and (select private.is_a
 with check (organization_id = (select private.auth_org_id()) and (select private.is_admin_or_above()));
 ```
 
-- [ ] **Paso 2: Verificar con `get_advisors(type: "security")`**
+- [x] **Paso 2: Verificar con `get_advisors(type: "security")`**
 
 Expected: ninguna tabla de Conectados aparece con "RLS enabled, no policy".
 
@@ -494,7 +494,7 @@ Expected: ninguna tabla de Conectados aparece con "RLS enabled, no policy".
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `conectados_rpc_reactions`**
+- [x] **Paso 1: Aplicar migración `conectados_rpc_reactions`** (+ migración de corrección `conectados_rpc_reactions_fix_notify_flag`, ver nota en el SQL de arriba)
 
 ```sql
 create or replace function public.toggle_post_reaction(p_post_id uuid, p_type text)
@@ -523,7 +523,13 @@ begin
     raise exception 'No tienes permiso para reaccionar';
   end if;
 
-  select organization_id, author_id, (reactions ->> v_uid_txt) = p_type
+  -- coalesce obligatorio: si v_uid_txt todavía no es clave del jsonb (primera
+  -- reacción de esta persona), `reactions ->> v_uid_txt` es SQL NULL, y
+  -- `NULL = p_type` también es NULL (no false) — sin el coalesce, v_already
+  -- queda NULL y `not v_already` NUNCA es true, así que el aviso al autor
+  -- jamás se dispara en el único caso que debería (bug real, encontrado y
+  -- corregido en esta sesión, ver .claude/napkin.md).
+  select organization_id, author_id, coalesce((reactions ->> v_uid_txt) = p_type, false)
     into v_org_id, v_author_id, v_already
   from public.posts where id = p_post_id;
 
@@ -565,7 +571,8 @@ begin
     raise exception 'Tipo de reacción inválido: %', p_type;
   end if;
 
-  select organization_id, author_id, post_id, (reactions ->> v_uid_txt) = p_type
+  -- Mismo coalesce que en toggle_post_reaction, misma razón.
+  select organization_id, author_id, post_id, coalesce((reactions ->> v_uid_txt) = p_type, false)
     into v_org_id, v_author_id, v_post_id, v_already
   from public.post_comments where id = p_comment_id;
 
@@ -599,7 +606,7 @@ grant execute on function public.toggle_post_reaction(uuid, text) to authenticat
 grant execute on function public.toggle_post_comment_reaction(uuid, text) to authenticated;
 ```
 
-- [ ] **Paso 2: Verificar con una llamada real**
+- [x] **Paso 2: Verificar con una llamada real**
 
 Con un `post_id` real (crear uno de prueba primero vía `insert into public.posts (organization_id, author_id, author_name, content) values (...)` con el `service_role`, o esperar a Task 14 para hacerlo por Server Action):
 ```sql

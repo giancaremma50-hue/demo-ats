@@ -1,5 +1,44 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-10 (jsonb_set no crea niveles intermedios — probar `custom_access_token_hook` con un `claims` de mentira lo hace parecer roto sin estarlo)_
+_Última actualización: 2026-09-10 (comparar `jsonb ->> clave` contra un valor con `=` da NULL, no false, cuando la clave no existe — silenciaba el aviso de "primera reacción")_
+
+## `(jsonb ->> clave) = valor` da NULL (no `false`) si la clave no existe — rompe un `if not v_flag` (2026-09-10) — MÁXIMA PRIORIDAD
+
+Al construir `toggle_post_reaction`/`toggle_post_comment_reaction` (RPCs de reacciones de
+AJE Conectados), la verificación end-to-end mostró que el aviso al autor NUNCA se
+disparaba en el único caso que debía: la primera reacción de otra persona a un post.
+
+1. **BUG REAL: `reactions ->> v_uid_txt` es SQL `NULL` cuando `v_uid_txt` todavía no es
+   una clave del jsonb (primera reacción de esa persona) — y `NULL = p_type` es `NULL`,
+   no `false` (lógica de tres valores de SQL).** El código guardaba ese resultado en
+   `v_already boolean` vía `select ... (reactions ->> v_uid_txt) = p_type into ..., v_already ...`.
+   Con `v_already = NULL`, la condición de aviso `if not v_already and v_author_id is
+   not null and v_author_id <> v_uid then` nunca es `true` (`not NULL` sigue siendo
+   `NULL`, y un `IF` de plpgsql solo entra con `true` exacto) — el toggle de datos
+   funcionaba perfecto (agregar/quitar la reacción), pero la función SIEMPRE devolvía
+   `null`, así que quien consume ese valor para mandar la notificación nunca mandaba
+   nada. Encontrado recién al probar el flujo real con dos sesiones simuladas — con
+   solo confirmar que la migración "aplicó sin error" esto se hubiera colado.
+   Do instead: cualquier `boolean` que salga de comparar un valor de `jsonb ->> clave`
+   (o cualquier expresión que pueda ser SQL NULL) con `=` tiene que pasar por
+   `coalesce(..., false)` ANTES de usarse en un `if`/`not` — nunca asumir que "la clave
+   no está" se comporta como `false` en la comparación, en SQL se comporta como
+   "no sé", que es `NULL`. Ojo: esto NO aplica igual dentro de un `CASE WHEN` (`case
+   when (reactions ->> v_uid_txt) = p_type then ... else ...` sí toma el `ELSE` cuando
+   la condición da `NULL`, ese caso no tiene el bug) — el problema es específico de
+   guardar la comparación en una variable `boolean` y negarla después con `not`.
+2. **Cómo se probó y se corrigió**: la migración original solo se verificó con
+   `apply_migration` (sin error) + un `select` con UUID inventado (confirma el guard
+   de "No autenticado", nada más). El bug salió recién al simular DOS sesiones reales
+   (`set local role authenticated; set local "request.jwt.claims"` con un UUID
+   distinto al autor del post) y comparar el jsonb devuelto contra lo esperado en cada
+   paso (reaccionar, quitar, reaccionar de nuevo). Fix de una línea en las dos
+   funciones: `coalesce((reactions ->> v_uid_txt) = p_type, false)` al armar
+   `v_already`. Para cualquier RPC que dispare notificaciones/side-effects según un
+   flag calculado de datos jsonb variables, probar SIEMPRE el camino de "primera vez"
+   (clave ausente) con una sesión simulada real, no solo que la migración compile.
+
+---
+
 
 ## `jsonb_set(..., true)` NO crea niveles intermedios del path — solo el último (2026-09-10) — MÁXIMA PRIORIDAD
 
