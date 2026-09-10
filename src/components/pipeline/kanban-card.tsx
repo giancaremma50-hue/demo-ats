@@ -17,7 +17,14 @@ export function KanbanCard({
 }) {
   const days = daysSince(card.appliedAt);
   return (
-    <Draggable draggableId={card.id} index={index}>
+    // disableInteractiveElementBlocking: la tarjeta es un <button> (para el
+    // onClick de abrir el drawer) — sin esto, @hello-pangea/dnd trata todo
+    // <button>/<input>/<select>… como "elemento interactivo" y bloquea el
+    // inicio del arrastre en silencio (sin error, sin request): el mousedown
+    // nunca pasa de PENDING a DRAGGING. El click normal para abrir sigue
+    // intacto porque la librería igual distingue clic de arrastre por el
+    // umbral de movimiento (sloppyClickThreshold, 5px).
+    <Draggable draggableId={card.id} index={index} disableInteractiveElementBlocking>
       {(provided, snapshot) => (
         <button
           type="button"
