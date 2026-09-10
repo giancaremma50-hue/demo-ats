@@ -848,20 +848,26 @@ Expected: 1 fila, `public = false`.
 **Files:**
 - Modify: `src/lib/supabase/database.types.ts`
 
-- [ ] **Paso 1: Correr `get_advisors(type: "security")`** sobre `cgudnnlcwcotovcslgzu`.
+- [x] **Paso 1: Correr `get_advisors(type: "security")`** sobre `cgudnnlcwcotovcslgzu`.
 
 Expected: sin hallazgos nuevos de "RLS enabled, no policy" ni "function search_path mutable" para nada de Conectados. Si aparece algo, corregirlo con una migración adicional antes de seguir (no dejarlo para después).
 
-- [ ] **Paso 2: Correr `get_advisors(type: "performance")`**.
+- [x] **Paso 2: Correr `get_advisors(type: "performance")`**.
 
 Expected: revisar que las políticas nuevas usen `(select ...)` (ya lo hacen, ver Tasks 5-7) — no debería salir "Auth RLS Initplan" para `posts`/`post_comments`/`post_permissions`.
 
-- [ ] **Paso 3: Regenerar tipos con `generate_typescript_types`** sobre `cgudnnlcwcotovcslgzu` y reemplazar el contenido completo de `src/lib/supabase/database.types.ts` con el resultado.
+- [x] **Paso 3: Regenerar tipos con `generate_typescript_types`** sobre `cgudnnlcwcotovcslgzu` y reemplazar el contenido completo de `src/lib/supabase/database.types.ts` con el resultado.
 
-- [ ] **Paso 4: Verificar que compila**
+- [x] **Paso 4: Verificar que compila**
 
 Run: `npm run typecheck`
 Expected: sin errores nuevos relacionados a `database.types.ts`.
+
+**Hallazgos reales de los advisors, corregidos en esta sesión (no estaban en el plan original):**
+- `post_permissions_write_admin` era `FOR ALL` y se solapaba con `post_permissions_select` en SELECT (políticas permisivas duplicadas, advisor de performance). Se separó en `post_permissions_write_admin` (solo INSERT), `post_permissions_update_admin`, `post_permissions_delete_admin` — migración `conectados_advisor_fixes`.
+- Índices de FK faltantes en `posts.author_id`, `post_comments.author_id`, `post_comments.organization_id`, `post_permissions.organization_id` — mismo patrón que la migración previa del proyecto `indices_fk_faltantes`. Misma migración `conectados_advisor_fixes`.
+- `database.types.ts` regenerado hizo aparecer un error de typecheck real en `src/lib/notifications/preferences-schema.ts` (`NOTIFICATION_TYPE_LABEL` es `Record<NotificationType, string>`, exhaustivo sobre el enum) — se agregaron las 4 etiquetas nuevas (`post_nuevo`, `post_mencion`, `post_reaccion`, `post_comentario`), sin sumarlas todavía a `PREFERENCE_TYPES` (mismo criterio que `mencion_nota` antes de tener UI real: no ofrecer un interruptor para un aviso que el módulo aún no dispara).
+- El warning de advisors "SECURITY DEFINER callable by authenticated" en `toggle_post_reaction`/`toggle_post_comment_reaction`/`vote_post_poll` es esperado por diseño (son RPCs pensadas para eso, con sus propios guards internos) — no se tocó.
 
 ---
 

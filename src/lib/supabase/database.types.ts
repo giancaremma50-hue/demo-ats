@@ -1873,6 +1873,191 @@ export type Database = {
           },
         ]
       }
+      post_comments: {
+        Row: {
+          author_avatar_url: string | null
+          author_id: string | null
+          author_name: string
+          author_title: string | null
+          body: string
+          created_at: string
+          id: string
+          mentions: string[]
+          organization_id: string
+          post_id: string
+          reactions: Json
+          updated_at: string | null
+        }
+        Insert: {
+          author_avatar_url?: string | null
+          author_id?: string | null
+          author_name: string
+          author_title?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          organization_id: string
+          post_id: string
+          reactions?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          author_avatar_url?: string | null
+          author_id?: string | null
+          author_name?: string
+          author_title?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          organization_id?: string
+          post_id?: string
+          reactions?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_permissions: {
+        Row: {
+          can_comment: boolean
+          can_post: boolean
+          can_react: boolean
+          organization_id: string
+          profile_id: string
+        }
+        Insert: {
+          can_comment?: boolean
+          can_post?: boolean
+          can_react?: boolean
+          organization_id: string
+          profile_id: string
+        }
+        Update: {
+          can_comment?: boolean
+          can_post?: boolean
+          can_react?: boolean
+          organization_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_permissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_permissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          attachments: Json
+          author_avatar_url: string | null
+          author_id: string | null
+          author_name: string
+          author_title: string
+          content: string
+          created_at: string
+          department_id: string | null
+          edited: boolean
+          id: string
+          mentions: string[]
+          organization_id: string
+          poll: Json | null
+          publish_at: string | null
+          reactions: Json
+          roles: Database["public"]["Enums"]["app_role"][] | null
+        }
+        Insert: {
+          attachments?: Json
+          author_avatar_url?: string | null
+          author_id?: string | null
+          author_name: string
+          author_title?: string
+          content?: string
+          created_at?: string
+          department_id?: string | null
+          edited?: boolean
+          id?: string
+          mentions?: string[]
+          organization_id: string
+          poll?: Json | null
+          publish_at?: string | null
+          reactions?: Json
+          roles?: Database["public"]["Enums"]["app_role"][] | null
+        }
+        Update: {
+          attachments?: Json
+          author_avatar_url?: string | null
+          author_id?: string | null
+          author_name?: string
+          author_title?: string
+          content?: string
+          created_at?: string
+          department_id?: string | null
+          edited?: boolean
+          id?: string
+          mentions?: string[]
+          organization_id?: string
+          poll?: Json | null
+          publish_at?: string | null
+          reactions?: Json
+          roles?: Database["public"]["Enums"]["app_role"][] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_invites: {
         Row: {
           consumed_at: string | null
@@ -2023,6 +2208,19 @@ export type Database = {
         Returns: boolean
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      release_scheduled_posts: { Args: { p_dry_run?: boolean }; Returns: Json }
+      toggle_post_comment_reaction: {
+        Args: { p_comment_id: string; p_type: string }
+        Returns: Json
+      }
+      toggle_post_reaction: {
+        Args: { p_post_id: string; p_type: string }
+        Returns: Json
+      }
+      vote_post_poll: {
+        Args: { p_option_index: number; p_post_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "colaborador" | "gestor" | "admin" | "super_admin"
@@ -2079,6 +2277,10 @@ export type Database = {
         | "movimiento_referido"
         | "respuesta_reporte_error"
         | "vacante_cambio_estado"
+        | "post_nuevo"
+        | "post_mencion"
+        | "post_reaccion"
+        | "post_comentario"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2266,6 +2468,10 @@ export const Constants = {
         "movimiento_referido",
         "respuesta_reporte_error",
         "vacante_cambio_estado",
+        "post_nuevo",
+        "post_mencion",
+        "post_reaccion",
+        "post_comentario",
       ],
     },
   },
