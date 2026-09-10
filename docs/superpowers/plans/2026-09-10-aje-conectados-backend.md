@@ -621,7 +621,7 @@ Expected: corre sin error (el `raise exception 'No autenticado'` es esperado si 
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `conectados_rpc_poll_and_release`**
+- [x] **Paso 1: Aplicar migración `conectados_rpc_poll_and_release`**
 
 ```sql
 create or replace function public.vote_post_poll(p_post_id uuid, p_option_index int)
@@ -765,7 +765,7 @@ revoke all on function public.release_scheduled_posts(boolean) from public, anon
 
 Nota: a diferencia de la RPC de reacción (que devuelve a quién avisar y deja que el Server Action llame `notify()`), esta RPC la llama el cron directo con `service_role` — el Route Handler (Task 19) recorre `avisos` y llama `notify()` por cada uno, igual patrón.
 
-- [ ] **Paso 2: Verificar en modo simulación**
+- [x] **Paso 2: Verificar en modo simulación**
 
 ```sql
 select public.release_scheduled_posts(true);
@@ -779,7 +779,7 @@ Expected: `{"liberados": 0, "avisos": []}` (no hay posts programados todavía).
 **Files:**
 - DB (vía MCP `apply_migration`)
 
-- [ ] **Paso 1: Aplicar migración `conectados_realtime`**
+- [x] **Paso 1: Aplicar migración `conectados_realtime`**
 
 ```sql
 alter table public.posts replica identity full;
@@ -788,7 +788,7 @@ alter publication supabase_realtime add table public.posts;
 alter publication supabase_realtime add table public.post_comments;
 ```
 
-- [ ] **Paso 2: Verificar**
+- [x] **Paso 2: Verificar**
 
 ```sql
 select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by tablename;
@@ -804,7 +804,7 @@ Expected: incluye `notifications` (ya estaba), `posts`, `post_comments`.
 
 **Convención de carpeta:** `{organization_id}/{post_id}/{filename}` — el primer segmento del path es el UUID de la organización, igual que `cvs-privado` usa el segundo segmento para el UUID del candidato.
 
-- [ ] **Paso 1: Aplicar migración `conectados_storage_bucket`**
+- [x] **Paso 1: Aplicar migración `conectados_storage_bucket`**
 
 ```sql
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -834,7 +834,7 @@ using (
 );
 ```
 
-- [ ] **Paso 2: Verificar**
+- [x] **Paso 2: Verificar**
 
 ```sql
 select id, public, file_size_limit from storage.buckets where id = 'conectados-adjuntos';
