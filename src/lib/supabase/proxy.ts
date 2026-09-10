@@ -14,7 +14,19 @@ import { sanitizeRedirectPath } from "@/lib/auth/redirect";
 // enviaron" — un mensaje falso, en bucle, sin forma de postular. Se lista la
 // ruta exacta, NUNCA "/api" completo: el resto de los endpoints tienen que
 // seguir exigiendo sesión.
-const PUBLIC_PATHS = ["/login", "/auth", "/empleos", "/privacidad", "/api/postular"];
+// `/api/cron/release-scheduled-posts` es el mismo problema: lo invoca el cron
+// de Vercel, sin cookie de sesión — sin esto, el proxy lo manda a /login
+// (307) y la liberación de publicaciones programadas de AJE Conectados
+// nunca corre en producción, sin ningún error visible. La ruta valida su
+// propio secreto (`Bearer CRON_SECRET`), no depende de la sesión.
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth",
+  "/empleos",
+  "/privacidad",
+  "/api/postular",
+  "/api/cron/release-scheduled-posts",
+];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
