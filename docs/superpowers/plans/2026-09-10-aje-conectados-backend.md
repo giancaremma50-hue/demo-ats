@@ -1430,12 +1430,12 @@ Expected: sin errores.
 **Files:**
 - Create: `src/app/(app)/conectados/page.tsx`
 
-- [ ] **Paso 1: Revisar cómo una página existente de `(app)` obtiene el perfil, para no reinventar el patrón**
+- [x] **Paso 1: Revisar cómo una página existente de `(app)` obtiene el perfil, para no reinventar el patrón**
 
 Run: `grep -n "requireProfile\|export default async function" src/app/(app)/inicio/page.tsx`
 Usar el mismo patrón de import/uso de `requireProfile()` que aparezca ahí.
 
-- [ ] **Paso 2: Crear `src/app/(app)/conectados/page.tsx`**
+- [x] **Paso 2: Crear `src/app/(app)/conectados/page.tsx`** (color placeholder inventado → token real `aje-orange`; se agregó `loading.tsx` hermano; se quitó `pb-28` duplicado con el padding de `(app)/layout.tsx`)
 
 ```typescript
 import { requireProfile } from "@/lib/auth/dal";
@@ -1471,17 +1471,12 @@ export default async function ConectadosPage() {
 }
 ```
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores.
 
-- [ ] **Paso 4: Commit**
-
-```bash
-git add "src/app/(app)/conectados/page.tsx"
-git commit -m "feat(conectados): placeholder real de /conectados"
-```
+- [x] **Paso 4: Commit** — `e5f31da`
 
 ---
 
