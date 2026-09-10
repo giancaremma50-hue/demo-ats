@@ -1487,7 +1487,7 @@ Expected: sin errores.
 - Modify: `vercel.json`
 - Modify: `.env.local` (agregar `CRON_SECRET`, no se commitea)
 
-- [ ] **Paso 1: Crear `src/app/api/cron/release-scheduled-posts/route.ts`**
+- [x] **Paso 1: Crear `src/app/api/cron/release-scheduled-posts/route.ts`**
 
 ```typescript
 import { NextResponse, type NextRequest } from "next/server";
@@ -1532,7 +1532,7 @@ export async function GET(request: NextRequest) {
 }
 ```
 
-- [ ] **Paso 2: Agregar el cron a `vercel.json`**
+- [x] **Paso 2: Agregar el cron a `vercel.json`**
 
 Reemplazar el contenido de `vercel.json` (leer el actual primero — solo tiene `$schema` y `regions`, agregar `crons` sin tocar el resto):
 
@@ -1544,7 +1544,7 @@ Reemplazar el contenido de `vercel.json` (leer el actual primero — solo tiene 
 }
 ```
 
-- [ ] **Paso 3: Agregar `CRON_SECRET` a `.env.local`**
+- [x] **Paso 3: Agregar `CRON_SECRET` a `.env.local`**
 
 Run (genera un valor random, no lo repitas en el chat ni lo commitees):
 ```bash
@@ -1552,7 +1552,7 @@ node -e "console.log('CRON_SECRET=' + require('crypto').randomBytes(32).toString
 ```
 Verificar que `.env.local` está en `.gitignore` antes de este paso: `grep -n "^\.env" .gitignore`. Expected: `.env.local` u `.env*.local` listado.
 
-- [ ] **Paso 4: Probar localmente**
+- [x] **Paso 4: Probar localmente** — requirió un fix no previsto en el plan: agregar `/api/cron/release-scheduled-posts` a `PUBLIC_PATHS` en `src/lib/supabase/proxy.ts` (mismo motivo que `/api/postular`: sin cookie de sesión, el proxy mandaba la ruta a `/login` con 307 antes de que el propio `CRON_SECRET` pudiera validar nada — el cron real de Vercel nunca hubiera llegado a la ruta en producción).
 
 Con `next dev` corriendo:
 ```bash
@@ -1560,14 +1560,7 @@ curl -H "Authorization: Bearer $(grep CRON_SECRET .env.local | cut -d= -f2)" htt
 ```
 Expected: `{"ok":true,"liberados":0,"avisos":0}` (no hay posts programados todavía — es correcto).
 
-- [ ] **Paso 5: Commit**
-
-```bash
-git add "src/app/api/cron/release-scheduled-posts/route.ts" vercel.json
-git commit -m "feat(conectados): cron de liberación de publicaciones programadas"
-```
-
-(`.env.local` no se agrega — ya está en `.gitignore`.)
+- [x] **Paso 5: Commit** — `46bce1a` (incluye el fix de `proxy.ts` de arriba)
 
 ---
 

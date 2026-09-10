@@ -1,5 +1,38 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-10 (wrapper shadcn "de memoria" trae rounded-2xl/border/shadow-md genéricos — no son los tokens AJE del proyecto)_
+_Última actualización: 2026-09-10 (segunda vez que un Route Handler sin sesión de usuario cae al 307 de /login antes de correr su propia auth — ahora un cron)_
+
+## Todo Route Handler sin cookie de sesión necesita entrar a `PUBLIC_PATHS` (2026-09-10) — se repitió
+
+Al agregar el cron de liberación de AJE Conectados (`/api/cron/release-scheduled-posts`,
+protegido con `Bearer CRON_SECRET`, sin sesión de usuario), la prueba local con `curl`
+devolvía `307` a `/login` en vez de que la ruta corriera su propio chequeo de secreto.
+
+1. **Ya había pasado exactamente esto con `/api/postular`** (ver el comentario que ya
+   vive en `src/lib/supabase/proxy.ts`, líneas 10-16) — el proxy de sesión intercepta
+   TODA ruta que no esté en `PUBLIC_PATHS` y la manda a `/login` con 307 antes de que el
+   Route Handler llegue a ejecutar una sola línea, sin importar que la ruta tenga su
+   propia autenticación (Zod, rate limit, o acá un `Bearer` secreto). El invocador real
+   (Vercel Cron, o el `fetch` del formulario público) no manda cookie de sesión — nunca
+   la va a mandar — así que sin este registro la ruta queda "protegida" pero también
+   inalcanzable en producción, sin ningún error visible hasta que alguien mira los logs
+   del cron y ve que nunca corrió.
+   Do instead: CUALQUIER Route Handler nuevo bajo `src/app/api/` cuya autenticación NO
+   sea "cookie de sesión de Supabase" (webhooks, crons, endpoints públicos con su propio
+   secreto/token/firma) tiene que sumarse a `PUBLIC_PATHS` en `src/lib/supabase/proxy.ts`
+   — con la ruta EXACTA, nunca un prefijo (`/api/cron` completo expondría cualquier
+   cron futuro sin querer). Antes de dar por buena la prueba local de un endpoint así,
+   probar primero SIN el header de sesión (`curl` sin cookies, como lo haría el
+   invocador real) — probarlo solo con una sesión de navegador abierta esconde
+   exactamente este bug, porque esa sesión sí trae la cookie que el invocador real nunca
+   va a tener.
+2. **Se encontró en la verificación local de esta misma tarea**, no en code review
+   después — el primer intento de `curl` con el secreto correcto devolvió el HTML de
+   `/login`, no el JSON esperado. Reproducir el fallo con el invocador real (o lo más
+   parecido posible: `curl` sin cookies) antes de asumir que "el código está bien
+   porque compiló" sigue siendo la única forma de agarrar esta clase de bug.
+
+---
+
 
 ## Un wrapper shadcn "estándar" no respeta el look AJE por defecto — repasar contra `card.tsx` (2026-09-10)
 
