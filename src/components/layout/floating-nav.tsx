@@ -4,30 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Briefcase, Home, Settings, Users } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { ADMIN_ROLES } from "@/lib/auth/role-labels";
+import { LayoutGrid } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { MODULES, activeModuleFor } from "@/lib/modules";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Role = Database["public"]["Enums"]["app_role"];
-
-type NavItem = { href: string; label: string; icon: LucideIcon };
-
-// Máximo 5 ítems por rol.
-function itemsForRole(role: Role): NavItem[] {
-  const base: NavItem[] = [
-    { href: "/inicio", label: "Inicio", icon: Home },
-    { href: "/vacantes", label: "Vacantes", icon: Briefcase },
-  ];
-  // Un colaborador refiere candidatos pero no gestiona el pipeline.
-  if (role === "gestor" || ADMIN_ROLES.has(role)) {
-    base.push({ href: "/candidatos", label: "Candidatos", icon: Users });
-  }
-  if (ADMIN_ROLES.has(role)) {
-    base.push({ href: "/configuracion", label: "Ajustes", icon: Settings });
-  }
-  return base;
-}
 
 /**
  * Menú principal flotante: acompaña la pantalla sin invadirla. Se oculta al
@@ -35,8 +17,10 @@ function itemsForRole(role: Role): NavItem[] {
  */
 export function FloatingNav({ role }: { role: Role }) {
   const pathname = usePathname();
-  const items = itemsForRole(role);
+  const activeModule = activeModuleFor(pathname);
+  const items = activeModule.itemsForRole(role);
   const [visible, setVisible] = useState(true);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const lastY = useRef(0);
 
   useEffect(() => {
@@ -68,6 +52,45 @@ export function FloatingNav({ role }: { role: Role }) {
           className="fixed inset-x-0 bottom-6 z-40 flex justify-center"
         >
           <div className="flex items-center gap-0.5 rounded-full bg-primary p-1.5 shadow-nav">
+            <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Cambiar de módulo"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-primary-foreground/70 hover:bg-white/10"
+                >
+                  <LayoutGrid className="size-[18px]" strokeWidth={2.5} aria-hidden />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-64">
+                <div className="flex flex-col gap-1">
+                  {MODULES.map((mod) => {
+                    const Icon = mod.icon;
+                    const isActive = mod.id === activeModule.id;
+                    return (
+                      <Link
+                        key={mod.id}
+                        href={mod.basePath}
+                        onClick={() => setSwitcherOpen(false)}
+                        className="flex items-center gap-3 rounded-lg p-2 text-sm font-medium hover:bg-muted"
+                      >
+                        <span
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-white"
+                          style={{ backgroundColor: mod.accentColor }}
+                        >
+                          <Icon className="size-4" strokeWidth={2.5} aria-hidden />
+                        </span>
+                        {mod.label}
+                        {isActive && <span className="ml-auto size-1.5 rounded-full bg-foreground" aria-hidden />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <div className="mx-0.5 h-5 w-px bg-white/25" aria-hidden />
+
             {items.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;
