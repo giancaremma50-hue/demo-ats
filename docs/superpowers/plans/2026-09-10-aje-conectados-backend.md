@@ -877,7 +877,7 @@ Expected: sin errores nuevos relacionados a `database.types.ts`.
 - Create: `src/lib/conectados/schema.ts`
 - Create: `src/lib/conectados/queries.ts`
 
-- [ ] **Paso 1: Crear `src/lib/conectados/schema.ts`**
+- [x] **Paso 1: Crear `src/lib/conectados/schema.ts`**
 
 ```typescript
 import { z } from "zod";
@@ -902,7 +902,7 @@ export const CreateCommentSchema = z.object({
 export type CreateCommentInput = z.infer<typeof CreateCommentSchema>;
 ```
 
-- [ ] **Paso 2: Crear `src/lib/conectados/queries.ts`**
+- [x] **Paso 2: Crear `src/lib/conectados/queries.ts`**
 
 ```typescript
 import "server-only";
@@ -949,17 +949,12 @@ export async function getOwnPostPermissions(profileId: string): Promise<PostPerm
 }
 ```
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores (asume que Task 12 ya regeneró `database.types.ts` con las tablas nuevas).
 
-- [ ] **Paso 4: Commit**
-
-```bash
-git add src/lib/conectados/schema.ts src/lib/conectados/queries.ts
-git commit -m "feat(conectados): capa de datos de lectura (schema + queries)"
-```
+- [x] **Paso 4: Commit** — `e6bc85a`
 
 ---
 
@@ -968,7 +963,7 @@ git commit -m "feat(conectados): capa de datos de lectura (schema + queries)"
 **Files:**
 - Create: `src/lib/conectados/actions.ts`
 
-- [ ] **Paso 1: Crear `src/lib/conectados/actions.ts`**
+- [x] **Paso 1: Crear `src/lib/conectados/actions.ts`**
 
 ```typescript
 "use server";
@@ -1127,17 +1122,12 @@ export async function votePoll(postId: string, optionIndex: number): Promise<Con
 }
 ```
 
-- [ ] **Paso 2: Verificar tipos**
+- [x] **Paso 2: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores.
 
-- [ ] **Paso 3: Commit**
-
-```bash
-git add src/lib/conectados/actions.ts
-git commit -m "feat(conectados): server actions de publicar, comentar, reaccionar y votar"
-```
+- [x] **Paso 3: Commit** — `35c9380`
 
 ---
 
