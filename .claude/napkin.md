@@ -1,5 +1,19 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-10 (comparar `jsonb ->> clave` contra un valor con `=` da NULL, no false, cuando la clave no existe — silenciaba el aviso de "primera reacción")_
+_Última actualización: 2026-09-10 (wrapper shadcn "de memoria" trae rounded-2xl/border/shadow-md genéricos — no son los tokens AJE del proyecto)_
+
+## Un wrapper shadcn "estándar" no respeta el look AJE por defecto — repasar contra `card.tsx` (2026-09-10)
+
+Al agregar `src/components/ui/popover.tsx` (primer componente que envuelve un
+primitivo Radix en este repo), el código salió con `rounded-2xl border
+border-border ... shadow-md` — la receta genérica de shadcn/ui que cualquier
+LLM produce de memoria. Ninguno de esos tres valores es del proyecto.
+
+1. **No es un bug de lógica, es no revisar contra el sistema de diseño real antes de commitear.** AGENTS.md prohíbe borde de 1px para elevación (solo sombra) y define una escala de radio propia (4/6/8/10/12px vía `--radius`/`--radius-lg`, no el `2xl` de Tailwind sin relación con esa escala) y un token de sombra concreto (`shadow-elevated`, ya usado en `card.tsx`). Un wrapper "que compila y typechequea" no prueba que respete el diseño — compilar nunca fue el problema acá.
+   Do instead: antes de escribir CUALQUIER superficie elevada nueva (popover, dropdown, tooltip, card, modal), abrir `src/components/ui/card.tsx` primero y copiar su receta (`rounded-lg`/`shadow-elevated`, sin borde) en vez de recordar el patrón genérico de shadcn. Si el componente es el PRIMERO de su tipo en el repo (como este Popover, primer uso de Radix), no hay otro archivo igual con qué comparar — comparar contra la superficie elevada más cercana que sí exista (`card.tsx`), no asumir que "es un wrapper de librería, no aplica el look".
+2. **Se agarró en `/code-review` de la propia sesión, no al escribir el código.** La revisión comparó contra `card.tsx` explícitamente porque no había otro wrapper Radix previo — ese paso (buscar la superficie elevada real más parecida cuando no hay precedente exacto) es lo que lo encontró.
+
+---
+
 
 ## `(jsonb ->> clave) = valor` da NULL (no `false`) si la clave no existe — rompe un `if not v_flag` (2026-09-10) — MÁXIMA PRIORIDAD
 

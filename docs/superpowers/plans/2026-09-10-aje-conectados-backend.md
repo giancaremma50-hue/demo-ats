@@ -1137,7 +1137,7 @@ Expected: sin errores.
 - Create: `src/lib/modules.ts`
 - Modify: `src/components/layout/floating-nav.tsx:1-30`
 
-- [ ] **Paso 1: Crear `src/lib/modules.ts`** (mueve `itemsForRole` tal cual desde `floating-nav.tsx`)
+- [x] **Paso 1: Crear `src/lib/modules.ts`** (mueve `itemsForRole` tal cual desde `floating-nav.tsx`)
 
 ```typescript
 import { Briefcase, Home, MessageCircle, Settings, Users } from "lucide-react";
@@ -1200,17 +1200,12 @@ export function activeModuleFor(pathname: string): ModuleConfig {
 }
 ```
 
-- [ ] **Paso 2: Verificar tipos**
+- [x] **Paso 2: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores.
 
-- [ ] **Paso 3: Commit**
-
-```bash
-git add src/lib/modules.ts
-git commit -m "feat(nav): registro de módulos (Reclutamiento AJE + AJE Conectados)"
-```
+- [x] **Paso 3: Commit** — `119018b` (+ `f6cf2ad`: fix de review, `activeModuleFor` ata al objeto `MODULES[0]`, no a un string id)
 
 ---
 
@@ -1219,7 +1214,7 @@ git commit -m "feat(nav): registro de módulos (Reclutamiento AJE + AJE Conectad
 **Files:**
 - Create: `src/components/ui/popover.tsx`
 
-- [ ] **Paso 1: Crear el wrapper shadcn estándar**
+- [x] **Paso 1: Crear el wrapper shadcn estándar**
 
 ```typescript
 "use client";
@@ -1244,7 +1239,9 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-72 rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-md outline-none",
+          // Look AJE (AGENTS.md): elevación con sombra, nunca borde de 1px;
+          // radio de la escala del proyecto (rounded-lg = --radius-lg).
+          "z-50 w-72 rounded-lg bg-popover p-2 text-popover-foreground shadow-elevated outline-none",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
         )}
@@ -1257,22 +1254,19 @@ function PopoverContent({
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent };
 ```
 
-- [ ] **Paso 2: Verificar que `@/lib/utils` (helper `cn`) existe**
+**Corrección de code-review (no estaba en el borrador original):** la primera versión usaba `rounded-2xl border border-border ... shadow-md` — rompe la regla no negociable de AGENTS.md ("la elevación se hace con sombra, no con borde de 1px" + escala de radio propia del proyecto, no un valor de Tailwind sin relación). Corregido a `rounded-lg` (= `--radius-lg` del tema) + `shadow-elevated` (token real del proyecto, `card.tsx` ya lo usa así), sin borde.
+
+- [x] **Paso 2: Verificar que `@/lib/utils` (helper `cn`) existe**
 
 Run: `grep -n "export function cn" src/lib/utils.ts`
 Expected: una coincidencia (es el helper `clsx`+`tailwind-merge` estándar de shadcn). Si no existe, buscar el nombre real del helper de clases del proyecto con `grep -rn "clsx\|tailwind-merge" src/lib` y usar ese en vez de inventar uno nuevo.
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores.
 
-- [ ] **Paso 4: Commit**
-
-```bash
-git add src/components/ui/popover.tsx
-git commit -m "feat(ui): agrega wrapper de Popover (radix ya instalado)"
-```
+- [x] **Paso 4: Commit** — `60d0a74` (+ fix de review del look AJE en el mismo día)
 
 ---
 
