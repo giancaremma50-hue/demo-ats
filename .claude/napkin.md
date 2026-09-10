@@ -1,5 +1,16 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-09 (el primer overlay de menciones tenía un bug real de largo — corregido)_
+_Última actualización: 2026-09-09 (segundo bug del overlay de menciones: la negrita en vivo desalinea el cursor por ancho, no por largo)_
+
+## El overlay de menciones tuvo un SEGUNDO bug: negrita = más ancho (2026-09-09)
+
+Con el bug de largo (punto de abajo) ya resuelto, el usuario probó de nuevo y
+encontró otro: "el cursor está incrustado dentro de la palabra".
+
+1. **BUG REAL, distinto al anterior y más sutil: la técnica de "textarea con overlay" exige que las dos capas tengan el MISMO ANCHO renderizado, no solo el mismo número de caracteres — y `font-semibold` (negrita) en el overlay lo rompe.** Medido en este mismo navegador: "Carlos Mauricio Sandoval" en peso normal mide 161.97px, la MISMA cadena en `font-semibold` mide 170.38px — 8.4px de más para un nombre de 24 caracteres. El `<textarea>` invisible no puede tener negrita parcial (es un elemento de texto plano, un solo peso para todo su contenido), así que su cursor se posiciona según el ancho en peso NORMAL — pero el overlay pintaba ese mismo tramo más ancho (en negrita), y todo el texto que viniera después quedaba corrido respecto al cursor real. Un bug de LARGO de string (el de abajo) se ve inmediato; uno de ANCHO renderizado recién se nota después de escribir varios caracteres más allá de la mención — por eso pasó una ronda de prueba sin que se notara.
+   Do instead: en un "textarea con overlay", cualquier estilo que la capa visual aplique a un tramo tiene que preservar el ancho exacto que el textarea (con un solo peso/tracking para todo) le daría a esos mismos caracteres — practicamente esto excluye `font-weight`, `letter-spacing`, y cualquier familia tipográfica distinta para un tramo. Antes de estilizar un tramo en un overlay de este tipo, medir con `getBoundingClientRect().width` el mismo string en ambos estilos y confirmar 0px de diferencia — no asumir que "solo cambiar el peso" es inocuo.
+2. **Resuelto quitando la negrita del resaltado EN VIVO — queda solo el color de acento (`text-accent`, sin `font-semibold`), que no cambia el ancho de nada.** La negrita de verdad se mantiene en `NoteBody`, sobre la nota ya publicada (texto estático, sin cursor que alinear contra nada). Es una limitación real y aceptada de esta técnica, no un descuido: un textarea con overlay puede resaltar POR COLOR mientras se escribe, no por peso — para negrita en vivo de verdad hace falta un editor `contentEditable` (mucho más grande, se evaluó y se descartó por alcance al principio de esta sesión).
+
+---
 
 ## El primer overlay de menciones tenía un bug real: el cursor se corría (2026-09-09)
 

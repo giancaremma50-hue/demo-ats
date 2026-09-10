@@ -267,18 +267,20 @@ export function NoteForm({
       <input type="hidden" name="body" value={serializar(body, mentions)} />
       <div className="relative">
         {/*
-         * Negrita EN VIVO mientras se escribe (pedido del usuario,
-         * 2026-09-09). Un <textarea> no puede pintar texto parcialmente en
-         * negrita — es la técnica de "textarea con overlay": este div de
-         * atrás pinta el MISMO texto que hay en el textarea (nunca el token
-         * completo, ver el comentario de `body` arriba) con los tramos de
-         * `mentions` en negrita, y el textarea de encima queda con SU
-         * PROPIO texto transparente — el cursor (`caret-color`) sigue
-         * visible, solo las letras se vuelven invisibles porque lo que se
-         * LEE es este div de abajo. Mismo font/padding/line-height en los
-         * dos a propósito, y el mismo STRING exacto: si difieren en
-         * contenido o longitud, el cursor real cae en un lugar y el texto
-         * pintado en otro — el bug que tenía la versión anterior.
+         * Resaltado EN VIVO mientras se escribe (pedido del usuario,
+         * 2026-09-09) — color de acento, NUNCA negrita acá (ver el
+         * comentario junto a `text-accent` más abajo: cambia el ancho del
+         * texto y desalinea el cursor). La negrita real queda para
+         * `NoteBody`, sobre la nota ya publicada. Técnica de "textarea con
+         * overlay": este div de atrás pinta el MISMO texto que hay en el
+         * textarea (nunca el token completo, ver el comentario de `body`
+         * arriba), y el textarea de encima queda con SU PROPIO texto
+         * transparente — el cursor (`caret-color`) sigue visible, solo las
+         * letras se vuelven invisibles porque lo que se LEE es este div de
+         * abajo. Mismo font/padding/line-height/font-weight en los dos a
+         * propósito, y el mismo STRING exacto: si difieren en contenido,
+         * longitud, O ANCHO RENDERIZADO, el cursor real cae en un lugar y
+         * el texto pintado en otro — los dos bugs que tuvo esto antes.
          */}
         <div
           ref={highlightRef}
@@ -287,9 +289,20 @@ export function NoteForm({
         >
           {segmentos.map((s, i) =>
             s.esMencion ? (
-              <strong key={i} className="font-semibold text-accent">
+              // Color, NUNCA font-weight/letter-spacing/font distinto: una
+              // negrita real es más ANCHA que el mismo texto en peso normal
+              // (medido: ~8px de más en un nombre de 24 caracteres) — el
+              // textarea invisible mide el ancho de SU texto en peso normal
+              // (un <textarea> no puede tener negrita parcial), así que
+              // cualquier cambio de ancho acá desalinea el cursor real
+              // respecto al texto pintado, más se nota cuanto más se escribe
+              // después de la mención. Encontrado por el usuario 2026-09-09:
+              // "el cursor está incrustado dentro de la palabra". La negrita
+              // de verdad queda para NoteBody, sobre la nota ya publicada,
+              // donde no hay cursor que alinear contra nada.
+              <span key={i} className="text-accent">
                 {s.texto}
-              </strong>
+              </span>
             ) : (
               <span key={i}>{s.texto}</span>
             ),
