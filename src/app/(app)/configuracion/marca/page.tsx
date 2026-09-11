@@ -13,7 +13,6 @@ export default async function MarcaPage() {
     platform_name: "Demo AJE",
     accent_color: "#1f4d3d",
     logo_url: null,
-    logo_dark_url: null,
     login_image_url: null,
     login_video_url: null,
     careers_headline: null,
@@ -31,31 +30,9 @@ export default async function MarcaPage() {
         </p>
 
         <div className="flex flex-col gap-5">
-          <BrandImageField
-            field="logo_url"
-            label="Logo para fondo claro"
-            hint="PNG o WebP, mínimo 240 px de ancho"
-            currentUrl={org.logo_url}
-          />
-          <BrandImageField
-            field="logo_dark_url"
-            label="Logo para fondo oscuro"
-            hint="Se usa en el menú flotante y correos"
-            currentUrl={org.logo_dark_url}
-            dark
-          />
-          <BrandImageField
-            field="login_image_url"
-            label="Imagen del inicio de sesión"
-            hint="Recomendado 1200 × 1600 px, vertical"
-            currentUrl={org.login_image_url}
-          />
-          <BrandVideoField
-            field="login_video_url"
-            label="Video de fondo del login"
-            hint="Reemplaza a la foto de fondo si subes uno — se reproduce en bucle, sin sonido. MP4 o WebM, máx. 20 MB, ideal 10-15 segundos."
-            currentUrl={org.login_video_url}
-          />
+          <BrandImageField field="logo_url" currentUrl={org.logo_url} />
+          <BrandImageField field="login_image_url" currentUrl={org.login_image_url} />
+          <BrandVideoField field="login_video_url" currentUrl={org.login_video_url} />
 
           <div className="border-t border-border pt-5">
             <h3 className="font-serif text-lg">Bolsa de empleo pública</h3>
@@ -63,18 +40,8 @@ export default async function MarcaPage() {
               Foto o video de portada de /empleos — si subes un video, reemplaza a la foto.
             </p>
             <div className="flex flex-col gap-5">
-              <BrandImageField
-                field="careers_cover_image_url"
-                label="Foto de portada de la bolsa de empleo"
-                hint="Recomendado 1920 × 1080 px o más ancho, horizontal"
-                currentUrl={org.careers_cover_image_url}
-              />
-              <BrandVideoField
-                field="careers_cover_video_url"
-                label="Video de portada de la bolsa de empleo"
-                hint="Reemplaza a la foto de portada si subes uno — se reproduce en bucle, sin sonido. MP4 o WebM, máx. 20 MB, ideal 10-15 segundos."
-                currentUrl={org.careers_cover_video_url}
-              />
+              <BrandImageField field="careers_cover_image_url" currentUrl={org.careers_cover_image_url} />
+              <BrandVideoField field="careers_cover_video_url" currentUrl={org.careers_cover_video_url} />
             </div>
           </div>
 

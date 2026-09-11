@@ -59,6 +59,16 @@
 
       <!-- Formulario -->
       <div class="panel" style="padding: 26px;">
+        <!-- ALCANCE DE ESTE ARTBOARD (actualizado 2026-09-11): cubre solo el
+             bloque de identidad visual tal como se diseñó en su fase. La
+             pantalla real (/configuracion/marca) tiene hoy 5 puntos de subida
+             — logo, imagen y video del inicio de sesión, foto y video de
+             portada de la bolsa de empleo — más las leyendas de la bolsa
+             (careers_headline/careers_intro). Que un campo no esté acá NO es
+             una regresión de la implementación; es que este canvas no se
+             rediseñó al agregarlos. El campo "Logo para fondo oscuro" sí se
+             eliminó del producto (ver .claude/napkin.md, 2026-09-11) y por eso
+             salió también de acá. -->
         <h2 class="serif" style="margin: 0 0 4px; font-size: 24px;">Identidad visual</h2>
         <p style="margin: 0 0 26px; font-size: 13px; line-height: 1.6; color: #6b6862;">Los cambios se ven a la derecha antes de guardarse. Nadie los ve hasta que confirmes.</p>
 
@@ -70,34 +80,17 @@
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            <label class="label">Logo para fondo claro</label>
+            <label class="label">Logo</label>
             <div class="drop">
               <div style="flex: none; width: 62px; height: 44px; border: 1px solid #e4e1da; background: #ffffff; display: flex; align-items: center; justify-content: center;">
                 <span class="serif" style="font-size: 17px;">Atrio</span>
               </div>
               <div style="flex: 1;">
-                <p class="num" style="margin: 0; font-size: 13px;">logo-claro.svg · 8 KB</p>
-                <p style="margin: 3px 0 0; font-size: 12px; color: #6b6862;">SVG o PNG, mínimo 240 px de ancho</p>
+                <p class="num" style="margin: 0; font-size: 13px;">logo.png · 24 KB</p>
+                <p style="margin: 3px 0 0; font-size: 12px; color: #6b6862;">PNG o WebP, mínimo 240 px de ancho</p>
               </div>
               <button style="height: 32px; padding: 0 12px; border: 1px solid #e4e1da; border-radius: 4px; background: #ffffff; font-family: inherit; font-size: 12px; cursor: pointer;">Reemplazar</button>
-              <button style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #e4e1da; border-radius: 4px; background: #ffffff; cursor: pointer;" aria-label="Quitar logo claro">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b3261e" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <label class="label">Logo para fondo oscuro</label>
-            <div class="drop">
-              <div style="flex: none; width: 62px; height: 44px; border: 1px solid #14140f; background: #14140f; display: flex; align-items: center; justify-content: center;">
-                <span class="serif" style="font-size: 17px; color: #faf9f7;">Atrio</span>
-              </div>
-              <div style="flex: 1;">
-                <p class="num" style="margin: 0; font-size: 13px;">logo-oscuro.svg · 8 KB</p>
-                <p style="margin: 3px 0 0; font-size: 12px; color: #6b6862;">Se usa en el menú flotante y correos</p>
-              </div>
-              <button style="height: 32px; padding: 0 12px; border: 1px solid #e4e1da; border-radius: 4px; background: #ffffff; font-family: inherit; font-size: 12px; cursor: pointer;">Reemplazar</button>
-              <button style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #e4e1da; border-radius: 4px; background: #ffffff; cursor: pointer;" aria-label="Quitar logo oscuro">
+              <button style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid #e4e1da; border-radius: 4px; background: #ffffff; cursor: pointer;" aria-label="Quitar logo">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b3261e" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
