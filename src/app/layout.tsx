@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { Geist, Instrument_Serif } from "next/font/google";
 import { Toaster } from "sonner";
-import { MotionConfig } from "framer-motion";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getPublicOrganization } from "@/lib/organizations/get-organization";
 import "./globals.css";
@@ -43,10 +42,7 @@ export default async function RootLayout({
   return (
     <html lang="es" style={accentStyle}>
       <body className={`${geist.variable} ${instrumentSerif.variable}`}>
-        {/* reducedMotion="user" respeta prefers-reduced-motion también para
-            las animaciones de framer-motion (transform/opacity vía WAAPI),
-            que la regla CSS de arriba no puede alcanzar. */}
-        <MotionConfig reducedMotion="user">{children}</MotionConfig>
+        {children}
         <Toaster position="top-center" richColors closeButton />
         {/* Sin esto no había forma de medir si la app se siente lenta o
             no — todo era "se siente lento" sin datos reales. Usa

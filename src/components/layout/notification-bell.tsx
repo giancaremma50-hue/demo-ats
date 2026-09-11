@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Bell } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { NotificationItem } from "./notification-item";
 import { Card } from "@/components/ui/card";
+import type { Database } from "@/lib/supabase/database.types";
 import type { NotificationItem as NotificationItemType } from "@/lib/notifications/get-notifications";
 
 type NotificationRow = {
@@ -16,6 +18,64 @@ type NotificationRow = {
   read_at: string | null;
   created_at: string;
 };
+
+/** Extraído del efecto para poder abrirlo y cerrarlo (pestaña oculta) sin repetir los dos `.on()`. */
+function subscribeToNotifications(
+  supabase: SupabaseClient<Database>,
+  profileId: string,
+  setItems: Dispatch<SetStateAction<NotificationItemType[]>>,
+  setUnreadCount: Dispatch<SetStateAction<number>>,
+) {
+  return supabase
+    .channel(`notifications:${profileId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "notifications", filter: `recipient_id=eq.${profileId}` },
+      (payload) => {
+        const row = payload.new as NotificationRow;
+        setItems((current) =>
+          [
+            {
+              id: row.id,
+              type: row.type,
+              title: row.title,
+              body: row.body,
+              url: row.url,
+              readAt: row.read_at,
+              createdAt: row.created_at,
+            },
+            ...current,
+          ].slice(0, 8),
+        );
+        setUnreadCount((count) => count + 1);
+      },
+    )
+    .on(
+      // markAsRead/markAllAsRead solo tocan filas con read_at aún null (ver
+      // mark-read-actions.ts), así que cada UPDATE que llega aquí es
+      // siempre una transición real de no-leída a leída — sin esto, el
+      // badge se queda desactualizado en cuanto el usuario marca como
+      // leído desde /notificaciones, ya que ese layout no se remonta al
+      // navegar del lado del cliente.
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "notifications", filter: `recipient_id=eq.${profileId}` },
+      (payload) => {
+        const row = payload.new as NotificationRow;
+        if (!row.read_at) return;
+        setItems((current) => {
+          const existing = current.find((i) => i.id === row.id);
+          // Si ya estaba marcada como leída en este mismo cliente (clic
+          // local que ya descontó el badge de forma optimista), el eco de
+          // Realtime no debe volver a descontar.
+          if (!existing || !existing.readAt) {
+            setUnreadCount((count) => Math.max(0, count - 1));
+          }
+          return existing ? current.map((i) => (i.id === row.id ? { ...i, readAt: row.read_at } : i)) : current;
+        });
+      },
+    )
+    .subscribe();
+}
 
 export function NotificationBell({
   profileId,
@@ -32,58 +92,31 @@ export function NotificationBell({
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`notifications:${profileId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `recipient_id=eq.${profileId}` },
-        (payload) => {
-          const row = payload.new as NotificationRow;
-          setItems((current) =>
-            [
-              {
-                id: row.id,
-                type: row.type,
-                title: row.title,
-                body: row.body,
-                url: row.url,
-                readAt: row.read_at,
-                createdAt: row.created_at,
-              },
-              ...current,
-            ].slice(0, 8),
-          );
-          setUnreadCount((count) => count + 1);
-        },
-      )
-      .on(
-        // markAsRead/markAllAsRead solo tocan filas con read_at aún null
-        // (ver mark-read-actions.ts), así que cada UPDATE que llega aquí es
-        // siempre una transición real de no-leída a leída — sin esto, el
-        // badge se queda desactualizado en cuanto el usuario marca como
-        // leído desde /notificaciones, ya que ese layout no se remonta al
-        // navegar del lado del cliente.
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notifications", filter: `recipient_id=eq.${profileId}` },
-        (payload) => {
-          const row = payload.new as NotificationRow;
-          if (!row.read_at) return;
-          setItems((current) => {
-            const existing = current.find((i) => i.id === row.id);
-            // Si ya estaba marcada como leída en este mismo cliente (clic
-            // local que ya descontó el badge de forma optimista), el eco de
-            // Realtime no debe volver a descontar.
-            if (!existing || !existing.readAt) {
-              setUnreadCount((count) => Math.max(0, count - 1));
-            }
-            return existing ? current.map((i) => (i.id === row.id ? { ...i, readAt: row.read_at } : i)) : current;
-          });
-        },
-      )
-      .subscribe();
+    // Se cierra el canal con la pestaña oculta y se reabre al volver — sin
+    // esto, cada pestaña de fondo mantenía su WebSocket de Realtime abierto
+    // sin ningún uso real. Al reabrir no se recupera lo que haya llegado
+    // mientras tanto (Realtime no reproduce eventos pasados); es el mismo
+    // costo aceptado que ya tiene cualquier recarga de página. Hallado en
+    // la auditoría de performance.
+    let channel: ReturnType<typeof subscribeToNotifications> | null = null;
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        if (channel) {
+          supabase.removeChannel(channel);
+          channel = null;
+        }
+      } else if (!channel) {
+        channel = subscribeToNotifications(supabase, profileId, setItems, setUnreadCount);
+      }
+    }
+
+    if (!document.hidden) channel = subscribeToNotifications(supabase, profileId, setItems, setUnreadCount);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [profileId]);
 

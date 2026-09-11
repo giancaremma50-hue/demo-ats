@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
 import { markTutorialSeen } from "@/lib/profile/tutorial-actions";
 
 /**
@@ -46,29 +44,42 @@ export function OnboardingTour({ hasSeenTutorial }: { hasSeenTutorial: boolean }
     }));
     if (steps.length === 0) return;
 
-    const tour = driver({
-      showProgress: true,
-      nextBtnText: "Siguiente",
-      prevBtnText: "Atrás",
-      doneBtnText: "Listo",
-      steps: [
-        {
-          popover: {
-            title: "Bienvenido a Talento AJE",
-            description: "Un recorrido de un minuto antes de empezar. Puedes cerrarlo cuando quieras.",
+    // driver.js (JS + CSS) solo se descarga si el tour de verdad va a
+    // correr — antes se importaba estático acá, así que TODA ruta
+    // autenticada lo cargaba aunque el tour ya se hubiera visto una vez
+    // (el caso normal). Hallado en la auditoría de performance.
+    let cancelado = false;
+    Promise.all([import("driver.js"), import("driver.js/dist/driver.css")]).then(([{ driver }]) => {
+      if (cancelado) return;
+
+      const tour = driver({
+        showProgress: true,
+        nextBtnText: "Siguiente",
+        prevBtnText: "Atrás",
+        doneBtnText: "Listo",
+        steps: [
+          {
+            popover: {
+              title: "Bienvenido a Talento AJE",
+              description: "Un recorrido de un minuto antes de empezar. Puedes cerrarlo cuando quieras.",
+            },
           },
+          ...steps,
+        ],
+        // Se marca al cerrar el tour de cualquier forma (terminarlo o
+        // saltarlo) — no solo al completar el último paso — para que a
+        // nadie le vuelva a aparecer en su siguiente visita.
+        onDestroyed: () => {
+          markTutorialSeen();
         },
-        ...steps,
-      ],
-      // Se marca al cerrar el tour de cualquier forma (terminarlo o
-      // saltarlo) — no solo al completar el último paso — para que a nadie
-      // le vuelva a aparecer en su siguiente visita.
-      onDestroyed: () => {
-        markTutorialSeen();
-      },
+      });
+
+      tour.drive();
     });
 
-    tour.drive();
+    return () => {
+      cancelado = true;
+    };
   }, [hasSeenTutorial]);
 
   return null;

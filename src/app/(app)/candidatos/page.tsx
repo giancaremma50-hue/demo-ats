@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth/dal";
-import { getCandidateRows, type CandidateFilters } from "@/lib/candidates/get-candidates";
+import { getCandidateRows, encodeCandidateCursor, decodeCandidateCursor, type CandidateFilters } from "@/lib/candidates/get-candidates";
 import { getSegments } from "@/lib/candidates/get-segments";
 import { getJobTitlesForViewer } from "@/lib/jobs/get-jobs";
 import { SaveSegmentButton } from "@/components/candidatos/save-segment-button";
@@ -11,7 +11,7 @@ import { CandidateFiltersSchema } from "@/lib/candidates/schema";
 export default async function CandidatosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ job_id?: string; stage_type?: string; status?: string; q?: string }>;
+  searchParams: Promise<{ job_id?: string; stage_type?: string; status?: string; q?: string; cursor?: string }>;
 }) {
   const profile = await requireProfile();
   const params = await searchParams;
@@ -21,12 +21,26 @@ export default async function CandidatosPage({
   // el formulario para guardar un segmento, una sola fuente de verdad.
   const parsedFilters = CandidateFiltersSchema.safeParse(params);
   const filters: CandidateFilters = parsedFilters.success ? parsedFilters.data : {};
+  // `cursor` es de esta página, no del schema de filtros/segmentos (ver
+  // get-candidates.ts) — se lee crudo de la URL, sin validar formato: un
+  // valor roto (alguien lo escribió a mano) simplemente no calza contra
+  // ninguna fila y esta página muestra "sin resultados", nada peor.
+  const cursor = decodeCandidateCursor(params.cursor);
 
-  const [{ rows: candidates, capped }, segments, jobs] = await Promise.all([
-    getCandidateRows(filters),
+  const [{ rows: candidates, capped, nextCursor }, segments, jobs] = await Promise.all([
+    getCandidateRows(filters, cursor),
     getSegments(profile.organization_id).catch(() => []),
     getJobTitlesForViewer().catch(() => []),
   ]);
+
+  // Para el enlace de "página siguiente": los mismos filtros de la URL
+  // actual (derivados de `filters`, una sola fuente de verdad — nunca una
+  // lista de campos copiada a mano que se desincroniza si el schema gana un
+  // filtro nuevo), con el cursor nuevo en vez del viejo.
+  const nextPageParams = new URLSearchParams(
+    Object.entries(filters).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""),
+  );
+  if (nextCursor) nextPageParams.set("cursor", encodeCandidateCursor(nextCursor));
 
   return (
     <div>
@@ -126,9 +140,14 @@ export default async function CandidatosPage({
             </tbody>
           </table>
           {capped && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Mostrando los {candidates.length} más recientes — afina la búsqueda o los filtros para ver el resto.
-            </p>
+            <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+              <span>Mostrando los {candidates.length} más recientes.</span>
+              {nextCursor && (
+                <Link href={`/candidatos?${nextPageParams.toString()}`} className="font-medium text-foreground underline">
+                  Página siguiente
+                </Link>
+              )}
+            </div>
           )}
         </div>
       )}

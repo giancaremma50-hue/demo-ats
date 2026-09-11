@@ -394,6 +394,28 @@ la pida explícitamente.
 administrativas, ninguna en el camino caliente de `/api/postular`). Agregados
 vía migración `indices_fk_faltantes` — puramente aditivo, no toca RLS.
 
+### 28. ~~8 hallazgos de la auditoría de performance~~ — Resuelto 2026-09-11
+
+N+1 en `scheduleInterview` (una consulta por destinatario en vez de una
+sola), `driver.js` cargado estático en dos lugares (tour de onboarding y
+botón de ayuda del wizard, ahora `import()` dinámico), `MotionConfig` de
+framer-motion envolviendo también las rutas públicas (bajado al layout
+`(app)`, su único consumidor real), filtro de `stage_type` en `/candidatos`
+aplicado después de `.limit()` (ventana cruda ampliada, sin tocar el join
+delicado de `job_stages`), esa misma página sin paginación real (cursor
+`applied_at`+`id`, "Página siguiente"), y el canal de Realtime de la
+campana de notificaciones sin pausar en pestaña oculta. El hallazgo del
+video del hero sin `poster` resultó ya mitigado por un cambio de otra
+sesión el mismo día. Detalle completo, incluido el bug de cursor sin
+desempate que salió en el `/code-review` de este mismo lote, en
+`.claude/napkin.md`.
+
+No verificado en navegador contra datos con volumen real (mismo límite que
+el pendiente #17) — sí verificado con `npm run build`, `npm test`,
+`typecheck`/`lint` limpios, `/code-review`, y una revisión visual en
+navegador de `/login` y `/empleos` (rutas públicas, sin errores de
+consola).
+
 ### 25. Pendiente, requiere el dashboard — no lo puede hacer el agente
 
 - **Leaked password protection** (Supabase Auth → Policies) sigue

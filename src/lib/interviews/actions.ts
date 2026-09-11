@@ -7,7 +7,7 @@ import { sendEmail } from "@/lib/email/send-email";
 import { notify, notifyBestEffort, getEmailContext } from "@/lib/notifications/notify";
 import { EntrevistaProgramadaEmail } from "@/emails/entrevista-programada";
 import { EntrevistaAgendadaInternoEmail } from "@/emails/entrevista-agendada-interno";
-import { isProfileAssignable } from "@/lib/applications/get-applications";
+import { getAssignableProfiles } from "@/lib/applications/get-applications";
 import { canDecideApplication, canWriteApplication } from "@/lib/applications/permissions";
 import { InterviewSchema, InterviewStatusSchema } from "./schema";
 
@@ -125,10 +125,14 @@ export async function scheduleInterview(
   // El checklist del wizard ya solo ofrece gente con acceso real a la
   // vacante, pero eso es solo la UI — mismo patrón que assigned_to en
   // Tareas (Fase 10). Se revalida cada destinatario, no solo el primero.
-  for (const attendeeId of parsed.data.attendee_ids) {
-    if (!(await isProfileAssignable(attendeeId, application.job_id, profile.organization_id))) {
-      return { error: "Uno de los destinatarios no tiene acceso a esta vacante." };
-    }
+  // Una sola consulta para la lista completa, no una por destinatario:
+  // isProfileAssignable() vuelve a pedir esta misma lista cada vez que se
+  // llama, así que hacerlo dentro del loop era N consultas idénticas para
+  // N invitados. Hallado en la auditoría de performance.
+  const assignable = await getAssignableProfiles(application.job_id, profile.organization_id);
+  const assignableIds = new Set(assignable.map((p) => p.id));
+  if (parsed.data.attendee_ids.some((id) => !assignableIds.has(id))) {
+    return { error: "Uno de los destinatarios no tiene acceso a esta vacante." };
   }
 
   const location = parsed.data.location ?? null;

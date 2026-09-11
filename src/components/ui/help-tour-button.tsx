@@ -1,8 +1,6 @@
 "use client";
 
 import { HelpCircle } from "lucide-react";
-import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
 import { ActionButton } from "@/components/ui/action-button";
 
 export type HelpTourStep = { selector: string; title: string; description: string };
@@ -16,12 +14,17 @@ export type HelpTourStep = { selector: string; title: string; description: strin
  * ya no se acuerda de nada.
  */
 export function HelpTourButton({ intro, steps }: { intro?: { title: string; description: string }; steps: HelpTourStep[] }) {
-  function start() {
+  // driver.js (JS + CSS) se descarga recién al primer clic, no en cada
+  // carga de las 8 páginas del wizard que montan este botón — la mayoría de
+  // las visitas nunca lo abre. Hallado en la auditoría de performance.
+  async function start() {
     const found = steps.filter((s) => document.querySelector(s.selector)).map((s) => ({
       element: s.selector,
       popover: { title: s.title, description: s.description },
     }));
     if (found.length === 0) return;
+
+    const [{ driver }] = await Promise.all([import("driver.js"), import("driver.js/dist/driver.css")]);
 
     const tour = driver({
       showProgress: true,

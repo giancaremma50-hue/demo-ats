@@ -7,7 +7,7 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (una barra que se esconde deja rastro, y el rastro es ELLA plegada; y paginación real del kanban, con 3 bugs de concurrencia encontrados por `/code-review`)_
+_Última actualización: 2026-09-11 (8 hallazgos de la auditoría de performance corregidos — un cursor de paginación sin desempate de `id` podía perder filas sembradas en el mismo instante para siempre)_
 
 ## Una barra que se esconde tiene que dejar rastro, y el rastro tiene que ser ELLA (2026-09-11) — MÁXIMA PRIORIDAD
 
@@ -113,6 +113,97 @@ de un cálculo o de un comentario, comprobar si hay `viewport-fit=cover`.** Y
 al declararlo algún día, hay que revisar TODA pantalla que hoy asume un
 viewport ya recortado, porque pasarían a pintarse debajo de la barra de inicio.
 
+## 8 hallazgos de performance corregidos — el mismo bug de cursor sin desempate que el kanban, esta vez con evidencia de que es real (2026-09-11)
+
+Los 8 hallazgos de la auditoría de performance del 2026-09-10 (N+1 en
+`scheduleInterview`, `driver.js` cargado estático en dos lugares,
+`MotionConfig` envolviendo rutas públicas, filtro de etapa después de
+`.limit()` en `/candidatos`, sin paginación real ahí, canal de Realtime sin
+pausar). Los 6 primeros fueron directos; el de `/candidatos` destapó algo
+que ya estaba latente en el kanban.
+
+1. **N+1 de `isProfileAssignable` en un loop — `getAssignableProfiles()` una
+   sola vez, membresía contra un `Set`.** Sin sorpresas: la función ya
+   existía, `isProfileAssignable()` la llama por dentro cada vez, así que
+   `for (attendeeId of ids) await isProfileAssignable(...)` eran N consultas
+   idénticas por N invitados.
+2. **`driver.js` (JS + CSS) a `import()` dinámico dentro del efecto/handler
+   de clic, no estático arriba del archivo** — en `onboarding-tour.tsx` y
+   `help-tour-button.tsx` (este último montado en 8 páginas del wizard). Se
+   confirmó contra la documentación local de Next
+   (`node_modules/next/dist/docs/01-app/02-guides/lazy-loading.md`) que
+   `import()` para librerías externas dentro de un handler es el patrón
+   oficial documentado (ejemplo con `fuse.js`) — no inventado. Lo que NO se
+   pudo verificar en este entorno: si el CSS se aplica antes de que
+   `tour.drive()` pinte (requiere disparar el tour real, y eso exige login
+   real de Google). Peor caso aceptado: un parpadeo sin estilo de una
+   librería que antes ni se cargaba la mayoría de las veces — mejor que
+   cargarla siempre.
+3. **`MotionConfig` bajó del layout raíz al layout `(app)`** — el único
+   consumidor real de framer-motion es `FloatingNav`, exclusivo de ese
+   layout. Rutas públicas (`/login`, `/empleos`, `/privacidad`) ya no cargan
+   ni ejecutan el provider. Verificado en navegador: las dos rutas públicas
+   siguen renderizando igual, sin errores de consola.
+4. **Canal de Realtime de `notification-bell.tsx` se cierra con
+   `document.visibilitychange`** — antes quedaba abierto indefinidamente en
+   cualquier pestaña de fondo. Al reabrir no se recupera lo que haya
+   llegado mientras la pestaña estuvo oculta (Realtime no reproduce eventos
+   pasados) — mismo costo que ya tiene cualquier recarga de página, no un
+   caso nuevo.
+5. **El hallazgo del video del hero (poster ausente) resultó ya mitigado.**
+   La auditoría original lo marcó ALTO ("héroe en blanco mientras el video
+   buffer"), pero `careers-hero.tsx` (construido por otra sesión el mismo
+   día, después de la auditoría) y `/login` ya ponen un color de fondo
+   sólido (`backgroundColor: accentColor` / `bg-accent`) DETRÁS del
+   `&lt;video&gt;` — un video sin `poster` renderiza transparente, así que ese
+   color de acento se ve durante el buffer en vez de blanco/nada. Do
+   instead: antes de aplicar un fix a un hallazgo de auditoría, releer el
+   código actual — puede que otro cambio, sin saberlo, ya haya cerrado el
+   hueco real.
+6. **El filtro de `stage_type` en `/candidatos` seguía en JS después de
+   `.limit()`, a propósito — no se tocó el join (`job_stages` sin
+   `!inner`), por el mismo motivo de RLS que ya documenta Fase 5.** En vez
+   de arriesgar el join delicado sin RLS diferenciada de verdad contra la
+   que probarlo en este entorno, se amplió la ventana cruda a 500 filas
+   antes de filtrar (`RAW_LIMIT_WITH_STAGE_FILTER`) — reduce mucho la
+   chance de perder coincidencias reales, sin eliminar el límite teórico.
+7. **`/candidatos` ganó paginación real (cursor `applied_at`+`id`,
+   "Página siguiente") — y el `/code-review` sobre ESE cambio encontró el
+   mismo bug de cursor sin desempate que el kanban ya había aceptado como
+   "astronómicamente improbable".** Acá no lo era: el reviewer señaló que
+   varias postulaciones sembradas en el MISMO INSERT en lote comparten el
+   mismo `applied_at` exacto — exactamente cómo se cargan los datos de demo
+   de este proyecto. Con cursor de una sola columna, `.lt()` estricto nunca
+   vuelve a igualar ese valor: cualquier fila con ese mismo timestamp que no
+   saliera ya en la página anterior desaparecía para siempre.
+   Do instead: **"astronómicamente improbable" depende de CÓMO se cargan
+   los datos reales, no es una propiedad universal de un timestamp.** Un
+   proyecto que siembra datos en lote (seeds, migraciones, imports masivos)
+   con `now()` de Postgres puede repetir el mismo instante en decenas de
+   filas — la excepción que un cursor de una sola columna asume que no pasa
+   nunca. Se agregó `id` como desempate acá (`.or()` con `and()` anidado,
+   `applied_at.lt.X,and(applied_at.eq.X,id.lt.Y)`) — el kanban (fase
+   anterior de esta misma auditoría, mismo tipo de cursor) se quedó SIN el
+   fix, a propósito: no se tocó código que ya estaba en producción y
+   verificado, sin que el usuario pidiera revisarlo específicamente. Mismo
+   hueco, pendiente ahí si alguna vez se nota.
+8. **Verificado que dos `.or()` en la misma consulta no chocan, leyendo el
+   código fuente de `postgrest-js` en vez de asumirlo.** `or(filters, {
+   referencedTable })` arma la clave del query param como
+   `` `${referencedTable}.or` `` si hay `referencedTable`, o `"or"` a secas
+   si no — dos claves DISTINTAS (`or` para el cursor sobre `applications`,
+   `candidates.or` para la búsqueda por nombre sobre el embed) nunca
+   compiten por el mismo parámetro. Sin leer el código fuente (`grep` sobre
+   `node_modules/@supabase/postgrest-js/dist/index.mjs`), esto habría sido
+   una apuesta sobre un comportamiento de PostgREST no documentado con
+   certeza en ningún lado — encontrar la implementación real zanjó la duda
+   en dos minutos en vez de arriesgar el filtro de búsqueda existente a
+   ciegas.
+
+**Fuera de esta pasada, anotado para después:** `comment-thread.tsx` y
+`conectados-feed.tsx` (AJE Conectados) tienen el mismo patrón de canal de
+Realtime sin pausar en pestaña oculta que `notification-bell.tsx` tenía —
+no se tocaron, no se pidieron.
 
 ## Paginación real del kanban: 3 bugs de estado que solo salen con volumen o con dos acciones casi simultáneas (2026-09-11)
 
