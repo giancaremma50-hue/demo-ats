@@ -1,5 +1,54 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-11 (degradar un token de mención a "texto plano" sin limpiarlo lo deja RE-FORMARSE en otro token válido — el arreglo de suplantación traía su propio bypass)_
+_Última actualización: 2026-09-11 (una columna denormalizada tipo `author_avatar_url` es una FOTO DEL MOMENTO, no el dato — mostrarla directo hace que cambiar tu foto no se refleje en nada de lo que publicaste antes)_
+
+## Una columna denormalizada que copia datos de `profiles` no se muestra nunca directo (2026-09-11) — MÁXIMA PRIORIDAD
+
+Reporte real: "ya cargué mi foto de perfil pero no se ve en las
+publicaciones". La foto SÍ estaba en `profiles.avatar_url` y sí se veía en el
+encabezado; lo que se veía en el muro era `posts.author_avatar_url`, una copia
+escrita al momento de publicar — y esa copia traía el avatar viejo que genera
+Google automáticamente (el círculo de color con la inicial, que se confunde
+fácil con un respaldo de la propia app).
+
+1. **`posts.author_avatar_url` / `post_comments.author_avatar_url` /
+   `author_name` existen para sobrevivir al borrado del perfil
+   (`author_id` es `on delete set null`), no para ser lo que se pinta.**
+   Mostrarlas directo significa que cualquier cambio de foto (o de nombre) no
+   se refleja en nada de lo ya publicado, y lo peor: si la persona BORRA su
+   foto, `removeAvatar` elimina también el archivo del bucket, así que la copia
+   apunta a un archivo que ya no existe y queda una imagen rota.
+   Do instead: resolver contra el perfil actual AL LEER, con el embed de
+   PostgREST en la misma consulta (`.select("*, autor:profiles(avatar_url)")`),
+   y dejar la copia solo como respaldo. Una segunda consulta manual no hace
+   falta y además cuesta un viaje por feed y otro por cada hilo de comentarios
+   que alguien expanda.
+2. **El embed distingue dos estados que un `??` confunde.** `autor === null`
+   = no hay perfil (recién ahí vale la copia); `autor = { avatar_url: null }`
+   = el perfil existe y no tiene foto. Con `avatarPorId.get(id) ?? copia`, el
+   caso "me borré la foto" caía en la copia y resucitaba la foto vieja —
+   encima rota, por el archivo borrado del bucket. Cualquier resolución de
+   este tipo tiene que preguntar por la EXISTENCIA de la fila, no por si el
+   valor es falsy.
+3. **Lo que llega por Realtime es la fila CRUDA: trae la copia, no lo
+   resuelto.** Igual que con las URLs firmadas de adjuntos, al mezclar un
+   evento hay que conservar lo que el servidor ya resolvió
+   (`existing ? existing.author_avatar_url : incoming.author_avatar_url`), o
+   una reacción sobre un post viejo hace reaparecer la foto vieja en vivo.
+4. **`next/image` no degrada: una URL fuera de `remotePatterns` revienta el
+   render en desarrollo y devuelve 400 en producción** (un `<img>` crudo
+   pintaba cualquier cosa). Un componente de avatar compartido necesita su
+   propio `onError` que caiga a la inicial — y tiene que guardar **la URL que
+   falló, no un booleano**: con un booleano, subir una foto nueva después de
+   un fallo deja el respaldo pegado (React conserva el estado porque el
+   componente ocupa el mismo lugar del árbol) y la foto nueva no aparece
+   hasta recargar.
+5. **Decisión, no descuido: se resuelve la FOTO pero NO el nombre.** El nombre
+   guardado es el del momento, que es lo correcto para un registro histórico
+   (misma regla que ya está escrita para las menciones de las notas). Si
+   alguna vez se decide mostrar el nombre actual, el embed ya está ahí: es
+   agregar `display_name` y resolverlo igual.
+
+---
 
 ## Degradar un token de mención sin sanear el nombre lo vuelve a armar — el parche de suplantación tenía su propio hueco (2026-09-11) — MÁXIMA PRIORIDAD
 

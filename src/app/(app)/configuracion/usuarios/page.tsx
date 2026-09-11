@@ -16,7 +16,7 @@ export default async function UsuariosPage() {
   const [{ data: users, error }, siteUrl, invites] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, display_name, email, role, is_active")
+      .select("id, display_name, email, role, is_active, avatar_url")
       .eq("organization_id", profile.organization_id)
       .order("display_name"),
     getSiteUrl(),

@@ -57,6 +57,11 @@ function mergePost(current: FeedPost[], incoming: PostRow): FeedPost[] {
   const merged: FeedPost = {
     ...incoming,
     attachments,
+    // Misma razón que `attachments`: la fila cruda de Realtime trae la COPIA
+    // congelada del avatar, no la foto actual que resolvió el servidor al
+    // cargar el feed. Sin esto, una reacción o un voto sobre un post viejo
+    // hacía reaparecer en vivo la foto vieja de su autor.
+    author_avatar_url: existing ? existing.author_avatar_url : incoming.author_avatar_url,
     poll: incoming.poll ?? null,
     reactions: incoming.reactions ?? {},
     // `Date.now()` (dentro de `isScheduled`) corre acá, en el manejador del

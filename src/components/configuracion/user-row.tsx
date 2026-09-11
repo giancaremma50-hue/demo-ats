@@ -5,6 +5,7 @@ import { updateUserRole, toggleUserActive } from "@/lib/users/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ASSIGNABLE_ROLES, ROLE_LABEL } from "@/lib/auth/role-labels";
 import { ActionButton } from "@/components/ui/action-button";
+import { Avatar } from "@/components/ui/avatar";
 import type { Database } from "@/lib/supabase/database.types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -14,7 +15,7 @@ export function UserRow({
   isSelf,
   canAssignSuperAdmin,
 }: {
-  user: { id: string; display_name: string; email: string; role: AppRole; is_active: boolean };
+  user: { id: string; display_name: string; email: string; role: AppRole; is_active: boolean; avatar_url: string | null };
   isSelf: boolean;
   canAssignSuperAdmin: boolean;
 }) {
@@ -55,9 +56,12 @@ export function UserRow({
     // 180px + 120px de columnas fijas nunca caben junto al nombre en un
     // teléfono. Desde `sm` vuelve a ser la fila de 3 columnas de escritorio.
     <div className="grid grid-cols-1 gap-2 border-b border-border px-1 py-3.5 text-sm sm:grid-cols-[1fr_180px_120px] sm:items-center sm:gap-4">
-      <div className="min-w-0">
-        <p className="truncate font-medium">{user.display_name}</p>
-        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Avatar name={user.display_name} src={user.avatar_url} size={32} />
+        <div className="min-w-0">
+          <p className="truncate font-medium">{user.display_name}</p>
+          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+        </div>
       </div>
       <select
         value={user.role}

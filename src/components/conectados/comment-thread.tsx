@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import { ActionButton } from "@/components/ui/action-button";
+import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { notifyError } from "@/lib/notifications/toast";
@@ -68,8 +69,16 @@ export function CommentThread({ postId }: { postId: string }) {
           }
           const row = payload.new as CommentRow;
           setComments((current) => {
-            const merged: FeedComment = { ...row, reactions: row.reactions ?? {} };
-            if (current.some((c) => c.id === row.id)) return current.map((c) => (c.id === row.id ? merged : c));
+            const existing = current.find((c) => c.id === row.id);
+            const merged: FeedComment = {
+              ...row,
+              reactions: row.reactions ?? {},
+              // La fila cruda trae la copia congelada del avatar; si ya
+              // teníamos el comentario, conservamos la foto actual que
+              // resolvió el servidor (misma razón que en conectados-feed).
+              author_avatar_url: existing ? existing.author_avatar_url : row.author_avatar_url,
+            };
+            if (existing) return current.map((c) => (c.id === row.id ? merged : c));
             return [...current, merged];
           });
         },
@@ -132,14 +141,7 @@ export function CommentThread({ postId }: { postId: string }) {
       ) : (
         comments.map((comment) => (
           <div key={comment.id} className="flex items-start gap-2.5">
-            <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold">
-              {comment.author_avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- avatar externo
-                <img src={comment.author_avatar_url} alt="" className="size-full object-cover" />
-              ) : (
-                comment.author_name.slice(0, 1).toUpperCase()
-              )}
-            </span>
+            <Avatar name={comment.author_name} src={comment.author_avatar_url} size={28} />
             <div className="min-w-0 flex-1">
               <div className="rounded-md bg-muted px-3 py-2">
                 <p className="text-xs font-semibold">{comment.author_name}</p>

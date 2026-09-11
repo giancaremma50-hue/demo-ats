@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 import { PREFERENCE_TYPES, NOTIFICATION_TYPE_LABEL } from "@/lib/notifications/preferences-schema";
 import { PreferenceRow } from "@/components/notificaciones/preference-row";
 import { AvatarField } from "@/components/mi-cuenta/avatar-field";
-import { getInitials } from "@/lib/profile/initials";
 import { getMyErrorReports } from "@/lib/errors/get-error-reports";
 import { ERROR_STATUS_LABEL } from "@/lib/errors/schema";
 import { Card } from "@/components/ui/card";
@@ -21,7 +20,6 @@ export default async function MiCuentaPage() {
     .eq("profile_id", profile.id);
 
   const byType = new Map((preferences ?? []).map((p) => [p.type, p]));
-  const initials = getInitials(profile.display_name);
   const myReports = await getMyErrorReports(profile.id, profile.organization_id);
 
   return (
@@ -32,7 +30,7 @@ export default async function MiCuentaPage() {
       <section className="mt-8">
         <h2 className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Foto de perfil</h2>
         <div className="mt-4">
-          <AvatarField currentUrl={profile.avatar_url} initials={initials} />
+          <AvatarField currentUrl={profile.avatar_url} displayName={profile.display_name} />
         </div>
       </section>
 
