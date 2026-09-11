@@ -1,5 +1,62 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-10 (menciones sin validar = notificación cross-tenant, mismo bug que ya se corrigió una vez en Postulaciones)_
+_Última actualización: 2026-09-11 (un cron por hora en `vercel.json` rompe TODOS los deploys en el plan Hobby de Vercel, en silencio — production llevaba días congelado en un build viejo)_
+
+## Un cron con frecuencia menor a diaria rompe TODO deploy de Vercel en plan Hobby — sin avisar en ningún log local (2026-09-11) — MÁXIMA PRIORIDAD
+
+Al abrir el PR del feed de AJE Conectados, el deploy de Vercel del PR falló:
+`"Hobby accounts are limited to daily cron jobs. This cron expression (0 * * * *)
+would run more than once per day."` — `vercel.json` traía el cron de liberación de
+posts programados (Task 19 de la fase de backend, agregado varios días antes) con
+`"0 * * * *"` (cada hora).
+
+1. **BUG REAL Y CARO: esa misma configuración ya estaba en `main` desde la fase de
+   backend — cada deploy de producción desde entonces venía fallando, y Vercel
+   sencillamente se queda sirviendo el ÚLTIMO build exitoso sin avisar en ningún
+   lugar visible para quien no entra a mirar el dashboard.** El usuario reportó
+   "aún no se reflejan los cambios" viendo en `demo-atrio.vercel.app` una versión
+   VIEJA (tipografía serif, sin el rediseño "AJE look", sin selector de módulos) —
+   se leía como que faltaba mergear trabajo, pero `main` ya tenía todo eso. La causa
+   real: producción llevaba congelada desde el último build que sí compiló, de antes
+   de que el cron se agregara. `npm run dev`/`typecheck`/`lint` en local nunca lo
+   iban a agarrar — el límite de crons es una restricción del PLAN de Vercel, no del
+   código ni de ninguna herramienta que corra en este repo.
+   Do instead: **cualquier cron en `vercel.json` con una frecuencia menor a "una vez
+   por día" es candidato a romper TODOS los deploys en un proyecto de plan Hobby.**
+   Antes de agregar o cambiar un cron, confirmar el plan del proyecto de Vercel — en
+   Hobby, la única frecuencia segura es diaria (`0 H * * *`), nunca por hora/minuto.
+   Y ante un reporte de "no veo mis cambios en producción" cuando `git log` confirma
+   que sí están mergeados, el primer sospechoso no es "falta mergear" — es que el
+   ÚLTIMO deploy exitoso es más viejo que el cambio, y hay que revisar el estado de
+   los deploys (o los checks del PR/commit) antes de asumir cualquier otra cosa.
+2. **Encontrado por el check de Vercel en el PR (comentario automático de
+   `vercel[bot]`), no por nada que yo corriera antes de abrirlo.** Ningún
+   `typecheck`/`lint`/`npm run dev` local hubiera mostrado esto — el límite es
+   externo al código. Revisar los comentarios/checks automáticos de un PR recién
+   abierto (no solo los checks "propios" del repo) antes de dar un deploy por
+   sano.
+3. **Fix**: se bajó el cron a una vez al día (`"0 12 * * *"`). Costo real: un post
+   "programado" puede tardar hasta ~24h en liberarse en vez de hasta 1h — trade-off
+   aceptado por la restricción de plan, no un error de diseño. Si alguna vez se
+   necesita liberación más frecuente, la alternativa es subir el proyecto a Vercel
+   Pro, no inventar un cron externo.
+
+---
+
+
+## Estado de cliente sembrado con `useState(prop)` se congela si el prop cambia después — Realtime lo expone de inmediato (2026-09-11) — MÁXIMA PRIORIDAD
+
+Al construir `PostCard` (feed de AJE Conectados), cada tarjeta guarda su post en
+`useState(initialPost)` para poder aplicar reacciones/votos de encuesta de forma
+optimista. `/code-review` encontró que ninguna actualización ajena (otra
+persona reaccionando, votando, o el autor editando) se veía nunca — solo un
+recargado de página las mostraba.
+
+1. **BUG REAL: `useState(prop)` solo lee el valor inicial UNA vez, en el primer render — nunca vuelve a mirar el prop después, aunque el padre le pase un objeto distinto en cada render.** Con `key={post.id}` estable (nunca cambia, es el mismo post durante toda su vida en el feed), React nunca vuelve a montar `PostCard`, así que no hay ningún punto natural en el que ese `useState` se re-inicialice. El componente sí recibía el post actualizado por prop (ConectadosFeed sí mezclaba bien los eventos de Realtime en su propio array) — el bug estaba un nivel más abajo, en que nadie miraba ese prop nuevo. Encontrado por `/code-review`, no en la escritura del componente: leer el código no lo delata, porque "funciona" para la única persona que interactúa (sus propios toggles optimistas sí se ven, porque van directo al `useState` local) — el síntoma solo aparece con una SEGUNDA sesión mirando el mismo post.
+   Do instead: cuando un componente necesita estado LOCAL derivado de un prop (para poder mutarlo de forma optimista) pero el prop en sí puede cambiar por una fuente externa (Realtime, polling, un padre que revalida), agregar una sincronización explícita: comparar el prop contra una copia guardada y, si cambió, actualizar el estado local **durante el render** (`if (synced !== prop) { setSynced(prop); setState(prop); }`), nunca solo `useState(prop)` a secas. Este proyecto además prohíbe hacerlo con un `useEffect` + `setState` síncrono (es error de build, ver la entrada de abajo sobre notas) — el ajuste en render es el patrón correcto para esto, no un rodeo.
+2. **La revisión de recuperación (revertir un optimista fallido) tenía el mismo tipo de bug, dos veces: "togglear de nuevo" no es lo mismo que "restaurar el valor anterior".** `ReactionBar` revertía una reacción fallida llamando a la misma función de toggle con el mismo tipo — que solo deshace correctamente si el estado previo era "sin reacción"; si la persona ya tenía otra reacción puesta y cambiaba a una nueva que el servidor rechazaba, el revert la dejaba en "sin reacción" en vez de devolverla a la que tenía. Mismo patrón en `PollWidget`, que directamente no revertía nada. Do instead: una función de actualización optimista que también sirve para revertir tiene que recibir el valor EXACTO al que debe quedar (`onOptimisticSet(valor | null)`), nunca un "toggle" — capturar el valor previo ANTES de aplicar el cambio optimista, y pasar ESE valor exacto de vuelta si el servidor rechaza, no repetir la operación que lo cambió.
+3. **Un `read-modify-write` de un array `jsonb` hecho en paralelo pierde escrituras, aunque cada llamada individual sea correcta.** El compositor subía varios adjuntos con `Promise.all`, y cada subida hacía SELECT de `posts.attachments`, agregaba su propia entrada, y hacía UPDATE — sin ningún lock ni expresión atómica. Con 3 archivos en paralelo, los 3 SELECT leían la lista vacía (ninguno había terminado de escribir todavía), y el último UPDATE en confirmar ganaba, pisando a los otros dos. Do instead: cuando una mutación es "leer una columna, modificarla en memoria, escribirla de vuelta" (sin una expresión SQL atómica tipo `columna = columna || nuevo_valor`), disparar esas llamadas en SECUENCIA (`for...of` con `await`), nunca en paralelo — cada lectura necesita ver lo que la escritura anterior ya confirmó. Si el volumen lo justifica alguna vez, la alternativa real es una expresión atómica del lado de la base (o una RPC), no paralelizar un read-modify-write del lado del cliente.
+
+---
 
 ## Un array de UUIDs "mentions" del cliente sin validar = notificar/emailear a cualquiera (2026-09-10) — MÁXIMA PRIORIDAD
 
