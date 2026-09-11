@@ -100,8 +100,10 @@ Están codificadas en componentes para que no dependan de la disciplina de nadie
 9. **Una pantalla de configuración muestra en el acto lo que se acaba de cambiar.**
    Guardar sin ver el cambio obliga a recargar para confirmar, y eso se lee como que no se guardó. Cada campo de configuración muestra su valor actual en pantalla, y donde el cambio afecta a otra superficie (el logo en el encabezado, el acento en los botones, la portada de la bolsa) hay una vista previa en la misma pantalla. Toda mutación de configuración revalida **todas** las rutas que pinta ese dato, no solo la actual: `revalidatePath("/", "layout")` no alcanza para una ruta ISR anidada como `/empleos` — ver `revalidateBrandSurfaces()` en `src/lib/organizations/actions.ts`.
 
-10. **La configuración de la plataforma es independiente del módulo.**
-   El botón de Ajustes de la barra flotante aparece en TODOS los módulos para admin y super admin, siempre en la misma posición. Es configuración de la plataforma (marca, usuarios, departamentos), no una pantalla del ATS: tener que entrar a Reclutamiento para cambiar el logo mientras se está en AJE Conectados es un callejón sin salida.
+10. **La barra flotante: Inicio y el selector de módulos son fijos; el resto se adapta al módulo.**
+   `[selector] [Inicio] [submenús del módulo] [Ajustes]`, siempre en ese orden y nunca más de 5 ítems. **Inicio no desaparece en ninguna pantalla** — una pantalla sin la puerta de vuelta a la principal es un callejón sin salida, y eso pasó al entrar a Configuración. Los submenús sí cambian: en Reclutamiento son Vacantes, Candidatos y Bolsa; en Conectados, solo su Inicio.
+   **Ajustes es la configuración de la plataforma** (marca, usuarios, departamentos, motivos) y aparece en TODOS los módulos para admin y super admin: tener que entrar a Reclutamiento para cambiar el logo mientras se está en AJE Conectados es el mismo callejón.
+   **La bolsa de empleo NO es configuración de la plataforma**: es una pantalla del ATS (`/bolsa`, super admin). Configurar la portada y las leyendas de `/empleos` es operación de reclutamiento, y tenerlo escondido dentro de `/configuracion/marca` lo volvía invisible para quien recluta.
 
 ---
 

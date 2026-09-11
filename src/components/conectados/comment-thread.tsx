@@ -44,12 +44,22 @@ export function CommentThread({ postId }: { postId: string }) {
 
   useEffect(() => {
     let active = true;
-    listComments(postId).then((data) => {
-      if (active) {
-        setComments(data);
-        setLoading(false);
-      }
-    });
+    listComments(postId)
+      .then((data) => {
+        if (active) {
+          setComments(data);
+          setLoading(false);
+        }
+      })
+      // Sin `catch`, un fallo de red o de RLS dejaba el hilo en "Cargando
+      // comentarios…" para siempre, con un unhandled rejection en la consola
+      // y nada en pantalla (regla de interacción 5).
+      .catch(() => {
+        if (active) {
+          setLoading(false);
+          notifyError("No se pudieron cargar los comentarios", "Revisa tu conexión e inténtalo de nuevo.");
+        }
+      });
     return () => {
       active = false;
     };

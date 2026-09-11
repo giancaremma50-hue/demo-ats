@@ -1,7 +1,7 @@
 import { createPublicClient } from "@/lib/supabase/public";
 import { getPublicOrganization } from "@/lib/organizations/get-organization";
 import { JobsBoard, type FilterOption } from "@/components/empleos/jobs-board";
-import { HeroBackgroundMedia } from "@/components/layout/hero-background-media";
+import { CareersHero } from "@/components/empleos/careers-hero";
 import { WORK_MODE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode } from "@/lib/jobs/schema";
 import { Card } from "@/components/ui/card";
@@ -65,7 +65,6 @@ export default async function EmpleosPage() {
     .sort((a, b) => a.label.localeCompare(b.label));
 
   const hasCover = Boolean(organization?.careers_cover_image_url || organization?.careers_cover_video_url);
-  const headline = organization?.careers_headline || "Vacantes abiertas";
 
   const stats: { n: number; label: string }[] = [];
   if (allJobs.length > 0) stats.push({ n: allJobs.length, label: allJobs.length === 1 ? "vacante abierta" : "vacantes abiertas" });
@@ -74,63 +73,39 @@ export default async function EmpleosPage() {
 
   return (
     <div>
-      {hasCover ? (
-        <section
-          className="relative flex min-h-[72vh] flex-col overflow-hidden text-background"
-          style={{ backgroundColor: organization?.accent_color || "#1f4d3d" }}
-        >
-          {/* Fondo sólido del acento, siempre debajo — si solo hay video y el
-              visitante pidió prefers-reduced-motion (sin imagen de respaldo),
-              HeroBackgroundMedia no renderiza nada; sin este color de base el
-              héroe quedaría vacío en vez de caer a un panel de marca sólido,
-              mismo patrón que ya usa /login. */}
-          <div className="absolute inset-0">
-            <HeroBackgroundMedia
-              videoUrl={organization?.careers_cover_video_url ?? null}
-              imageUrl={organization?.careers_cover_image_url ?? null}
-              priority
-            />
-            <div
-              className="absolute inset-0"
-              style={{ background: "linear-gradient(180deg, rgba(10,12,9,.15) 0%, rgba(10,12,9,.55) 62%, rgba(10,12,9,.88) 100%)" }}
-            />
-          </div>
-          <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col justify-end px-6 pb-14">
-            <h1 className="font-serif max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1.08]">{headline}</h1>
-            {organization?.careers_intro && (
-              <p className="mt-4 max-w-2xl whitespace-pre-wrap text-[15px] leading-relaxed text-background/85">
-                {organization.careers_intro}
-              </p>
-            )}
-            {allJobs.length > 0 ? (
-              <a
-                href="#vacantes"
-                className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground"
-              >
-                Ver vacantes abiertas
-              </a>
-            ) : null}
-            {stats.length > 0 && (
-              <div className="mt-8 flex border-t border-background/25">
-                {stats.map((s) => (
-                  <div key={s.label} className="flex-1 border-r border-background/25 pt-4 pr-5 last:border-r-0" data-numeric>
-                    <span className="font-serif block text-[26px] leading-none">{s.n}</span>
-                    <span className="mt-1.5 block text-[11.5px] text-background/70">{s.label}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      ) : (
-        <div className="mx-auto max-w-4xl px-6 pt-16">
-          <h1 className="font-serif text-[40px]">{headline}</h1>
-          {organization?.careers_intro && (
-            <p className="mt-4 max-w-2xl whitespace-pre-wrap text-[15px] leading-relaxed text-muted-foreground">
-              {organization.careers_intro}
-            </p>
-          )}
-          {stats.length > 0 && (
+      {/* La portada la pinta `CareersHero`, el MISMO componente que usa la
+          vista previa de /bolsa: si el degradado o el respaldo del título
+          vivieran escritos en los dos lados, oscurecer este héroe dejaría a
+          la vista previa aprobando portadas que acá quedan ilegibles. Las
+          cifras y el botón van como `children` porque son de esta pantalla,
+          no de la portada. */}
+      <CareersHero
+        headline={organization?.careers_headline ?? null}
+        intro={organization?.careers_intro ?? null}
+        imageUrl={organization?.careers_cover_image_url ?? null}
+        videoUrl={organization?.careers_cover_video_url ?? null}
+        accentColor={organization?.accent_color || "#1f4d3d"}
+        priority
+      >
+        {hasCover && allJobs.length > 0 && (
+          <a
+            href="#vacantes"
+            className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground"
+          >
+            Ver vacantes abiertas
+          </a>
+        )}
+        {stats.length > 0 &&
+          (hasCover ? (
+            <div className="mt-8 flex border-t border-background/25">
+              {stats.map((s) => (
+                <div key={s.label} className="flex-1 border-r border-background/25 pt-4 pr-5 last:border-r-0" data-numeric>
+                  <span className="font-serif block text-[26px] leading-none">{s.n}</span>
+                  <span className="mt-1.5 block text-[11.5px] text-background/70">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
             <Card className="mt-8 flex rounded-md">
               {stats.map((s) => (
                 <div key={s.label} className="flex-1 border-r border-border p-4 last:border-r-0" data-numeric>
@@ -139,9 +114,8 @@ export default async function EmpleosPage() {
                 </div>
               ))}
             </Card>
-          )}
-        </div>
-      )}
+          ))}
+      </CareersHero>
 
       <div id="vacantes" className="mx-auto max-w-4xl scroll-mt-6 px-6 py-14">
         {allJobs.length === 0 ? (

@@ -14,3 +14,10 @@ export function optionalUuid(message = "Id inválido.") {
     z.uuid({ error: message }).optional(),
   );
 }
+
+/** Un uuid, con la validación estricta de Zod (versión y variante, RFC 9562).
+ * Una sola definición: antes convivían `z.uuid()`, `z.string().uuid()` (que
+ * Zod marca como deprecada) y un `UUID_RE` propio con estrictez distinta, así
+ * que cambiar qué cuenta como id válido había que hacerlo en varios lugares o
+ * las capas se contradecían. */
+export const UuidSchema = z.uuid();

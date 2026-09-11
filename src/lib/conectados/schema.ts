@@ -20,11 +20,15 @@ export function isScheduled(publishAt: string | null): boolean {
   return publishAt !== null && new Date(publishAt).getTime() > Date.now();
 }
 
+/** Tope de opciones de una encuesta. Una sola definición: la usan el esquema,
+ * el índice válido al votar (`0..MAX_POLL_OPTIONS - 1`) y el compositor. */
+export const MAX_POLL_OPTIONS = 6;
+
 export const PollSchema = z.object({
   options: z
     .array(z.object({ label: z.string().trim().min(1, "Una opción no puede estar vacía.").max(120) }))
     .min(2, "Una encuesta necesita al menos 2 opciones.")
-    .max(6, "Máximo 6 opciones por encuesta."),
+    .max(MAX_POLL_OPTIONS, `Máximo ${MAX_POLL_OPTIONS} opciones por encuesta.`),
 });
 export type PollInput = z.infer<typeof PollSchema>;
 

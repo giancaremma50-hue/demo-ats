@@ -57,13 +57,17 @@ export function FloatingNav({ role }: { role: Role }) {
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           className="fixed inset-x-0 bottom-6 z-40 flex justify-center"
         >
-          <div className="flex items-center gap-0.5 rounded-full bg-primary p-1.5 shadow-nav">
+          {/* max-w + los tamaños reducidos de abajo: con 5 ítems (el tope de
+              AGENTS.md) la píldora medía ~406px y en un teléfono de 390px se
+              recortaba por los dos lados, dejando el selector de módulos y
+              Ajustes cortados contra el borde. */}
+          <div className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 rounded-full bg-primary p-1.5 shadow-nav">
             <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   aria-label="Cambiar de módulo"
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-primary-foreground/70 hover:bg-white/10"
+                  className="flex h-11 w-9 flex-none items-center justify-center rounded-full text-primary-foreground/70 hover:bg-white/10 sm:w-11"
                 >
                   <LayoutGrid className="size-[18px]" strokeWidth={2.5} aria-hidden />
                 </button>
@@ -106,7 +110,7 @@ export function FloatingNav({ role }: { role: Role }) {
                   href={item.href}
                   data-tour={`nav-${item.href.slice(1)}`}
                   aria-label={item.label}
-                  className="group relative flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium"
+                  className="group relative flex h-11 flex-none items-center gap-2 rounded-full px-3 text-sm font-medium sm:px-4"
                 >
                   {active && (
                     <motion.span
@@ -119,7 +123,7 @@ export function FloatingNav({ role }: { role: Role }) {
                     className={`relative flex items-center gap-2 ${active ? "text-foreground" : "text-primary-foreground/60"}`}
                   >
                     <Icon className="size-[18px]" strokeWidth={2.5} aria-hidden />
-                    {active && <span>{item.label}</span>}
+                    {active && <span className="hidden sm:inline">{item.label}</span>}
                   </span>
                   {!active && (
                     <span

@@ -11,10 +11,9 @@ import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { createPost, createAttachmentUploadUrl, confirmPostAttachment } from "@/lib/conectados/actions";
 import { createClient } from "@/lib/supabase/client";
 import { useConectados } from "./conectados-feed";
+import { MAX_POLL_OPTIONS } from "@/lib/conectados/schema";
 import { useMentionState } from "./mention-overlay";
 import type { FeedPost } from "@/lib/conectados/queries";
-
-const MAX_POLL_OPTIONS = 6;
 
 // Espejo de las guardias del servidor (`EXTENSION_BY_MIME` y
 // `MAX_ATTACHMENT_BYTES` en src/lib/conectados/actions.ts). Acá no son

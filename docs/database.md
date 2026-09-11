@@ -494,7 +494,11 @@ En `JobTemplateDialog`: reabrir "Editar" sobre la misma plantilla tras guardarla
 
 **`organizations.careers_headline`/`careers_intro`** (`text`, nullable) — dos columnas más en la fila de `organizations` que ya existía, no una tabla nueva. RLS de fila cubre las columnas nuevas automáticamente (Postgres no tiene RLS por columna); la política de `UPDATE` sigue siendo `super_admin`-only, deliberado — bajarla a `admin+` en la acción compartida (`updateBranding`) le daría a cualquier admin la capacidad de tocar también logo/color/nombre de la plataforma, la misma fila. Si se necesita que `admin` edite solo el copy de la bolsa, la solución es sacar estas dos columnas a una tabla aparte con su propia política, no relajar `organizations_update_super_admin`.
 
-Reusa por completo el flujo de Marca (Fase 3): mismo formulario (`BrandingForm`), misma acción (`updateBranding`), misma página (`/configuracion/marca`) — sin página ni componente nuevo. `/empleos` (portal público) los lee vía `getOrganization()` (ya cacheada con `cache()`, ya reusada por `empleos/layout.tsx`) con fallback a "Vacantes abiertas" si no están configurados.
+Al principio reusaba por completo el flujo de Marca (mismo formulario, misma acción, misma página). **Desde el 2026-09-11 la bolsa es una pantalla propia del módulo de Reclutamiento, `/bolsa`** (pedido del usuario: escondida dentro del configurador general, quien recluta no la encontraba). Eso partió el flujo en dos: `CareersForm` + `updateCareersContent` para las leyendas, `BrandingForm` + `updateBranding` para la identidad. Partir la pantalla obliga a partir la acción — con dos formularios sobre un solo `update`, cada uno tendría que reenviar los campos del otro para no borrarlos.
+
+La política de `UPDATE` sigue siendo `super_admin`-only y por eso `/bolsa` también lo es: ofrecérsela a un `admin` sería un botón a una pantalla donde no puede guardar nada. Si se necesita que `admin` edite la bolsa, la solución sigue siendo sacar estas columnas a una tabla aparte con su propia política, no relajar `organizations_update_super_admin`.
+
+`/empleos` (portal público) los lee vía `getOrganization()` (ya cacheada con `cache()`, ya reusada por `empleos/layout.tsx`) con fallback a "Vacantes abiertas" si no están configurados — el mismo respaldo que usa la vista previa, porque las dos pintan el MISMO componente (`CareersHero`).
 
 ## Fusión de plantilla de vacante + pipeline/competencias (Fase 17)
 
