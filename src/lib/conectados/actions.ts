@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify, notifyBestEffort } from "@/lib/notifications/notify";
 import { CreatePostSchema, CreateCommentSchema, REACTION_TYPES, type ReactionType } from "./schema";
-import type { FeedPost, FeedComment, Attachment, Poll, Reactions } from "./queries";
+import { getPostComments, type FeedPost, type FeedComment, type Attachment, type Poll, type Reactions } from "./queries";
 
 export type ConectadosActionResult<T = undefined> = { error?: string; success?: string } & (T extends undefined
   ? object
@@ -345,4 +345,9 @@ export async function uploadPostAttachment(
 
   const { data: signed } = await supabase.storage.from("conectados-adjuntos").createSignedUrl(path, 60 * 60);
   return { success: "Adjunto agregado", attachment: { ...attachment, url: signed?.signedUrl ?? "" } };
+}
+
+export async function listComments(postId: string) {
+  await requireProfile();
+  return getPostComments(postId);
 }
