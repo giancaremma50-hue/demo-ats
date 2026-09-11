@@ -1,5 +1,50 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-10 (segunda vez que un Route Handler sin sesión de usuario cae al 307 de /login antes de correr su propia auth — ahora un cron)_
+_Última actualización: 2026-09-10 (menciones sin validar = notificación cross-tenant, mismo bug que ya se corrigió una vez en Postulaciones)_
+
+## Un array de UUIDs "mentions" del cliente sin validar = notificar/emailear a cualquiera (2026-09-10) — MÁXIMA PRIORIDAD
+
+Al construir AJE Conectados, `mentions: z.array(z.string().uuid())` en el
+schema de `createPost`/`addComment` solo valida FORMATO (que sea un UUID),
+nunca que ese UUID pertenezca a alguien real de la misma organización. El
+`/code-review` final de la fase lo encontró: `notify()` busca el email del
+destinatario por `id` **sin filtrar por `organization_id`** — así que un
+UUID de perfil de OTRA empresa recibía notificación + correo igual.
+
+1. **Ya se había corregido este MISMO patrón una vez, en otro módulo.**
+   `src/lib/applications/mentions.ts` documenta, con nombre y fecha
+   (`/security-review`), los dos abusos de confiar en el id que manda el
+   cliente: suplantación (decir que mencionó a alguien que el uuid no es) y
+   repudío (mencionarse a uno mismo para que el filtro "nunca a uno mismo" lo
+   tape). Ese módulo resuelve extrayendo los ids del TEXTO (`extractMentionIds`)
+   y usa esos, nunca lo que manda el cliente en un campo aparte. Conectados
+   reintrodujo el problema desde cero porque su diseño de menciones es
+   distinto (UUIDs resueltos por autocompletado, no texto con tokens) — la
+   lección no viajó de un módulo al otro porque el mecanismo se ve diferente,
+   aunque el hueco es idéntico.
+   Do instead: **cualquier campo que traiga "a quién avisar/mencionar" desde
+   el cliente, sea como sea que se calcule (parseado de texto, autocompletado,
+   lo que sea), se valida contra la base ANTES de usarse** — como mínimo,
+   perfil real + `organization_id` igual al actor + activo. `z.string().uuid()`
+   valida forma, no pertenencia; no alcanza solo, sin importar qué tan
+   "resuelto" venga el dato del lado del cliente. Grep de `mentions`/`notify(`
+   antes de dar por buena una feature nueva de menciones, para ver si ya existe
+   un helper de validación reusable en el módulo más parecido.
+2. **`notify()` en sí (`src/lib/notifications/notify.ts`) tampoco filtra por
+   organización al buscar el email del destinatario** — es genérico a
+   propósito (lo llaman módulos de toda la app), así que la responsabilidad de
+   no pasarle un id ajeno a la organización es de CADA llamador, no de la
+   función compartida. Si alguna vez se decide mover el filtro de organización
+   adentro de `notify()` mismo (más seguro por defecto, un solo lugar), hay que
+   revisar los demás llamadores (`jobs`, `applications`, `errors`) para
+   confirmar que todos calzan con esa restricción nueva antes de imponerla.
+3. **Fix aplicado**: filtrar `mentions` contra `profiles` (mismo
+   `organization_id`, `is_active`) con el cliente admin, ANTES de guardarlas en
+   la fila y ANTES de notificar — no solo antes de notificar, porque la
+   columna `mentions` de `posts`/`post_comments` también queda como dato sucio
+   si no se filtra ahí.
+
+---
+
 
 ## Todo Route Handler sin cookie de sesión necesita entrar a `PUBLIC_PATHS` (2026-09-10) — se repitió
 

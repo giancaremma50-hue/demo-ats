@@ -1568,24 +1568,11 @@ Expected: `{"ok":true,"liberados":0,"avisos":0}` (no hay posts programados todav
 
 **Files:** ninguno (solo verificación manual)
 
-- [ ] **Paso 1: Levantar el servidor**
+- [x] **Paso 1: Levantar el servidor** — `npm run dev` arrancó sin errores en `http://localhost:3000` (usado también para probar el cron de Task 19).
 
-Run: `npm run dev`
-Expected: arranca sin errores en `http://localhost:3000`.
+- [ ] **Paso 2-4: Login, ver el selector, navegar a Conectados, ver la placeholder** — **NO SE PUDO HACER EN ESTA SESIÓN.** El login es Google OAuth exclusivamente (sin bypass de desarrollo en el repo); sin credenciales reales de alguno de los perfiles sembrados no hay forma de autenticarse en el navegador. Verificación equivalente hecha por otra vía: cada tarea de RLS (5, 6, 7) se probó con sesiones simuladas reales (`set local "request.jwt.claims"`) contra la base viva, cubriendo los mismos casos (autor ve lo suyo, aislamiento por organización, rechazo de escritura sin permiso) que un click-through de verdad probaría — pero el click real del selector de módulos, la navegación, y la placeholder en el navegador quedan **pendientes de que el usuario los abra una vez con su propia cuenta**.
 
-- [ ] **Paso 2: Login y ver el selector**
-
-Loguearse (cerrar sesión primero si ya había una, por el cambio del JWT en Task 1). En cualquier pantalla interna, click en el ícono de grilla al inicio de la píldora.
-Expected: se abre el popover con "Reclutamiento AJE" (verde, punto activo) y "AJE Conectados" (naranja).
-
-- [ ] **Paso 3: Navegar a Conectados**
-
-Click en "AJE Conectados".
-Expected: navega a `/conectados`, la píldora ahora muestra solo el tab "Inicio" de ese módulo, el ícono de grilla sigue disponible para volver.
-
-- [ ] **Paso 4: Verificar la placeholder**
-
-Expected: se ve "AJE Conectados" + el texto "en construcción", sin errores en la consola del navegador.
+- [x] **Paso 5 (equivalente, no literal): RLS de `posts`/`post_comments`/`post_permissions` de extremo a extremo por SQL** — cubierto con más profundidad de la que este paso pedía, en las revisiones de Tasks 5, 6 y 7 (sesiones simuladas: autor ve lo suyo, aislamiento cross-organización, rechazo de insert/update sin permiso, moderación de comentarios por el dueño del post). Post de prueba limpiado en cada caso.
 
 - [ ] **Paso 5: Probar RLS de `posts` de extremo a extremo por SQL (no hay UI de compositor todavía, eso es la próxima iteración)**
 
@@ -1622,14 +1609,9 @@ reset role;
 delete from public.posts where content = 'Post de prueba';
 ```
 
-- [ ] **Paso 6: Correr lint y typecheck completos**
+- [x] **Paso 6: Correr lint y typecheck completos** — `0 errores` en cada punto de commit (4 warnings preexistentes en `wizard-actions.ts`, ajenos a esta rama, sin cambios).
 
-Run: `npm run lint && npm run typecheck`
-Expected: 0 errores.
-
-- [ ] **Paso 7: `/code-review` antes de dar por cerrada la fase**
-
-Invocar la skill `/code-review` sobre todo el diff de la rama `feature/aje-conectados` contra `main` (regla no negociable de `AGENTS.md`: ningún commit se da por bueno sin pasar por ahí). Corregir lo que salga antes de considerar esta fase terminada.
+- [x] **Paso 7: `/code-review` antes de dar por cerrada la fase** — corrido sobre `main...feature/aje-conectados` completo (8 ángulos: line-by-line, removed-behavior, cross-file, reuse, simplificación, eficiencia, altitud, convenciones AGENTS.md), 8 candidatos verificados de forma independiente. **6 corregidos en el mismo commit de cierre** (`50be4a4`): menciones cross-tenant sin validar (CRÍTICO — notificaba/emailaba a un UUID de cualquier organización), aviso de post nuevo ignorando su propia restricción de departamento/rol (fuga de contenido restringido), selector de módulos reabriéndose solo al scrollear, broadcast usando cliente RLS en vez de admin, `notify()` en loop secuencial en vez de paralelo, cron sin aislar fallos por aviso, color de módulo duplicado como hex. **1 dejado fuera a propósito**: `toggleReaction`/`votePoll` sin Zod — deuda preexistente en todo el repo (mismo patrón en `setRating`/`toggleTask`/`deleteDepartment`), no algo nuevo de esta rama; se dejó una tarea aparte para corregirlo parejo en todo el repo en vez de mezclarlo acá.
 
 ---
 
@@ -1644,3 +1626,8 @@ Invocar la skill `/code-review` sobre todo el diff de la rama `feature/aje-conec
 - Realtime habilitado por SQL (no un paso manual de dashboard, a diferencia del doc original): Task 10. ✓
 - Nada de esto toca `main` ni se pushea: se trabaja íntegro en `feature/aje-conectados` (ya creada), Task 20 termina en `/code-review`, no en push.
 - Fuera de alcance explícito (otra iteración): UI completa del feed (compositor, tarjetas de post, comentarios visibles, encuestas, adjuntos reales, @menciones con autocompletado). Lo de esta fase deja el backend probado y una entrada real pero mínima.
+
+**Pendiente para el usuario, no para un agente:**
+- Click-through real en el navegador (login con Google, ver el selector, navegar a Conectados) — no se pudo hacer en esta sesión por falta de credenciales de prueba.
+- Decidir qué hacer con el commit `50c5a4f` ("fix(pipeline): arrastrar y soltar en el kanban no iniciaba") — es un fix real y bueno, pero ajeno a esta rama; aparentemente cayó acá porque otra sesión de Claude Code trabajó en el mismo directorio mientras `feature/aje-conectados` estaba activa.
+- Revisar y decidir sobre la tarea separada que quedó anotada para agregar Zod a `toggleReaction`/`votePoll` y al resto de Server Actions del repo con el mismo hueco (deuda preexistente, no de esta fase).
