@@ -7,7 +7,48 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (cierre de la auditoría de seguridad: drift real en el espejo TS↔SQL de permisos, y comparación del secreto del cron sin timing-safe)_
+_Última actualización: 2026-09-11 (avisos de entrevista/tarea que nunca llegaban a los internos, pendiente #16 — dos plantillas nuevas duplicaban el cálculo de fecha y ya habían perdido una línea entre sí)_
+
+## Dos flujos nunca notificaban a nadie: agendar entrevista y asignar tarea (2026-09-11)
+
+Pendiente #16 de `docs/PENDIENTE.md`, dejado aparte a propósito el 2026-09-09.
+`scheduleInterview` y `addTask` guardaban la fila pero nunca llamaban a
+`notify()` para los destinatarios internos — solo el candidato se enteraba de
+la entrevista; de la tarea no se enteraba nadie.
+
+1. **No era un bug de lógica rota, era lógica que nunca se escribió** — mismo
+   patrón ya usado para `mencion_nota` (`src/lib/applications/actions.ts`) y
+   `vacante_pendiente_aprobacion` (`notifyPendingApproval` en
+   `src/lib/jobs/actions.ts`), solo que nadie lo replicó acá. Se copió ese
+   patrón exacto: `notifyBestEffort()` después del insert (nunca antes — la
+   fila ya tiene que estar guardada), auto-exclusión de quien dispara la
+   acción (nadie se notifica a sí mismo), y reuso de `isProfileAssignable`
+   que ya validaba destinatarios antes de esta sesión.
+2. **`/code-review` a `medium` encontró dos hallazgos reales, ninguno de
+   lógica.** (a) La función nueva `notifyAttendeesOfInterview` nació con 10
+   argumentos posicionales — mismo tipo de riesgo que un `WRITE_PERMISSIONS`
+   mal mantenido: nada evita trastocar `jobTitle` por `candidateName` en el
+   call site salvo mirar con cuidado. Se convirtió a un solo objeto de
+   opciones. (b) La plantilla nueva (`emails/entrevista-agendada-interno.tsx`)
+   copió el cálculo de fecha de `entrevista-programada.tsx` a mano y **ya
+   había perdido una línea** (la aclaración "se muestra en tu propia zona
+   horaria") — la duplicación ni llegó a un segundo commit antes de
+   divergir. Se extrajo `formatInterviewWhenUTC()` a
+   `src/lib/interviews/calendar-link.ts`, el mismo archivo que ya compartía
+   `buildInterviewCalendarUrl` entre los dos correos.
+   Do instead: **dos plantillas de correo que muestran la misma fecha
+   calculada de la misma forma comparten la función que la calcula, no el
+   copy-paste del bloque de tres líneas** — un cálculo de zona horaria es
+   exactamente el tipo de detalle que diverge en silencio (nadie prueba a
+   mano las dos plantillas lado a lado) y ya lo hizo en el primer intento.
+3. **Dos `notification_type` nuevos (`entrevista_agendada`, `tarea_asignada`)
+   vía `ALTER TYPE ... ADD VALUE`**, cada uno en su propia migración
+   separada de cualquier uso — Postgres permite usar un valor de enum recién
+   agregado en la MISMA sesión, pero conviene no depender de en qué versión
+   corre para saber si hace falta separarlo en dos transacciones. Tipos
+   regenerados con `generate_typescript_types` y pegados sobre
+   `database.types.ts` (diff de 4 líneas, nada más cambió — confirma que no
+   hubo drift de otro schema mientras tanto).
 
 ## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11) — MÁXIMA PRIORIDAD
 
@@ -539,9 +580,7 @@ con un trigger — acá no se había replicado.
    permisos donde exista una Server Action "gatekeeper" tiene que verificar
    que el `WITH CHECK`/trigger de la tabla imponga la MISMA restricción, no
    asumir que la única puerta de entrada es la función de TypeScript.
-3. **Pendiente, no bloqueante**: el mismo patrón (Server Action con estados,
-   sin trigger espejo en la tabla) vale la pena revisarlo en
-   `job_templates`/`pipeline_templates` — no auditado a fondo esta vez.
+3. **Revisado el 2026-09-11: `job_templates`/`pipeline_templates` y sus 4 tablas satélite NO tienen este hueco.** Las 6 tablas exigen `private.is_admin_or_above()` en el `USING` **y** el `WITH CHECK` de INSERT/UPDATE/DELETE por igual — a diferencia de `jobs`, ningún no-admin pasa siquiera el `USING`, así que no hay fila que puedan tocar y no existe la pregunta de "qué pueden escribir una vez adentro". La diferencia real: `jobs` tiene autoservicio a propósito (un gestor solicita su propia vacante); las plantillas son 100% admin-only de punta a punta, sin ninguna ruta de escritura para otro rol que verificar.
 
 ---
 

@@ -35,3 +35,15 @@ export function buildInterviewCalendarUrl(
     durationMinutes: interview.durationMinutes,
   });
 }
+
+// El correo se renderiza en el servidor (después de responder, vía after())
+// — toLocaleString ahí usa la zona horaria del servidor, no la del
+// destinatario, y no hay una zona horaria de organización guardada en el
+// esquema. Se muestra en UTC de forma explícita en vez de fingir una hora
+// local que podría estar mal por varias horas; el enlace de calendario sí la
+// ajusta correctamente a la zona de quien lo abre — de ahí la aclaración.
+// Compartido entre el correo al candidato y el correo interno a los
+// destinatarios: duplicarlo ya causó drift una vez (ver napkin 2026-09-11).
+export function formatInterviewWhenUTC(scheduledAtIso: string): string {
+  return new Date(scheduledAtIso).toLocaleString("es", { dateStyle: "full", timeStyle: "short", timeZone: "UTC" });
+}

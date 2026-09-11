@@ -4,8 +4,9 @@ import { revalidateApplication } from "@/lib/applications/revalidate";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email/send-email";
-import { notifyBestEffort, getEmailContext } from "@/lib/notifications/notify";
+import { notify, notifyBestEffort, getEmailContext } from "@/lib/notifications/notify";
 import { EntrevistaProgramadaEmail } from "@/emails/entrevista-programada";
+import { EntrevistaAgendadaInternoEmail } from "@/emails/entrevista-agendada-interno";
 import { isProfileAssignable } from "@/lib/applications/get-applications";
 import { canDecideApplication, canWriteApplication } from "@/lib/applications/permissions";
 import { InterviewSchema, InterviewStatusSchema } from "./schema";
@@ -39,6 +40,61 @@ async function notifyCandidateOfInterview(
       location,
     }),
   });
+}
+
+/**
+ * Corre con after(), igual que notifyCandidateOfInterview — la entrevista ya
+ * quedó guardada, un fallo acá no debe deshacerla. Se excluye al organizador
+ * si se agregó a sí mismo como destinatario (mismo criterio que
+ * notifyPendingApproval en jobs/actions.ts: no tiene sentido avisarle de su
+ * propia acción).
+ */
+async function notifyAttendeesOfInterview(input: {
+  attendeeIds: string[];
+  organizerId: string;
+  organizerName: string;
+  organizationId: string;
+  candidateName: string;
+  jobTitle: string;
+  applicationId: string;
+  scheduledAtIso: string;
+  durationMinutes: number;
+  location: string | null;
+}): Promise<void> {
+  const { attendeeIds, organizerId, organizerName, organizationId, candidateName, jobTitle, applicationId, scheduledAtIso, durationMinutes, location } =
+    input;
+  const recipients = attendeeIds.filter((id) => id !== organizerId);
+  if (recipients.length === 0) return;
+
+  const { platformName, siteUrl } = await getEmailContext();
+  const applicationUrl = `${siteUrl}/postulaciones/${applicationId}`;
+
+  await Promise.all(
+    recipients.map((recipientId) =>
+      notify({
+        organizationId,
+        recipientId,
+        type: "entrevista_agendada",
+        title: `${organizerName} te agregó a una entrevista`,
+        body: `${candidateName} — ${jobTitle}.`,
+        url: applicationUrl,
+        entityType: "interview",
+        email: {
+          subject: `Entrevista agendada — ${candidateName}`,
+          react: EntrevistaAgendadaInternoEmail({
+            platformName,
+            organizerName,
+            candidateName,
+            jobTitle,
+            scheduledAtIso,
+            durationMinutes,
+            location,
+            applicationUrl,
+          }),
+        },
+      }),
+    ),
+  );
 }
 
 export async function scheduleInterview(
@@ -111,6 +167,20 @@ export async function scheduleInterview(
       parsed.data.duration_minutes,
       location,
     ),
+  );
+  notifyBestEffort(() =>
+    notifyAttendeesOfInterview({
+      attendeeIds: parsed.data.attendee_ids,
+      organizerId: profile.id,
+      organizerName: profile.display_name,
+      organizationId: profile.organization_id,
+      candidateName: application.candidates!.full_name,
+      jobTitle: application.jobs!.title,
+      applicationId,
+      scheduledAtIso: parsed.data.scheduled_at,
+      durationMinutes: parsed.data.duration_minutes,
+      location,
+    }),
   );
 
   await revalidateApplication(applicationId, application.job_id);

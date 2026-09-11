@@ -15,6 +15,8 @@ export const PREFERENCE_TYPES: NotificationType[] = [
   "vacante_cambio_estado",
   "movimiento_referido",
   "respuesta_reporte_error",
+  "entrevista_agendada",
+  "tarea_asignada",
 ];
 
 // respuesta_reporte_error se reutiliza en las dos direcciones (Fase 7): al
@@ -43,4 +45,6 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   post_mencion: "Menciones en AJE Conectados",
   post_reaccion: "Reacciones a tus publicaciones y comentarios",
   post_comentario: "Comentarios en AJE Conectados",
+  entrevista_agendada: "Te agregan a una entrevista",
+  tarea_asignada: "Tareas asignadas a ti",
 };

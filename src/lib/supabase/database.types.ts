@@ -2278,6 +2278,8 @@ export type Database = {
         | "post_mencion"
         | "post_reaccion"
         | "post_comentario"
+        | "entrevista_agendada"
+        | "tarea_asignada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2469,6 +2471,8 @@ export const Constants = {
         "post_mencion",
         "post_reaccion",
         "post_comentario",
+        "entrevista_agendada",
+        "tarea_asignada",
       ],
     },
   },
