@@ -7,11 +7,18 @@ export function AttachmentGallery({ attachments }: { attachments: (Attachment & 
     <div className={`grid gap-1.5 overflow-hidden rounded-md ${attachments.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
       {attachments.map((a, i) => {
         if (a.mimeType.startsWith("image/")) {
+          // aspect-square, no aspect-video: la mayoría de fotos que se suben
+          // desde un teléfono son retrato o cuadradas — forzar 16:9 (la
+          // proporción de un video, no de una foto) recortaría de más el
+          // contenido vertical. El video de abajo usa el MISMO aspect-square
+          // (no su 16:9 nativo) a propósito: en una grilla de 2 columnas, una
+          // foto cuadrada junto a un video 16:9 en la misma fila queda con
+          // celdas de alturas distintas y desalineadas.
           // eslint-disable-next-line @next/next/no-img-element -- URL firmada de Storage, con TTL de 1h: <Image> de Next la cachearía más allá de su vencimiento.
-          return <img key={i} src={a.url} alt={a.name} className="aspect-video w-full object-cover" />;
+          return <img key={i} src={a.url} alt={a.name} className="aspect-square w-full object-cover" />;
         }
         if (a.mimeType.startsWith("video/")) {
-          return <video key={i} src={a.url} controls className="aspect-video w-full" />;
+          return <video key={i} src={a.url} controls className="aspect-square w-full object-cover" />;
         }
         return (
           <a

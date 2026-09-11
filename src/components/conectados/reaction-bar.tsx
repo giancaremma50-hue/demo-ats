@@ -15,6 +15,13 @@ const REACTION_ICON: Record<ReactionType, typeof ThumbsUp> = {
   fuego: Flame,
 };
 
+const REACTION_LABEL: Record<ReactionType, string> = {
+  like: "Me gusta",
+  corazon: "Me encanta",
+  aplauso: "Aplaudir",
+  fuego: "Destacar",
+};
+
 /**
  * Reacción: toggle de baja fricción, sin `notifySuccess` (el propio ícono
  * resaltado ya confirma — un toast por cada "me gusta" sería ruido, no
@@ -61,7 +68,7 @@ export function ReactionBar({
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       {(Object.keys(REACTION_ICON) as ReactionType[]).map((type) => {
         const Icon = REACTION_ICON[type];
         const active = mine === type;
@@ -71,6 +78,7 @@ export function ReactionBar({
             type="button"
             onClick={() => handleClick(type)}
             aria-pressed={active}
+            aria-label={REACTION_LABEL[type]}
             className={`flex size-7 items-center justify-center rounded-full ${active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
           >
             <Icon className="size-3.5" strokeWidth={active ? 2.5 : 2} aria-hidden />
@@ -78,7 +86,10 @@ export function ReactionBar({
         );
       })}
       {Object.keys(counts).length > 0 && (
-        <span className="ml-1 text-xs tabular-nums text-muted-foreground">
+        // Sin margen propio: el gap-2 del contenedor ya separa este span de
+        // los botones de reacción igual que a ellos entre sí (antes tenía
+        // ml-1 encima de gap-1 — con gap-2 esa suma quedaba inconsistente).
+        <span className="text-xs tabular-nums text-muted-foreground">
           {Object.values(counts).reduce((a, b) => a + b, 0)}
         </span>
       )}
