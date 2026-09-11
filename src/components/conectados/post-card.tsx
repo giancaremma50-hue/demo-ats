@@ -6,7 +6,6 @@ import { es } from "date-fns/locale";
 import { MessageCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { DeleteButton } from "@/components/ui/delete-button";
-import { notifyError } from "@/lib/notifications/toast";
 import { deletePost } from "@/lib/conectados/actions";
 import { useConectados } from "./conectados-feed";
 import { MentionText } from "./mention-text";
@@ -20,6 +19,23 @@ import type { ReactionType } from "@/lib/conectados/schema";
 export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onDeleted: (id: string) => void }) {
   const { viewer, departments } = useConectados();
   const [post, setPost] = useState(initialPost);
+  // `initialPost` cambia de referencia cuando ConectadosFeed mezcla un
+  // evento de Realtime para ESTE post (reacción/voto/contenido de OTRO
+  // usuario) — sin este ajuste, `useState(initialPost)` solo lee el valor
+  // inicial una vez y la tarjeta queda congelada para siempre en lo que
+  // tenía al montarse, porque `key={post.id}` es estable y React nunca la
+  // vuelve a montar. No pisa el estado optimista propio (reaccionar/votar)
+  // porque esas mutaciones locales nunca cambian la referencia de
+  // `initialPost` en el padre — solo lo hace un cambio real que sí venga de
+  // afuera, que es exactamente cuando debe ganarle al valor optimista.
+  // Ajustar estado a partir de un prop DURANTE el render (no en un efecto)
+  // es el patrón que React recomienda para esto — un `setState` síncrono
+  // dentro de un efecto es además un error de build en este proyecto.
+  const [syncedPost, setSyncedPost] = useState(initialPost);
+  if (syncedPost !== initialPost) {
+    setSyncedPost(initialPost);
+    setPost(initialPost);
+  }
   const [commentsOpen, setCommentsOpen] = useState(false);
 
   const canDelete = post.author_id === viewer.id || viewer.isAdminOrAbove;
@@ -27,22 +43,21 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
     ? (departments.find((d) => d.id === post.department_id)?.name ?? "un departamento")
     : null;
 
-  function toggleOwnReaction(type: ReactionType) {
+  function setOwnReaction(type: ReactionType | null) {
     setPost((p) => {
-      const mine = p.reactions[viewer.id];
       const reactions = { ...p.reactions };
-      if (mine === type) delete reactions[viewer.id];
+      if (type === null) delete reactions[viewer.id];
       else reactions[viewer.id] = type;
       return { ...p, reactions };
     });
   }
 
-  function applyPollVote(optionIndex: number) {
+  function applyPollVote(optionIndex: number | null) {
     setPost((p) => {
       if (!p.poll) return p;
       const options = p.poll.options.map((o, i) => {
         const votes = o.votes.filter((v) => v !== viewer.id);
-        if (i === optionIndex) votes.push(viewer.id);
+        if (optionIndex !== null && i === optionIndex) votes.push(viewer.id);
         return { ...o, votes };
       });
       return { ...p, poll: { options } as Poll };
@@ -50,11 +65,10 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
   }
 
   async function handleDelete() {
+    // Sin notifyError acá: DeleteButton ya muestra su propio toast genérico
+    // si `onDelete` lanza — un segundo `notifyError` acá duplicaría el aviso.
     const result = await deletePost(post.id);
-    if (result.error) {
-      notifyError(result.error);
-      throw new Error(result.error);
-    }
+    if (result.error) throw new Error(result.error);
     onDeleted(post.id);
   }
 
@@ -97,7 +111,7 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
       {post.poll && <PollWidget postId={post.id} poll={post.poll} onOptimisticVote={applyPollVote} />}
 
       <div className="flex items-center justify-between border-t border-border pt-2">
-        <ReactionBar targetId={post.id} reactions={post.reactions} scope="post" onOptimisticToggle={toggleOwnReaction} />
+        <ReactionBar targetId={post.id} reactions={post.reactions} scope="post" onOptimisticSet={setOwnReaction} />
         <button
           type="button"
           onClick={() => setCommentsOpen((v) => !v)}

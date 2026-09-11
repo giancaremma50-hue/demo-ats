@@ -89,20 +89,26 @@ export function CommentThread({ postId }: { postId: string }) {
         notifyError(result.error);
         return;
       }
-      if (result.comment && !comments.some((c) => c.id === result.comment!.id)) {
-        setComments((current) => [...current, result.comment!]);
+      if (result.comment) {
+        // El dedup se hace DENTRO del actualizador de `setComments`, contra
+        // el array más reciente — no contra el `comments` cerrado por este
+        // closure. Si el eco de Realtime del propio comentario ya llegó (y
+        // ya lo agregó) antes de que esta promesa resuelva, `comments` acá
+        // seguiría viendo el array viejo (sin el comentario) y lo
+        // duplicaría; el actualizador siempre ve el estado más reciente.
+        const newComment = result.comment;
+        setComments((current) => (current.some((c) => c.id === newComment.id) ? current : [...current, newComment]));
       }
       mention.reset();
     });
   }
 
-  function toggleOwnReaction(commentId: string, type: ReactionType) {
+  function toggleOwnReaction(commentId: string, type: ReactionType | null) {
     setComments((current) =>
       current.map((c) => {
         if (c.id !== commentId) return c;
-        const mine = c.reactions[viewer.id];
         const reactions = { ...c.reactions };
-        if (mine === type) delete reactions[viewer.id];
+        if (type === null) delete reactions[viewer.id];
         else reactions[viewer.id] = type;
         return { ...c, reactions };
       }),
@@ -110,11 +116,11 @@ export function CommentThread({ postId }: { postId: string }) {
   }
 
   async function handleDeleteComment(commentId: string) {
+    // Sin notifyError acá: DeleteButton ya muestra su propio toast genérico
+    // si `onDelete` lanza (ver `handleConfirm` en delete-button.tsx) — un
+    // segundo `notifyError` acá duplicaría el aviso de error.
     const result = await deleteComment(commentId);
-    if (result.error) {
-      notifyError(result.error);
-      throw new Error(result.error);
-    }
+    if (result.error) throw new Error(result.error);
     setComments((current) => current.filter((c) => c.id !== commentId));
   }
 
@@ -148,7 +154,7 @@ export function CommentThread({ postId }: { postId: string }) {
                   targetId={comment.id}
                   reactions={comment.reactions}
                   scope="comment"
-                  onOptimisticToggle={(type) => toggleOwnReaction(comment.id, type)}
+                  onOptimisticSet={(type) => toggleOwnReaction(comment.id, type)}
                 />
                 {(comment.author_id === viewer.id || viewer.isAdminOrAbove) && (
                   <DeleteButton
@@ -193,6 +199,16 @@ export function CommentThread({ postId }: { postId: string }) {
           onKeyUp={(e) => mention.setCursor(e.currentTarget.selectionStart)}
           onKeyDown={(e) => {
             if (mention.sugerencias.length > 0) {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                mention.setElegido((i) => (i + 1) % mention.sugerencias.length);
+                return;
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                mention.setElegido((i) => (i - 1 + mention.sugerencias.length) % mention.sugerencias.length);
+                return;
+              }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 mention.insertMention(mention.sugerencias[mention.elegido] ?? mention.sugerencias[0], areaRef);

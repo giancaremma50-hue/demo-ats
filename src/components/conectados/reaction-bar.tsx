@@ -19,7 +19,7 @@ const REACTION_ICON: Record<ReactionType, typeof ThumbsUp> = {
  * Reacción: toggle de baja fricción, sin `notifySuccess` (el propio ícono
  * resaltado ya confirma — un toast por cada "me gusta" sería ruido, no
  * información). El cambio se aplica en el ESTADO DEL PADRE
- * (`onOptimisticToggle`) antes de esperar la respuesta del servidor: la
+ * (`onOptimisticSet`) antes de esperar la respuesta del servidor: la
  * actualización autoritativa llega después por Realtime (`posts`/
  * `post_comments` UPDATE) y siempre pisa este valor optimista.
  */
@@ -27,12 +27,15 @@ export function ReactionBar({
   targetId,
   reactions,
   scope,
-  onOptimisticToggle,
+  onOptimisticSet,
 }: {
   targetId: string;
   reactions: Reactions;
   scope: "post" | "comment";
-  onOptimisticToggle: (type: ReactionType) => void;
+  /** `null` = sin reacción propia. Recibe el valor EXACTO al que debe quedar
+   * (nunca "togglear") — así una reversión por error de red puede restaurar
+   * el valor anterior exacto, no solo alternar entre dos estados. */
+  onOptimisticSet: (type: ReactionType | null) => void;
 }) {
   const { viewer } = useConectados();
   const [, startTransition] = useTransition();
@@ -44,13 +47,15 @@ export function ReactionBar({
   }, {});
 
   function handleClick(type: ReactionType) {
-    onOptimisticToggle(type);
+    const previous = mine ?? null;
+    const next = mine === type ? null : type;
+    onOptimisticSet(next);
     startTransition(async () => {
       const action = scope === "post" ? toggleReaction : toggleCommentReaction;
       const result = await action(targetId, type);
       if (result.error) {
         notifyError(result.error);
-        onOptimisticToggle(type); // revertir el toggle optimista
+        onOptimisticSet(previous); // restaura el valor exacto de antes, no un toggle más
       }
     });
   }

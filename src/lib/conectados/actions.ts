@@ -94,11 +94,13 @@ export async function createPost(input: unknown): Promise<ConectadosActionResult
   const profile = await requireProfile();
   const parsed = CreatePostSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  // No se exige contenido/encuesta acá: los adjuntos se suben en un segundo
+  // paso, después de que este insert devuelva el `id` del post (convención de
+  // carpeta `{organization_id}/{post_id}/{...}`) — un post "solo fotos" es
+  // válido y, en este punto, el servidor todavía no sabe si vienen adjuntos.
+  // El compositor (única parte que conoce content + poll + archivos a la vez)
+  // es quien bloquea un post genuinamente vacío antes de llamar acá.
   const { content, departmentId, roles, publishAt, mentions: rawMentions, poll } = parsed.data;
-
-  if (!content.trim() && !poll) {
-    return { error: "Escribe algo, o agrega una encuesta, antes de publicar." };
-  }
 
   const mentions = await filterMentionsInOrg(rawMentions, profile.organization_id);
 
@@ -329,7 +331,12 @@ export async function uploadPostAttachment(
     .maybeSingle();
   if (!post || post.author_id !== profile.id) return { error: "No puedes agregar adjuntos a esta publicación." };
 
-  const path = `${profile.organization_id}/${postId}/${randomUUID()}-${file.name}`;
+  // El nombre de archivo del cliente NUNCA entra a la key de Storage —
+  // mismo patrón que `uploadAvatar` (`avatar.${extension}`): la key la arma
+  // el servidor entero a partir de datos que ya validó (extensión derivada
+  // del MIME, un uuid propio). El nombre original se guarda aparte, en
+  // `Attachment.name`, solo para mostrarlo — nunca para direccionar Storage.
+  const path = `${profile.organization_id}/${postId}/${randomUUID()}.${extension}`;
   const { error: uploadError } = await supabase.storage
     .from("conectados-adjuntos")
     .upload(path, file, { contentType: file.type });

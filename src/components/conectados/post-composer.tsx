@@ -36,6 +36,14 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
     const trimmedOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
     const poll = showPoll && trimmedOptions.length >= 2 ? { options: trimmedOptions.map((label) => ({ label })) } : null;
 
+    // El servidor no puede exigir esto: en el momento de `createPost` todavía
+    // no sabe si vienen adjuntos (se suben después, referenciando el post ya
+    // creado). Solo el compositor conoce las 3 fuentes de contenido a la vez.
+    if (!content.trim() && !poll && files.length === 0) {
+      notifyError("Escribe algo, agrega una encuesta, o adjunta un archivo antes de publicar.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await createPost({
         content,
@@ -51,18 +59,32 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
       }
       if (result.post) {
         // Captura en un `const` propio: el spread de abajo ocurre después de
-        // un `await Promise.all(...)`, y TypeScript no conserva el
-        // angostamiento de `if (result.post)` a través de una llamada async.
+        // un `await`, y TypeScript no conserva el angostamiento de
+        // `if (result.post)` a través de una llamada async.
         const createdPost = result.post;
-        const uploaded = await Promise.all(
-          files.map(async (file) => {
-            const formData = new FormData();
-            formData.set("file", file);
-            const r = await uploadPostAttachment(createdPost.id, formData);
-            return r.attachment ?? null;
-          }),
-        );
-        onCreated({ ...createdPost, attachments: uploaded.filter((a) => a !== null) });
+        // Secuencial, no `Promise.all`: `uploadPostAttachment` hace un
+        // lectura-modificación-escritura de `posts.attachments` (lee la lista
+        // actual, agrega una entrada, escribe) — en paralelo, cada subida lee
+        // la lista ANTES de que la anterior termine de escribir, y todas
+        // menos la última en confirmar pisan a las demás (se pierden
+        // adjuntos, hallado en /code-review). Uno a la vez, cada lectura ya
+        // ve lo que la subida anterior escribió.
+        const attachments: (typeof createdPost.attachments)[number][] = [];
+        const failedNames: string[] = [];
+        for (const file of files) {
+          const formData = new FormData();
+          formData.set("file", file);
+          const r = await uploadPostAttachment(createdPost.id, formData);
+          if (r.attachment) attachments.push(r.attachment);
+          else failedNames.push(file.name);
+        }
+        if (failedNames.length > 0) {
+          notifyError(
+            failedNames.length === 1 ? `No se pudo subir "${failedNames[0]}".` : `No se pudieron subir ${failedNames.length} archivos.`,
+            "La publicación sí se creó — puedes intentar adjuntarlos de nuevo.",
+          );
+        }
+        onCreated({ ...createdPost, attachments });
         notifySuccess(result.success ?? "Publicación creada");
         mention.reset();
         setDepartmentId("");
@@ -198,6 +220,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
                   type="button"
                   aria-label={`Quitar ${f.name}`}
                   onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                  className="flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
                 >
                   <X className="size-3" aria-hidden />
                 </button>

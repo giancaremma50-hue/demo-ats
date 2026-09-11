@@ -13,7 +13,10 @@ export function PollWidget({
 }: {
   postId: string;
   poll: Poll;
-  onOptimisticVote: (optionIndex: number) => void;
+  /** `null` = sin voto propio. Recibe el índice EXACTO al que debe quedar,
+   * para poder revertir a él si el servidor rechaza el voto — nunca solo
+   * "aplicar", sin forma de deshacer. */
+  onOptimisticVote: (optionIndex: number | null) => void;
 }) {
   const { viewer } = useConectados();
   const [, startTransition] = useTransition();
@@ -22,10 +25,14 @@ export function PollWidget({
 
   function handleVote(index: number) {
     if (index === myVoteIndex) return;
+    const previous = myVoteIndex === -1 ? null : myVoteIndex;
     onOptimisticVote(index);
     startTransition(async () => {
       const result = await votePoll(postId, index);
-      if (result.error) notifyError(result.error);
+      if (result.error) {
+        notifyError(result.error);
+        onOptimisticVote(previous);
+      }
     });
   }
 

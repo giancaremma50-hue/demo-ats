@@ -30,26 +30,36 @@ const FEED_LIMIT = 50;
 const ATTACHMENT_URL_TTL_SECONDS = 60 * 60;
 
 /**
- * Firma las URLs de los adjuntos de un post con el cliente de SESIÓN (no
- * admin) a propósito: `createSignedUrl` sobre un bucket privado respeta la
- * misma política de `storage.objects` que una descarga real — que quien
- * pide la URL siga estando en la organización dueña del post se verifica
- * dos veces (acá y en Storage), nunca una sola.
+ * Firma TODAS las URLs de adjuntos de la página del feed en una sola llamada
+ * a Storage, con el cliente de SESIÓN (no admin) a propósito:
+ * `createSignedUrls` sobre un bucket privado respeta la misma política de
+ * `storage.objects` que una descarga real — que quien pide la URL siga
+ * estando en la organización dueña del post se verifica dos veces (acá y en
+ * Storage), nunca una sola. Una llamada por post (en vez de una para toda la
+ * página) sería 50 round-trips a Storage en el peor caso — se firma todo
+ * junto y se reparte por `path` después.
  */
-async function hydrateAttachments(
+async function hydrateAllAttachments(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  attachments: unknown,
-): Promise<(Attachment & { url: string })[]> {
+  rows: { attachments: unknown }[],
+): Promise<Map<string, string>> {
+  const paths = rows.flatMap((row) => (Array.isArray(row.attachments) ? (row.attachments as Attachment[]) : []).map((a) => a.path));
+  if (paths.length === 0) return new Map();
+
+  const { data, error } = await supabase.storage.from("conectados-adjuntos").createSignedUrls(paths, ATTACHMENT_URL_TTL_SECONDS);
+  if (error || !data) return new Map();
+  // Un `path` individual puede fallar a firmar (borrado del bucket entre que
+  // se guardó en `posts.attachments` y esta lectura) sin que la llamada
+  // entera falle — esos vienen con `path`/`signedUrl` en `null` y se saltan.
+  const map = new Map<string, string>();
+  for (const d of data) {
+    if (d.path && d.signedUrl) map.set(d.path, d.signedUrl);
+  }
+  return map;
+}
+
+function resolveAttachments(attachments: unknown, urlByPath: Map<string, string>): (Attachment & { url: string })[] {
   const list = Array.isArray(attachments) ? (attachments as Attachment[]) : [];
-  if (list.length === 0) return [];
-
-  const paths = list.map((a) => a.path);
-  const { data, error } = await supabase.storage
-    .from("conectados-adjuntos")
-    .createSignedUrls(paths, ATTACHMENT_URL_TTL_SECONDS);
-  if (error || !data) return [];
-
-  const urlByPath = new Map(data.map((d) => [d.path, d.signedUrl]));
   return list.map((a) => ({ ...a, url: urlByPath.get(a.path) ?? "" })).filter((a) => a.url !== "");
 }
 
@@ -62,14 +72,15 @@ export async function getPosts(): Promise<FeedPost[]> {
     .limit(FEED_LIMIT);
   if (error) throw error;
 
-  return Promise.all(
-    (data ?? []).map(async (row) => ({
-      ...row,
-      attachments: await hydrateAttachments(supabase, row.attachments),
-      poll: (row.poll as Poll | null) ?? null,
-      reactions: (row.reactions as Reactions) ?? {},
-    })),
-  );
+  const rows = data ?? [];
+  const urlByPath = await hydrateAllAttachments(supabase, rows);
+
+  return rows.map((row) => ({
+    ...row,
+    attachments: resolveAttachments(row.attachments, urlByPath),
+    poll: (row.poll as Poll | null) ?? null,
+    reactions: (row.reactions as Reactions) ?? {},
+  }));
 }
 
 export async function getPostComments(postId: string): Promise<FeedComment[]> {
