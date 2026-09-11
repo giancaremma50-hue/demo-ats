@@ -25,16 +25,27 @@ export async function GET(request: NextRequest) {
   const resumen = (resumenRaw ?? {}) as Record<string, unknown>;
   const avisos = (Array.isArray(resumen.avisos) ? resumen.avisos : []) as AvisoPost[];
 
-  for (const aviso of avisos) {
-    await notify({
-      organizationId: aviso.organization_id,
-      recipientId: aviso.recipient_id,
-      type: aviso.kind,
-      title: aviso.kind === "post_mencion" ? "Te mencionaron en una publicación" : "Nueva publicación",
-      body: aviso.preview,
-      url: "/conectados",
-    });
-  }
+  // allSettled, no un for...await: los posts ya quedaron liberados (el RPC
+  // ya hizo commit) antes de este punto, así que un aviso que falla no puede
+  // frenar a los demás ni perderse en silencio — se loguea cada fallo por
+  // separado en vez de que uno corte el resto de la tanda.
+  const results = await Promise.allSettled(
+    avisos.map((aviso) =>
+      notify({
+        organizationId: aviso.organization_id,
+        recipientId: aviso.recipient_id,
+        type: aviso.kind,
+        title: aviso.kind === "post_mencion" ? "Te mencionaron en una publicación" : "Nueva publicación",
+        body: aviso.preview,
+        url: "/conectados",
+      }),
+    ),
+  );
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
+      console.error(`[release-scheduled-posts] falló el aviso para ${avisos[i].recipient_id}:`, result.reason);
+    }
+  });
 
   return NextResponse.json({ ok: true, liberados: resumen.liberados ?? 0, avisos: avisos.length });
 }

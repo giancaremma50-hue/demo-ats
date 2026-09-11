@@ -31,6 +31,12 @@ export function FloatingNav({ role }: { role: Role }) {
       requestAnimationFrame(() => {
         const y = window.scrollY;
         const goingDown = y > lastY.current && y > 80;
+        // Cerrar el selector de módulos al ocultar el nav: el Popover se
+        // desmonta con <motion.nav> pero `switcherOpen` vive en este
+        // componente (nunca se desmonta) — sin este reset, el Popover
+        // controlado vuelve a montar con open=true al reaparecer el nav,
+        // reabriéndose solo sin que nadie lo haya tocado.
+        if (goingDown) setSwitcherOpen(false);
         setVisible(!goingDown);
         lastY.current = y;
         ticking = false;

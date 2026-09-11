@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notify, notifyBestEffort } from "@/lib/notifications/notify";
 import { CreatePostSchema, CreateCommentSchema, REACTION_TYPES, type ReactionType } from "./schema";
 
@@ -14,11 +15,70 @@ function previewContent(content: string): string {
   return text.length > 120 ? `${text.slice(0, 120)}…` : text;
 }
 
+/**
+ * El cliente manda `mentions` como una lista de UUIDs ya resueltos (el diseño
+ * del muro usa autocompletado, no texto a re-parsear) — pero esa lista NUNCA
+ * se usa tal cual. Se filtra contra perfiles reales, activos, de la MISMA
+ * organización del autor: sin esto, cualquiera puede mandar el UUID de un
+ * perfil de OTRA organización y `notify()` (que busca el email solo por id,
+ * sin filtrar por `organization_id`) le manda un aviso y un correo a un
+ * desconocido. Encontrado en `/code-review` de esta misma fase.
+ */
+async function filterMentionsInOrg(mentions: string[], organizationId: string): Promise<string[]> {
+  if (mentions.length === 0) return [];
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("id")
+    .in("id", mentions)
+    .eq("organization_id", organizationId)
+    .eq("is_active", true);
+  return (data ?? []).map((p) => p.id);
+}
+
+/**
+ * Misma audiencia que la RLS de lectura del post (`posts_select`) y que la
+ * liberación de posts programados: `department_id`/`roles` del post filtran
+ * quién se entera, no solo quién existe en la organización. Sin este filtro,
+ * un post restringido avisa —con preview del contenido— a gente que ni
+ * siquiera puede abrirlo. Usa el cliente admin a propósito, igual que
+ * `notifyPendingApproval`/`notifySuperAdmins` en otros módulos: hace falta
+ * ver a TODA la organización, no solo lo que el autor (a menudo no-admin) ve
+ * por su propia RLS.
+ */
+async function getPostAudience(
+  organizationId: string,
+  authorId: string,
+  departmentId: string | null,
+  roles: Array<"gestor" | "admin" | "super_admin"> | null,
+): Promise<string[]> {
+  const admin = createAdminClient();
+  const { data: candidates } = await admin
+    .from("profiles")
+    .select("id, role, department_id")
+    .eq("organization_id", organizationId)
+    .eq("is_active", true)
+    .neq("id", authorId);
+
+  return (candidates ?? [])
+    .filter((p) => {
+      // admin/super_admin pasa las dos condiciones sin importar el filtro:
+      // misma regla de bypass total que usa posts_select (RLS) para que
+      // avisar coincida exacto con quién puede de verdad abrir el post.
+      const isAdminOrAbove = p.role === "admin" || p.role === "super_admin";
+      const departmentOk = departmentId === null || isAdminOrAbove || p.department_id === departmentId;
+      const rolesOk = roles === null || isAdminOrAbove || (roles as string[]).includes(p.role);
+      return departmentOk && rolesOk;
+    })
+    .map((p) => p.id);
+}
+
 export async function createPost(input: unknown): Promise<ConectadosActionResult> {
   const profile = await requireProfile();
   const parsed = CreatePostSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
-  const { content, departmentId, roles, publishAt, mentions } = parsed.data;
+  const { content, departmentId, roles, publishAt, mentions: rawMentions } = parsed.data;
+  const mentions = await filterMentionsInOrg(rawMentions, profile.organization_id);
 
   const supabase = await createClient();
   const { data: post, error } = await supabase
@@ -42,36 +102,39 @@ export async function createPost(input: unknown): Promise<ConectadosActionResult
   // Programado: los avisos salen cuando el cron lo libera (Task 9), no ahora.
   if (!publishAt) {
     notifyBestEffort(async () => {
-      const { data: recipients } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("organization_id", profile.organization_id)
-        .eq("is_active", true)
-        .neq("id", profile.id);
-      for (const recipient of recipients ?? []) {
-        await notify({
-          organizationId: profile.organization_id,
-          recipientId: recipient.id,
-          type: "post_nuevo",
-          title: "Nueva publicación",
-          body: `${profile.display_name} publicó: "${previewContent(content)}"`,
-          url: "/conectados",
-          entityType: "post",
-          entityId: post.id,
-        });
-      }
-      for (const recipientId of mentions.filter((id) => id !== profile.id)) {
-        await notify({
-          organizationId: profile.organization_id,
-          recipientId,
-          type: "post_mencion",
-          title: `${profile.display_name} te mencionó`,
-          body: previewContent(content),
-          url: "/conectados",
-          entityType: "post",
-          entityId: post.id,
-        });
-      }
+      const recipients = await getPostAudience(profile.organization_id, profile.id, departmentId, roles);
+
+      await Promise.all(
+        recipients.map((recipientId) =>
+          notify({
+            organizationId: profile.organization_id,
+            recipientId,
+            type: "post_nuevo",
+            title: "Nueva publicación",
+            body: `${profile.display_name} publicó: "${previewContent(content)}"`,
+            url: "/conectados",
+            entityType: "post",
+            entityId: post.id,
+          }),
+        ),
+      );
+
+      await Promise.all(
+        mentions
+          .filter((id) => id !== profile.id)
+          .map((recipientId) =>
+            notify({
+              organizationId: profile.organization_id,
+              recipientId,
+              type: "post_mencion",
+              title: `${profile.display_name} te mencionó`,
+              body: previewContent(content),
+              url: "/conectados",
+              entityType: "post",
+              entityId: post.id,
+            }),
+          ),
+      );
     });
   }
 
@@ -83,7 +146,8 @@ export async function addComment(input: unknown): Promise<ConectadosActionResult
   const profile = await requireProfile();
   const parsed = CreateCommentSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
-  const { postId, body, mentions } = parsed.data;
+  const { postId, body, mentions: rawMentions } = parsed.data;
+  const mentions = await filterMentionsInOrg(rawMentions, profile.organization_id);
 
   const supabase = await createClient();
   const { error } = await supabase.from("post_comments").insert({
@@ -98,18 +162,22 @@ export async function addComment(input: unknown): Promise<ConectadosActionResult
   if (error) return { error: "No se pudo comentar." };
 
   notifyBestEffort(async () => {
-    for (const recipientId of mentions.filter((id) => id !== profile.id)) {
-      await notify({
-        organizationId: profile.organization_id,
-        recipientId,
-        type: "post_mencion",
-        title: `${profile.display_name} te mencionó`,
-        body: previewContent(body),
-        url: "/conectados",
-        entityType: "post",
-        entityId: postId,
-      });
-    }
+    await Promise.all(
+      mentions
+        .filter((id) => id !== profile.id)
+        .map((recipientId) =>
+          notify({
+            organizationId: profile.organization_id,
+            recipientId,
+            type: "post_mencion",
+            title: `${profile.display_name} te mencionó`,
+            body: previewContent(body),
+            url: "/conectados",
+            entityType: "post",
+            entityId: postId,
+          }),
+        ),
+    );
   });
 
   revalidatePath("/conectados");
