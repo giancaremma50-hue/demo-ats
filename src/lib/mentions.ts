@@ -12,9 +12,15 @@
  * 1. **La nota guarda el nombre del momento.** Si alguien cambia de nombre
  *    después, las notas viejas conservan el anterior. Es lo correcto para un
  *    registro histórico: dice a quién se mencionó tal como se leía ese día.
- * 2. **`notes.mentions` sigue existiendo** y sigue siendo la fuente para
- *    notificar y para validar permisos. El token es presentación; los ids son
- *    el dato. Nunca se confía en los ids del token para notificar.
+ * 2. **El CUERPO es la fuente de a quién se notifica.** Los ids salen de los
+ *    tokens del texto (`extractMentionIds`) y se validan en el servidor
+ *    contra perfiles reales antes de notificar o de guardarse en la columna
+ *    `mentions`; esa columna es el resultado de esa validación, no su
+ *    entrada. Antes había además un array que mandaba el cliente y se
+ *    contrastaba contra el cuerpo — se eliminó (en Postulaciones y en
+ *    Conectados): era la misma información dos veces y la copia del cliente
+ *    fue justo por donde entraron los dos huecos que documentan
+ *    `canonicalizeMentions` y `resolveMentionTokens`.
  *
  * Las notas anteriores a este cambio no tienen tokens y se ven como texto
  * plano — sin negrita, pero sin romperse.
@@ -62,7 +68,16 @@ export function parseMentions(body: string): MentionPart[] {
   return partes;
 }
 
-/** Los ids mencionados en el cuerpo. Se usa para CONTRASTAR contra lo que manda el cliente, no para confiar. */
+/**
+ * Los ids mencionados en el cuerpo. Es la ENTRADA a validar, nunca una lista
+ * en la que ya se pueda confiar: el `uuid` sale de texto que escribió quien
+ * publica, así que quien la use tiene que contrastarla contra perfiles reales
+ * (misma organización, activos) antes de notificar o guardar nada.
+ *
+ * Ojo: el grupo de id del token es `[0-9a-fA-F-]{36}`, que también casa
+ * basura como 36 guiones — no es un validador de UUID. Filtrar antes de
+ * meterlo en una consulta (un id inválido hace fallar el `in (...)` entero).
+ */
 export function extractMentionIds(body: string): string[] {
   return [...new Set([...body.matchAll(TOKEN)].map((m) => m[2].toLowerCase()))];
 }
@@ -86,10 +101,58 @@ export function extractMentionIds(body: string): string[] {
  * porque se pinta con el nombre del propio autor. Hallado en /security-review.
  */
 export function canonicalizeMentions(body: string, nombrePorId: ReadonlyMap<string, string>): string {
-  return body.replace(TOKEN, (original, _nombre: string, id: string) => {
+  // Deja intacto el token que no resolvió: acá el llamador (`addNote`) ya
+  // rechaza el envío completo si el cuerpo menciona a alguien fuera de la
+  // lista blanca, así que nunca llega a guardarse uno sin validar.
+  return rewriteTokens(body, nombrePorId, (original) => original);
+}
+
+/** Un nombre no puede traer los caracteres que delimitan un token: si los
+ * conserva, el texto degradado puede volver a formar un token válido. Mismo
+ * saneo que `buildMentionToken` aplica al construirlo. */
+function limpiarNombre(nombre: string): string {
+  return nombre.replace(/[[\]()]/g, "").trim();
+}
+
+/** Recorre los tokens una sola vez; lo único que cambia entre los dos modos
+ * (canonicalizar vs. degradar) es qué hacer con un uuid que no resolvió. */
+function rewriteTokens(
+  body: string,
+  nombrePorId: ReadonlyMap<string, string>,
+  sinResolver: (original: string, nombre: string) => string,
+): string {
+  return body.replace(TOKEN, (original: string, nombre: string, id: string) => {
     const real = nombrePorId.get(id.toLowerCase());
-    return real ? buildMentionToken(real, id.toLowerCase()) : original;
+    return real ? buildMentionToken(real, id.toLowerCase()) : sinResolver(original, nombre);
   });
+}
+
+/**
+ * Como `canonicalizeMentions`, pero además DEGRADA a texto plano cualquier
+ * token cuyo uuid no esté en el mapa de perfiles válidos.
+ *
+ * `canonicalizeMentions` deja intacto el token desconocido, y eso alcanza en
+ * Postulaciones porque ahí `addNote` rechaza el envío completo si el cuerpo
+ * menciona a alguien fuera de la lista blanca. Donde no hay ese rechazo
+ * (AJE Conectados: el muro es abierto, fallar una publicación entera por un
+ * token raro escrito a mano sería peor), el token desconocido sobreviviría y
+ * `MentionText` lo pintaría en negrita con el color de acento — el sello
+ * visual de "esto lo resolvió el sistema" — con el nombre que haya escrito
+ * quien publica. Es la misma suplantación que documenta
+ * `canonicalizeMentions`, por la puerta de al lado.
+ *
+ * Con esto, TODO token que sobrevive apunta a un perfil real y muestra su
+ * nombre autoritativo; lo demás queda como texto común y corriente.
+ *
+ * El nombre degradado se limpia de `[](` a propósito: sin eso, un token
+ * ANIDADO se vuelve a armar solo. Con `@[@[Directora de RH](uuid-basura)](uuid-real)`
+ * el regex casa el tramo externo con nombre `@[Directora de RH`; al degradarlo
+ * tal cual quedaba `@[Directora de RH` seguido del `](uuid-real)` que no
+ * casó — o sea, un token nuevo, válido y jamás validado, con el nombre que
+ * eligió quien publica. Hallado en /code-review sobre este mismo arreglo.
+ */
+export function resolveMentionTokens(body: string, nombrePorId: ReadonlyMap<string, string>): string {
+  return rewriteTokens(body, nombrePorId, (_original, nombre) => limpiarNombre(nombre));
 }
 
 /**

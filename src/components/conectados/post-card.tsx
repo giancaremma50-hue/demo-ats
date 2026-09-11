@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { MessageCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -39,6 +39,10 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
   const [commentsOpen, setCommentsOpen] = useState(false);
 
   const canDelete = post.author_id === viewer.id || viewer.isAdminOrAbove;
+  // Viene calculado del servidor (o del manejador de Realtime): significa
+  // "todavía no lo ve nadie más", que NO es lo mismo que `publish_at != null`
+  // — ver el comentario de `FeedPost.scheduled` en queries.ts.
+  const scheduled = post.scheduled;
   const audienceLabel = post.department_id
     ? (departments.find((d) => d.id === post.department_id)?.name ?? "un departamento")
     : null;
@@ -73,7 +77,12 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
   }
 
   return (
-    <Card className="flex flex-col gap-3 p-4">
+    // `overflow-visible` pisa el `overflow-hidden` de `Card`: el desplegable
+    // de @menciones del formulario de comentario se posiciona `absolute`
+    // dentro de esta tarjeta y quedaba recortado contra su borde. Lo que sí
+    // necesita recorte interno (galería de adjuntos, avatar, barras de la
+    // encuesta) ya lo trae en su propio contenedor.
+    <Card className="flex flex-col gap-3 overflow-visible p-4">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-semibold">
           {post.author_avatar_url ? (
@@ -91,9 +100,23 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
                 Solo {audienceLabel}
               </span>
             )}
+            {scheduled && (
+              // Un post programado solo lo ve su autor (posts_select deja
+              // pasar al autor siempre) — sin esta insignia se ve idéntico a
+              // uno publicado y se lee como que ya salió para todos.
+              <span className="rounded-full bg-aje-yellow/20 px-2 py-0.5 text-[10px] font-medium text-foreground">
+                Programada
+              </span>
+            )}
           </div>
           <p className="text-xs tabular-nums text-muted-foreground">
-            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: es })}
+            {/* Fecha absoluta, no relativa: `formatDistanceToNow` sobre una
+                fecha ya pasada (programada para hoy a las 13:00, son las
+                16:00, el cron diario todavía no corrió) imprimiría el
+                absurdo "Se publica hace 3 horas". */}
+            {scheduled && post.publish_at
+              ? `Se publica el ${format(new Date(post.publish_at), "d 'de' MMMM, HH:mm", { locale: es })}`
+              : formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: es })}
           </p>
         </div>
         {canDelete && (

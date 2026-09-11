@@ -5,12 +5,19 @@ import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify, notifyBestEffort } from "@/lib/notifications/notify";
-import { CreatePostSchema, CreateCommentSchema, REACTION_TYPES, type ReactionType } from "./schema";
+import { extractMentionIds, resolveMentionTokens } from "@/lib/mentions";
+import type { Database } from "@/lib/supabase/database.types";
+import { CreatePostSchema, CreateCommentSchema, REACTION_TYPES, isScheduled, type ReactionType } from "./schema";
 import { getPostComments, type FeedPost, type FeedComment, type Attachment, type Poll, type Reactions } from "./queries";
 
 export type ConectadosActionResult<T = undefined> = { error?: string; success?: string } & (T extends undefined
   ? object
   : Partial<T>);
+
+/** Mismo tope que `addNote` en Postulaciones: un cuerpo de 4000 caracteres
+ * entra ~66 tokens, y cada mención dispara aviso in-app y correo. */
+const MAX_MENCIONES = 20;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const EXTENSION_BY_MIME: Record<string, string> = {
@@ -29,10 +36,11 @@ function previewContent(content: string): string {
 
 function toFeedPost(row: Record<string, unknown>): FeedPost {
   return {
-    ...(row as Omit<FeedPost, "attachments" | "poll" | "reactions">),
+    ...(row as Omit<FeedPost, "attachments" | "poll" | "reactions" | "scheduled">),
     attachments: [], // recién creado: nunca trae adjuntos todavía (se suben después y se agregan al estado local).
     poll: (row.poll as Poll | null) ?? null,
     reactions: (row.reactions as Reactions) ?? {},
+    scheduled: isScheduled((row.publish_at as string | null) ?? null),
   };
 }
 
@@ -41,24 +49,62 @@ function toFeedComment(row: Record<string, unknown>): FeedComment {
 }
 
 /**
- * El cliente manda `mentions` como una lista de UUIDs ya resueltos (el diseño
- * del muro usa autocompletado, no texto a re-parsear) — pero esa lista NUNCA
- * se usa tal cual. Se filtra contra perfiles reales, activos, de la MISMA
- * organización del autor: sin esto, cualquiera puede mandar el UUID de un
- * perfil de OTRA organización y `notify()` (que busca el email solo por id,
- * sin filtrar por `organization_id`) le manda un aviso y un correo a un
- * desconocido. Encontrado en `/code-review` de la fase de backend.
+ * Resuelve las menciones de un cuerpo contra perfiles reales y devuelve el
+ * cuerpo ya saneado.
+ *
+ * **Manda el CUERPO, no el array que manda el cliente** — misma regla que
+ * `addNote` en Postulaciones (ver `.claude/napkin.md`, 2026-09-09: "cuando un
+ * dato queda duplicado en dos lugares, escribir cuál manda"). El compositor
+ * serializa cada mención como token `@[Nombre](uuid)` dentro del texto, así
+ * que el cuerpo ya es la fuente completa; el array separado solo repetía lo
+ * mismo y abría dos huecos:
+ *
+ * 1. **Notificar/emailear a cualquiera**: un uuid de OTRA organización pasaba
+ *    `z.string().uuid()` y `notify()` busca el correo solo por id, sin filtrar
+ *    organización (hallado en el code-review de la fase de backend).
+ * 2. **Suplantar**: el texto del token nunca se validaba, así que escribir a
+ *    mano `@[Directora de RH](uuid-de-otro)` se pintaba en negrita con el
+ *    color de acento, idéntico a una mención resuelta por el sistema.
+ *
+ * Acá se cierran los dos: los ids salen del cuerpo, se validan contra perfiles
+ * activos de la MISMA organización, y `resolveMentionTokens` reescribe cada
+ * token con el nombre autoritativo y degrada a texto plano los que no resolvió.
  */
-async function filterMentionsInOrg(mentions: string[], organizationId: string): Promise<string[]> {
-  if (mentions.length === 0) return [];
+async function resolveMentions(
+  body: string,
+  organizationId: string,
+): Promise<{ body: string; mentionIds: string[]; error?: string }> {
+  // El grupo de id del token es `[0-9a-fA-F-]{36}`: casa 36 guiones y otras
+  // formas que NO son un uuid. Un solo id así en el `in (...)` hace que
+  // Postgres rechace la consulta entera (22P02) y, sin este filtro, TODAS las
+  // menciones legítimas del mismo post se degradarían a texto plano en
+  // silencio. Antes no pasaba porque los ids venían de `z.string().uuid()`.
+  const ids = extractMentionIds(body).filter((id) => UUID_RE.test(id));
+  if (ids.length === 0) return { body: resolveMentionTokens(body, new Map()), mentionIds: [] };
+  if (ids.length > MAX_MENCIONES) {
+    return { body, mentionIds: [], error: `Máximo ${MAX_MENCIONES} menciones por publicación.` };
+  }
+
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("profiles")
-    .select("id")
-    .in("id", mentions)
+    .select("id, display_name")
+    .in("id", ids)
     .eq("organization_id", organizationId)
     .eq("is_active", true);
-  return (data ?? []).map((p) => p.id);
+
+  // Un fallo de la consulta NO puede tratarse como "ninguna mención resolvió":
+  // eso degradaría menciones válidas a texto plano y guardaría el post así,
+  // sin forma de recuperarlo.
+  if (error) return { body, mentionIds: [], error: "No se pudieron verificar las menciones. Inténtalo de nuevo." };
+
+  // Se descarta el perfil con nombre vacío: `resolveMentionTokens` lo trataría
+  // como "no resolvió" (cadena falsy) y degradaría el token, pero su id
+  // seguiría en la lista a notificar — aviso de una mención que no se ve.
+  const nombrePorId = new Map(
+    (data ?? []).filter((p) => p.display_name.trim() !== "").map((p) => [p.id, p.display_name]),
+  );
+  return { body: resolveMentionTokens(body, nombrePorId), mentionIds: [...nombrePorId.keys()] };
 }
 
 /**
@@ -70,7 +116,11 @@ async function getPostAudience(
   organizationId: string,
   authorId: string,
   departmentId: string | null,
-  roles: Array<"gestor" | "admin" | "super_admin"> | null,
+  // Tipo del enum de la base, no la unión de 3 que acepta el compositor: la
+  // columna `posts.roles` todavía puede traer `colaborador` (el valor sigue
+  // en el enum de Postgres aunque el rol ya no se asigne, ver AGENTS.md), y
+  // acá solo se compara contra el rol de cada perfil.
+  roles: Database["public"]["Enums"]["app_role"][] | null,
 ): Promise<string[]> {
   const admin = createAdminClient();
   const { data: candidates } = await admin
@@ -100,9 +150,18 @@ export async function createPost(input: unknown): Promise<ConectadosActionResult
   // válido y, en este punto, el servidor todavía no sabe si vienen adjuntos.
   // El compositor (única parte que conoce content + poll + archivos a la vez)
   // es quien bloquea un post genuinamente vacío antes de llamar acá.
-  const { content, departmentId, roles, publishAt, mentions: rawMentions, poll } = parsed.data;
+  const { content: rawContent, departmentId, roles, publishAt, poll } = parsed.data;
 
-  const mentions = await filterMentionsInOrg(rawMentions, profile.organization_id);
+  // Una fecha ya pasada dejaría el post invisible para todos menos su autor
+  // hasta la próxima corrida del cron (diaria, ver .claude/napkin.md) — se ve
+  // igual que "se perdió". Mejor decirlo de frente antes de guardarlo.
+  if (publishAt && new Date(publishAt).getTime() <= Date.now()) {
+    return { error: "La fecha para programar ya pasó. Elige una fecha futura." };
+  }
+
+  const resolved = await resolveMentions(rawContent, profile.organization_id);
+  if (resolved.error) return { error: resolved.error };
+  const { body: content, mentionIds: mentions } = resolved;
 
   const supabase = await createClient();
   const { data: post, error } = await supabase
@@ -141,9 +200,16 @@ export async function createPost(input: unknown): Promise<ConectadosActionResult
           }),
         ),
       );
+      // Las menciones se cruzan con la MISMA audiencia del post: mencionar a
+      // alguien no puede saltarse la restricción de departamento/rol. Sin
+      // esto, un post "solo Finanzas / solo admins" le manda a un gestor de
+      // otra área un aviso —y un correo— con los primeros 120 caracteres de
+      // algo que `posts_select` no le deja abrir. Mismo criterio que ya
+      // aplica `addNote` con las notas privadas.
+      const audiencia = new Set(recipients);
       await Promise.all(
         mentions
-          .filter((id) => id !== profile.id)
+          .filter((id) => id !== profile.id && audiencia.has(id))
           .map((recipientId) =>
             notify({
               organizationId: profile.organization_id,
@@ -160,15 +226,23 @@ export async function createPost(input: unknown): Promise<ConectadosActionResult
     });
   }
 
-  return { success: "Publicación creada", post: toFeedPost(post) };
+  // Un post programado NO está publicado: solo su autor lo ve hasta que el
+  // cron lo libera. Decir "Publicación creada" ahí sería el "Éxito"/"Listo"
+  // genérico que AGENTS.md prohíbe — el mensaje tiene que decir qué pasó.
+  return {
+    success: publishAt ? "Publicación programada" : "Publicación creada",
+    post: toFeedPost(post),
+  };
 }
 
 export async function addComment(input: unknown): Promise<ConectadosActionResult<{ comment: FeedComment }>> {
   const profile = await requireProfile();
   const parsed = CreateCommentSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
-  const { postId, body, mentions: rawMentions } = parsed.data;
-  const mentions = await filterMentionsInOrg(rawMentions, profile.organization_id);
+  const { postId, body: rawBody } = parsed.data;
+  const resolved = await resolveMentions(rawBody, profile.organization_id);
+  if (resolved.error) return { error: resolved.error };
+  const { body, mentionIds: mentions } = resolved;
 
   const supabase = await createClient();
   const { data: comment, error } = await supabase
@@ -192,7 +266,11 @@ export async function addComment(input: unknown): Promise<ConectadosActionResult
     // comenta. `select` propio, no admin: si el post ya no existe (borrado
     // entre que se abrió el form y se envió), simplemente no hay a quién
     // avisar.
-    const { data: post } = await supabase.from("posts").select("author_id").eq("id", postId).maybeSingle();
+    const { data: post } = await supabase
+      .from("posts")
+      .select("author_id, department_id, roles")
+      .eq("id", postId)
+      .maybeSingle();
     if (post?.author_id && post.author_id !== profile.id) {
       await notify({
         organizationId: profile.organization_id,
@@ -206,9 +284,17 @@ export async function addComment(input: unknown): Promise<ConectadosActionResult
       });
     }
 
+    // Igual que en `createPost`: mencionar a alguien en un comentario no
+    // puede saltarse la restricción de audiencia del POST padre — el
+    // comentario hereda su visibilidad (`post_comments_select` delega en
+    // `can_view_post`), así que avisar fuera de esa audiencia filtraría el
+    // contenido a quien no puede abrirlo.
+    const audiencia = new Set(
+      post ? await getPostAudience(profile.organization_id, profile.id, post.department_id, post.roles) : [],
+    );
     await Promise.all(
       mentions
-        .filter((id) => id !== profile.id)
+        .filter((id) => id !== profile.id && audiencia.has(id))
         .map((recipientId) =>
           notify({
             organizationId: profile.organization_id,

@@ -1,5 +1,66 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-11 (un cron por hora en `vercel.json` rompe TODOS los deploys en el plan Hobby de Vercel, en silencio — production llevaba días congelado en un build viejo)_
+_Última actualización: 2026-09-11 (degradar un token de mención a "texto plano" sin limpiarlo lo deja RE-FORMARSE en otro token válido — el arreglo de suplantación traía su propio bypass)_
+
+## Degradar un token de mención sin sanear el nombre lo vuelve a armar — el parche de suplantación tenía su propio hueco (2026-09-11) — MÁXIMA PRIORIDAD
+
+Conectados guardaba el cuerpo del post tal cual y confiaba en el array
+`mentions` del cliente, así que escribir a mano `@[Directora de RH](uuid-de-otro)`
+se pintaba idéntico a una mención resuelta por el sistema (negrita + color de
+acento). Es la MISMA suplantación que `canonicalizeMentions` documenta desde
+2026-09-09 para Postulaciones, reintroducida por tercera vez en este módulo.
+
+1. **El arreglo obvio —degradar a texto plano el token que no resuelve— abre
+   un bypass si se devuelve el nombre capturado sin limpiar.** El grupo de
+   nombre del regex es `[^\]\n\r]{1,120}`: acepta `@[`. Con
+   `@[@[Directora de RH](uuid-basura)](uuid-real)` el regex casa el tramo
+   EXTERNO con nombre `@[Directora de RH` e id `uuid-basura`; al degradarlo
+   textual queda `@[Directora de RH` pegado al `](uuid-real)` que no casó —
+   o sea un token nuevo, bien formado y jamás validado, con el nombre que
+   eligió quien publica. Lo encontró `/code-review` sobre el propio arreglo,
+   no sobre el código original.
+   Do instead: al degradar, pasar el nombre por el MISMO saneo que usa
+   `buildMentionToken` (`replace(/[[\]()]/g, "")`). Y verificarlo con casos
+   reales antes de darlo por cerrado: un script de 20 líneas que corra el
+   regex sobre el token anidado, el anidado al revés, el uuid desconocido y
+   un id basura, y que afirme que **todo token sobreviviente apunta a un
+   perfil real Y lleva el nombre autoritativo**. Razonar el regex de cabeza
+   no alcanza — el tramo que casa no es el que uno cree.
+2. **El id del token NO es un uuid validado: `[0-9a-fA-F-]{36}` casa 36
+   guiones.** Meter eso en un `.in("id", ids)` hace que Postgres rechace la
+   consulta ENTERA (22P02), y si el llamador solo desestructura `data` (sin
+   mirar `error`), el mapa queda vacío y TODAS las menciones legítimas del
+   mismo post se degradan a texto plano en silencio, con toast de éxito.
+   Antes no pasaba porque los ids venían de `z.string().uuid()` del cliente.
+   Do instead: filtrar por un regex de uuid real antes de consultar, y nunca
+   tratar el `error` de la consulta como "no resolvió ninguna".
+3. **Mencionar no puede saltarse la audiencia del post.** Un post restringido
+   a un departamento/rol mandaba aviso Y CORREO con los primeros 120
+   caracteres a cualquier mencionado de la organización, aunque `posts_select`
+   no lo dejara abrirlo. `getPostAudience` (que ya existía, para `post_nuevo`)
+   es el filtro que faltaba cruzar; en comentarios, la audiencia es la del
+   POST padre, no la del comentario.
+
+---
+
+## `typecheck` y `lint` no ven un import de VALOR desde un módulo `server-only` — solo el build (2026-09-11)
+
+Mover un helper puro (`isScheduled`) a `queries.ts` y consumirlo desde un
+componente cliente pasó `npm run typecheck` y `npm run lint` sin una queja, y
+reventó `npm run build` con "Ecmascript file had an error" apuntando a
+`./src/lib/conectados/queries.ts [Client Component Browser]`.
+
+1. **`import type { X } from "<módulo server-only>"` desde un cliente es
+   legal (los tipos se borran); `import { valorX }` del mismo módulo es error
+   de build.** Por eso el archivo ya se venía importando sin problema desde
+   componentes cliente: todos los imports previos eran de tipo. El día que se
+   agrega uno de valor, las dos herramientas rápidas siguen en verde.
+   Do instead: un helper que usen los dos lados no va en un módulo con
+   `import "server-only"` — va en el módulo compartido del dominio (acá
+   `schema.ts`, que ya lo importan cliente y servidor). Y antes de cerrar un
+   cambio que mueve código entre capas, correr `npm run build`, no solo
+   typecheck+lint.
+
+---
 
 ## Un cron con frecuencia menor a diaria rompe TODO deploy de Vercel en plan Hobby — sin avisar en ningún log local (2026-09-11) — MÁXIMA PRIORIDAD
 
