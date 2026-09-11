@@ -1,9 +1,12 @@
 "use client";
 
-import { useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Calendar, ImagePlus, ListChecks, X } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
+import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { MediaThumb } from "@/components/ui/media-picker";
+import { kindOfMime } from "@/lib/media-kind";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { createPost, uploadPostAttachment } from "@/lib/conectados/actions";
 import { useConectados } from "./conectados-feed";
@@ -33,7 +36,39 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
   const [showSchedule, setShowSchedule] = useState(false);
   const [showPoll, setShowPoll] = useState(false);
   const [pollOptions, setPollOptions] = useState(["", ""]);
-  const [files, setFiles] = useState<File[]>([]);
+  // Cada adjunto viaja con su `blob:` para poder mostrar la miniatura. Las
+  // URLs se crean y se revocan en los MANEJADORES (nunca en un efecto ni
+  // dentro de un actualizador de estado, que tiene que ser puro); el ref
+  // espeja la lista para poder revocar lo que quede al desmontar.
+  const [files, setFiles] = useState<{ file: File; url: string }[]>([]);
+  const urlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    return () => {
+      for (const url of urlsRef.current) URL.revokeObjectURL(url);
+      urlsRef.current = [];
+    };
+  }, []);
+
+  function agregarArchivos(nuevos: File[]) {
+    const conUrl = nuevos.map((file) => ({ file, url: URL.createObjectURL(file) }));
+    urlsRef.current = [...urlsRef.current, ...conUrl.map((f) => f.url)];
+    setFiles((prev) => [...prev, ...conUrl]);
+  }
+
+  function quitarArchivo(indice: number) {
+    const fuera = files[indice];
+    if (!fuera) return;
+    URL.revokeObjectURL(fuera.url);
+    urlsRef.current = urlsRef.current.filter((u) => u !== fuera.url);
+    setFiles((prev) => prev.filter((_, j) => j !== indice));
+  }
+
+  function limpiarArchivos() {
+    for (const url of urlsRef.current) URL.revokeObjectURL(url);
+    urlsRef.current = [];
+    setFiles([]);
+  }
 
   function toggleRole(role: "gestor" | "admin" | "super_admin") {
     setRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
@@ -114,7 +149,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
         // ve lo que la subida anterior escribió.
         const attachments: (typeof createdPost.attachments)[number][] = [];
         const failedNames: string[] = [];
-        for (const file of files) {
+        for (const { file } of files) {
           const formData = new FormData();
           formData.set("file", file);
           const r = await uploadPostAttachment(createdPost.id, formData);
@@ -136,7 +171,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
         setShowSchedule(false);
         setShowPoll(false);
         setPollOptions(["", ""]);
-        setFiles([]);
+        limpiarArchivos();
       }
     });
   }
@@ -150,7 +185,14 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
     // de la Card evita que cualquier hijo toque la esquina redondeada.
     <Card className="overflow-visible p-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="relative">
+        {/* La foto de quien escribe, al lado del cuadro: deja claro con qué
+            identidad se va a publicar (el muro es de la organización, no un
+            chat anónimo). El contenedor `relative` sigue envolviendo SOLO al
+            textarea — el overlay de menciones se posiciona con `inset-0`
+            contra él, y cualquier caja de por medio lo descalibraría. */}
+        <div className="flex items-start gap-3">
+          <Avatar name={viewer.displayName} src={viewer.avatarUrl} size={40} className="mt-0.5 flex-none" />
+          <div className="relative min-w-0 flex-1">
           <div
             ref={highlightRef}
             aria-hidden
@@ -231,7 +273,8 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
                 </li>
               ))}
             </Card>
-          )}
+            )}
+          </div>
         </div>
 
         {showPoll && (
@@ -270,17 +313,26 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
         )}
 
         {files.length > 0 && (
-          <ul className="flex flex-wrap gap-2">
+          // Miniaturas y no una fila de nombres: con varias fotos del carrete,
+          // "IMG_20260911_0642.jpg" no dice cuál es cuál. El nombre se
+          // conserva como texto accesible del botón de quitar, y visible solo
+          // para lo que no tiene miniatura posible (un PDF).
+          <ul className="flex flex-wrap gap-3">
             {files.map((f, i) => (
-              <li key={i} className="flex max-w-[12rem] items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs">
-                <span className="min-w-0 truncate">{f.name}</span>
+              <li key={f.url} className="relative">
+                <span className="flex size-20 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+                  <MediaThumb url={f.url} kind={kindOfMime(f.file.type)} local className="size-full" />
+                </span>
+                {kindOfMime(f.file.type) === "archivo" && (
+                  <span className="mt-1 block max-w-20 truncate text-[11px] text-muted-foreground">{f.file.name}</span>
+                )}
                 <button
                   type="button"
-                  aria-label={`Quitar ${f.name}`}
-                  onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                  className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+                  aria-label={`Quitar ${f.file.name}`}
+                  onClick={() => quitarArchivo(i)}
+                  className="absolute -top-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-elevated"
                 >
-                  <X className="size-3" aria-hidden />
+                  <X className="size-3.5" strokeWidth={2.5} aria-hidden />
                 </button>
               </li>
             ))}
@@ -319,8 +371,12 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          {/* `sr-only` y no `hidden`: `display:none` saca al input del orden
+              de tabulación y del árbol de accesibilidad, así que adjuntar era
+              imposible sin mouse. Con `sr-only` el control sigue ahí y el
+              foco se ve por el anillo del contenedor. */}
           <label
-            className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-within:ring-2 focus-within:ring-ring"
             aria-label="Agregar adjunto"
           >
             <ImagePlus className="size-[18px]" aria-hidden />
@@ -328,8 +384,14 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
               type="file"
               multiple
               accept="image/jpeg,image/png,image/webp,video/mp4,application/pdf"
-              className="hidden"
-              onChange={(e) => setFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
+              className="sr-only"
+              onChange={(e) => {
+                agregarArchivos(Array.from(e.target.files ?? []));
+                // Sin esto, quitar un adjunto y volver a elegir EL MISMO
+                // archivo no dispara `change` (el value del input no cambió)
+                // y el toque no hace nada en pantalla.
+                e.target.value = "";
+              }}
             />
           </label>
           <button

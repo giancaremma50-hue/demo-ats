@@ -7,7 +7,62 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (un campo de configuración que sube, guarda y no pinta nada en ninguna pantalla es un bug de confianza — se verifica desde el lado del render, no desde el del guardado)_
+_Última actualización: 2026-09-11 (un `<input type="file">` con `hidden` no se alcanza con el teclado, y el texto del `<label>` que lo envuelve se convierte en el nombre accesible del control)_
+
+## Un `<input type="file">` con `hidden` queda inalcanzable por teclado, y su vista previa tiene tres trampas propias (2026-09-11) — MÁXIMA PRIORIDAD
+
+Al unificar todas las subidas en un solo cuadro que es vista previa + selector
+(`<MediaPicker>`, regla de diseño 8), salieron cuatro cosas que se repiten en
+cualquier patrón de "input oculto dentro de un label".
+
+1. **`className="hidden"` (o sea `display:none`) saca al input del orden de
+   tabulación Y del árbol de accesibilidad.** El compositor de Conectados lo
+   tenía así: adjuntar un archivo era imposible sin mouse. Siempre `sr-only`,
+   que lo mantiene enfocable, más `focus-within:ring` en el contenedor para
+   que el foco se vea. Encontrado en review, en el mismo diff que agregaba la
+   regla que dice justamente esto.
+2. **El texto del `<label>` ES el nombre accesible del control.** Un cuadro que
+   contiene la etiqueta + la pista + el estado ("Sin guardar: foto.jpg") le
+   arma al input un nombre de tres renglones que además CAMBIA cada vez que se
+   elige un archivo. El nombre va por `aria-label` y la pista por
+   `aria-describedby`; el texto visible se queda como está.
+3. **Reelegir el MISMO archivo no dispara `change`.** El `value` del input no
+   cambió, así que quitar un adjunto y volver a elegirlo desde el carrete no
+   hacía nada en pantalla. `e.target.value = ""` al final del manejador.
+4. **Una vista previa con `object-contain` miente sobre un avatar.** La foto se
+   guarda y se muestra recortada al centro (`object-cover`); previsualizarla
+   completa, con bandas grises, promete algo que después no se ve. El ajuste
+   de la miniatura tiene que ser el mismo que el del destino final.
+
+Además, de este mismo cambio:
+
+5. **`URL.createObjectURL` solo en manejadores, nunca en un efecto ni dentro de
+   un actualizador de estado.** `setState` en un efecto es error de build acá y
+   un actualizador tiene que ser puro. El patrón que funciona: crear y revocar
+   en el evento, guardar la URL vigente en un `useRef`, y un solo efecto de
+   desmontaje —sin `setState`— que revoca lo que quede.
+6. **Para limpiar un hijo después de guardar, `key` nuevo, no `setState` en un
+   efecto.** El "ya guardé, olvidá el archivo elegido" se calcula EN EL RENDER
+   comparando el `state` de `useActionState` contra el último visto
+   (`if (state !== estadoVisto) { setEstadoVisto(state); ... }`) y se aplica
+   remontando con un `key`. El toast sí va en el efecto: mostrarlo es un efecto
+   de verdad, limpiar estado no.
+7. **Una función exportada desde un módulo `"use client"` no se puede llamar
+   desde un componente de servidor** — se convierte en una referencia de
+   cliente. `kindOfMime` empezó dentro de `media-picker.tsx` y funcionaba de
+   casualidad: su otro consumidor (`AttachmentGallery`) llega al bundle de
+   cliente por `PostCard`. Vive en `src/lib/media-kind.ts`, sin directiva.
+8. **Un campo de configuración con un archivo RECHAZADO se queda pegado.** El
+   video validaba tipo/tamaño al subir y devolvía temprano sin limpiar: el
+   archivo inválido seguía en el cuadro con "Subir" encendido, repitiendo el
+   mismo error a cada clic. Toda salida temprana que rechaza un archivo tiene
+   que vaciar la elección, igual que el éxito.
+9. **Una pantalla "compartida" no puede fingir que pertenece a un módulo.**
+   `/configuracion` caía en el módulo de Reclutamiento por descarte, así que
+   entrar a Ajustes desde AJE Conectados cambiaba la barra entera al ATS y su
+   "Inicio" ya no volvía a Conectados. Ahora esa ruta tiene su propia barra
+   neutral (puerta a los dos módulos + Ajustes activo) y el selector no marca
+   ninguno como activo, que es la verdad.
 
 ## Un campo que sube, guarda y no pinta nada es un bug de confianza, no una función incompleta (2026-09-11) — MÁXIMA PRIORIDAD
 

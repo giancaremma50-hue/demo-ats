@@ -118,14 +118,12 @@ export function ConectadosFeed({
 
   return (
     <ConectadosContext.Provider value={{ viewer, departments, mentionable }}>
-      {/* Sin px/pt/pb propios: `(app)/layout.tsx` ya envuelve todo en un
-          `<main>` con `px-4 sm:px-6 lg:px-10`, `pt-10` y
-          `pb-[calc(7rem+safe-area)]`. Repetirlos acá sumaba otros 16px de
-          margen por lado en el teléfono (las "franjas" laterales que se
-          veían) y doblaba el aire inferior. `max-w-2xl` sí se queda: una
-          columna de feed más angosta que el `max-w-6xl` del layout es lo
-          correcto en escritorio. */}
-      <div className="mx-auto flex max-w-2xl flex-col gap-4">
+      {/* Sin px/pt/pb ni ancho propios: `(app)/layout.tsx` ya pone los
+          gutters (`px-4 sm:px-6 lg:px-10`) y el aire para la barra flotante,
+          y la columna `max-w-2xl` la pone la página junto con el título.
+          Repetir los gutters acá sumaba otros 16px por lado en el teléfono:
+          las "franjas" laterales que se veían. */}
+      <div className="flex flex-col gap-4">
         {viewer.canPost && <PostComposer onCreated={handleCreated} />}
         {posts.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
