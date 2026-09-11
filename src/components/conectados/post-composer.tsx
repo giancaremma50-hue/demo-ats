@@ -185,7 +185,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
                   onChange={(e) => setPollOptions((prev) => prev.map((o, j) => (j === i ? e.target.value : o)))}
                   placeholder={`Opción ${i + 1}`}
                   maxLength={120}
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                  className="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
                 />
                 {pollOptions.length > 2 && (
                   <button
@@ -214,13 +214,13 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
         {files.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {files.map((f, i) => (
-              <li key={i} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs">
-                {f.name}
+              <li key={i} className="flex max-w-[12rem] items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs">
+                <span className="min-w-0 truncate">{f.name}</span>
                 <button
                   type="button"
                   aria-label={`Quitar ${f.name}`}
                   onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                  className="flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+                  className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
                 >
                   <X className="size-3" aria-hidden />
                 </button>
@@ -257,7 +257,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
             <select
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
-              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs"
+              className="max-w-[10rem] rounded-full border border-border bg-background px-3 py-1.5 text-xs"
             >
               <option value="">Toda la organización</option>
               {departments.map((d) => (
@@ -271,7 +271,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
             <select
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
-              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs"
+              className="max-w-[10rem] rounded-full border border-border bg-background px-3 py-1.5 text-xs"
             >
               <option value="">Toda la organización</option>
               <option value={viewer.departmentId}>Solo mi departamento</option>
