@@ -19,7 +19,11 @@ export function DeleteButton({
   className,
 }: {
   itemLabel: string;
-  onDelete: () => Promise<void> | void;
+  /** Si resuelve un texto, ese es el mensaje del toast — la regla de
+   *  interacción 2 pide que la confirmación la devuelva la mutación y no la
+   *  arme el cliente. `successMessage` queda como respaldo para las
+   *  mutaciones que no devuelven nada. */
+  onDelete: () => Promise<string | void> | void;
   successMessage?: string;
   confirmDescription?: string;
   iconOnly?: boolean;
@@ -32,8 +36,8 @@ export function DeleteButton({
   function handleConfirm() {
     startTransition(async () => {
       try {
-        await onDelete();
-        notifySuccess(successMessage);
+        const mensaje = await onDelete();
+        notifySuccess(mensaje || successMessage);
         dialogRef.current?.close();
       } catch {
         setErrored(true);

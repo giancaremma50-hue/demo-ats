@@ -7,6 +7,13 @@ import { createClient } from "@/lib/supabase/server";
 import { contrastRatio } from "@/lib/color-contrast";
 import { zodFieldError } from "@/lib/forms/zod-error";
 import { optionalText } from "@/lib/zod-helpers";
+import {
+  BRAND_IMAGE_FIELDS,
+  BRAND_VIDEO_FIELDS,
+  BRAND_FIELD_COPY,
+  type BrandImageField,
+  type BrandVideoField,
+} from "./brand-fields";
 
 // El fondo claro de la app (--background en globals.css). El foco de
 // teclado se dibuja con este mismo acento (--ring: var(--accent)) — un
@@ -68,12 +75,13 @@ export async function updateBranding(
     return { error: "No se pudo guardar. Inténtalo de nuevo en unos segundos." };
   }
 
-  revalidatePath("/", "layout");
+  // Las mismas tres superficies: `careers_headline`/`careers_intro` son la
+  // portada de /empleos (ISR) y `platform_name`/`accent_color` se pintan en
+  // /login.
+  revalidateBrandSurfaces();
   return { success: "Marca actualizada" };
 }
 
-const BRAND_IMAGE_FIELDS = ["logo_url", "logo_dark_url", "login_image_url", "careers_cover_image_url"] as const;
-export type BrandImageField = (typeof BRAND_IMAGE_FIELDS)[number];
 const BrandImageFieldSchema = z.enum(BRAND_IMAGE_FIELDS);
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -95,7 +103,21 @@ function brandImagePaths(organizationId: string, field: BrandImageField) {
   return Object.values(EXTENSION_BY_MIME).map((ext) => `${organizationId}/${field}.${ext}`);
 }
 
-export type UploadImageState = { error?: string; success?: boolean } | undefined;
+/**
+ * Toda pantalla que pinta marca, no solo el layout raíz. `/empleos` es ISR
+ * (`export const revalidate = 60` en su page) y `/login` se renderiza con la
+ * organización: sin nombrarlas, cambiar la portada podía seguir sirviéndose
+ * vieja — y después de un borrado, apuntando a un archivo que ya no existe.
+ * Las imágenes revalidaban solo `/` y los videos las tres; la diferencia no
+ * tenía razón de ser (encontrado en review el 2026-09-11).
+ */
+function revalidateBrandSurfaces() {
+  revalidatePath("/", "layout");
+  revalidatePath("/login");
+  revalidatePath("/empleos");
+}
+
+export type UploadImageState = { error?: string; success?: string } | undefined;
 
 export async function uploadBrandImage(
   _prevState: UploadImageState,
@@ -145,17 +167,17 @@ export async function uploadBrandImage(
     return { error: "El archivo se subió pero no se pudo guardar. Inténtalo de nuevo." };
   }
 
-  // Limpieza best-effort: si el formato cambió (ej. .png -> .svg), el
+  // Limpieza best-effort: si el formato cambió (ej. .png -> .webp), el
   // archivo anterior queda huérfano en un path distinto porque `upsert`
   // solo sobrescribe una ruta idéntica. No afecta el resultado si falla.
   const stalePaths = brandImagePaths(profile.organization_id, field).filter((p) => p !== path);
   await supabase.storage.from("marca-publico").remove(stalePaths);
 
-  revalidatePath("/", "layout");
-  return { success: true };
+  revalidateBrandSurfaces();
+  return { success: BRAND_FIELD_COPY[field].uploaded };
 }
 
-export async function removeBrandImage(fieldInput: BrandImageField) {
+export async function removeBrandImage(fieldInput: BrandImageField): Promise<string> {
   const profile = await requireSuperAdmin();
 
   // Una Server Action es un endpoint invocable por red: el tipo de
@@ -186,7 +208,8 @@ export async function removeBrandImage(fieldInput: BrandImageField) {
   // se intentan todas las posibles.
   await supabase.storage.from("marca-publico").remove(brandImagePaths(profile.organization_id, field));
 
-  revalidatePath("/", "layout");
+  revalidateBrandSurfaces();
+  return BRAND_FIELD_COPY[field].removed;
 }
 
 // Un video de fondo puede pesar más de lo que una Server Action admite
@@ -201,8 +224,6 @@ const VIDEO_EXTENSION_BY_MIME: Record<string, string> = {
 };
 const ALLOWED_VIDEO_TYPES = new Set(Object.keys(VIDEO_EXTENSION_BY_MIME));
 
-const BRAND_VIDEO_FIELDS = ["login_video_url", "careers_cover_video_url"] as const;
-export type BrandVideoField = (typeof BRAND_VIDEO_FIELDS)[number];
 const BrandVideoFieldSchema = z.enum(BRAND_VIDEO_FIELDS);
 
 // El nombre de archivo en Storage es distinto del nombre de columna a
@@ -250,7 +271,7 @@ export async function createBrandVideoUploadUrl(
   return { ok: true, path: data.path, token: data.token };
 }
 
-export type ConfirmVideoState = { error?: string; success?: boolean } | undefined;
+export type ConfirmVideoState = { error?: string; success?: string } | undefined;
 
 export async function confirmBrandVideoUpload(fieldInput: BrandVideoField, path: string): Promise<ConfirmVideoState> {
   const profile = await requireSuperAdmin();
@@ -278,13 +299,11 @@ export async function confirmBrandVideoUpload(fieldInput: BrandVideoField, path:
   const stalePaths = brandVideoPaths(profile.organization_id, field).filter((p) => p !== path);
   await supabase.storage.from("marca-publico").remove(stalePaths);
 
-  revalidatePath("/", "layout");
-  revalidatePath("/login");
-  revalidatePath("/empleos");
-  return { success: true };
+  revalidateBrandSurfaces();
+  return { success: BRAND_FIELD_COPY[field].uploaded };
 }
 
-export async function removeBrandVideo(fieldInput: BrandVideoField): Promise<void> {
+export async function removeBrandVideo(fieldInput: BrandVideoField): Promise<string> {
   const profile = await requireSuperAdmin();
 
   const parsedField = BrandVideoFieldSchema.safeParse(fieldInput);
@@ -298,7 +317,6 @@ export async function removeBrandVideo(fieldInput: BrandVideoField): Promise<voi
   if (error) throw new Error("No se pudo quitar el video.");
 
   await supabase.storage.from("marca-publico").remove(brandVideoPaths(profile.organization_id, field));
-  revalidatePath("/", "layout");
-  revalidatePath("/login");
-  revalidatePath("/empleos");
+  revalidateBrandSurfaces();
+  return BRAND_FIELD_COPY[field].removed;
 }

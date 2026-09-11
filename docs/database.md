@@ -895,9 +895,10 @@ Aplicación: `src/lib/users/invite-actions.ts` (crear/borrar invitación, RLS-sc
 
 | Bucket | Público | Tipos permitidos | Límite | Contenido |
 |---|---|---|---|---|
-| `marca-publico` | sí | PNG, JPG, WebP, SVG (bucket) + video MP4/WebM — la app solo sube PNG/JPG/WebP para logos/imagen (ver `EXTENSION_BY_MIME` en `src/lib/organizations/actions.ts`), los videos se suben directo por URL firmada | 20 MB | Logos, imagen/video de login, foto/video de portada de la bolsa de empleo — editables por el super admin. Ruta: `{organization_id}/{campo}.{ext}` (imágenes) o `{organization_id}/{stem}.{ext}` (videos, `VIDEO_PATH_STEM` en `actions.ts` — el nombre de archivo no coincide 1:1 con la columna, `login_video_url` sigue usando el stem `login_video` por compatibilidad) |
+| `marca-publico` | sí | PNG, JPG, WebP + video MP4/WebM. **Sin SVG desde `marca_publico_sin_svg`** (2026-09-11): el bucket es público y sin CSP propio, un SVG con `<script>` se ejecutaría en su URL directa. La app sube PNG/JPG/WebP (ver `EXTENSION_BY_MIME` en `src/lib/organizations/actions.ts`), los videos directo por URL firmada | 20 MB | Logo, imagen/video de login, foto/video de portada de la bolsa de empleo — editables por el super admin. Ruta: `{organization_id}/{campo}.{ext}` (imágenes) o `{organization_id}/{stem}.{ext}` (videos, `VIDEO_PATH_STEM` en `actions.ts` — el nombre de archivo no coincide 1:1 con la columna, `login_video_url` sigue usando el stem `login_video` por compatibilidad) |
 | `cvs-privado` | no | PDF, DOC, DOCX, JPG, PNG | 10 MB | CVs y adjuntos de postulación, servidos siempre por URL firmada de 60 s. Ruta: `{organization_id}/{candidate_id}/{archivo}` (el segundo segmento tiene que ser el `candidate_id` — lo exige la política RLS de `storage.objects`, no es solo convención) |
 | `avatares` | sí | PNG, JPG, WebP | 3 MB | Foto de perfil de cada usuario, ruta `{user_id}/{archivo}` — cada quien solo escribe/borra la suya |
+| `conectados-adjuntos` | no | PNG, JPG, WebP, MP4, PDF | 10 MB | Adjuntos de las publicaciones del muro interno, ruta `{organization_id}/{post_id}/{uuid}.{ext}` — el nombre de archivo lo genera el servidor (`randomUUID()`), nunca el cliente. Servidos con URL firmada de 1 h, firmadas todas juntas por página del feed. Tipos y límite verificados iguales en bucket, Server Action y `accept` del compositor |
 
 Auditoría post-Fase 18 (detalle completo en `.claude/napkin.md`): se encontraron y corrigieron 2 bugs reales — `next.config.ts` no overrideaba el límite de 1 MB por defecto de las Server Actions (bloqueaba imágenes de marca > 1 MB antes de que corriera cualquier validación propia), y `cvs-privado.allowed_mime_types` solo incluía tipos de CV, por lo que los archivos adicionales JPG/PNG de la postulación (agregados en Fase 18) se perdían en silencio.
 
@@ -956,6 +957,57 @@ datos reales (nunca inventadas), y filtros de país/modalidad/área que solo se 
   ya se trajo del servidor (son pocas vacantes, sin paginación), ir y volver al servidor en cada
   tecla del buscador no tenía sentido.
 - Detalle completo (incluido un bug real de degrade encontrado en review) en `.claude/napkin.md`.
+
+## AJE Conectados — muro interno de comunicaciones (post-Fase 18, sin número de fase)
+
+Catorce migraciones (`add_department_id_to_access_token_hook` … `conectados_advisor_fixes`,
+todas del 2026-09-10) más la UI del feed al día siguiente. Tres tablas, todas con `organization_id`:
+
+- **`posts`** — `author_id` (nullable, `on delete set null`) + `author_name`/`author_title`/
+  `author_avatar_url` como copia congelada al publicar, `content`, `attachments` y `reactions`
+  (`jsonb not null default`), `poll` (`jsonb` nullable), `mentions` (`uuid[]`), `edited`,
+  y la audiencia: `department_id` nullable + `roles app_role[]` nullable (ambos `null` = toda
+  la organización). `publish_at` nullable es la programación.
+- **`post_comments`** — mismas columnas de autor y `reactions`; un solo nivel, sin `parent_id`.
+- **`post_permissions`** — `profile_id` como PK, tres flags (`can_post`, `can_comment`,
+  `can_react`). La ausencia de fila **no** niega: los helpers caen a un default por rol.
+
+Helpers `private.*` (los cuatro `security definer`, leyendo `auth.jwt()` y nunca `profiles`):
+`can_view_post`, `can_post_to_communications`, `can_comment_on_posts`, `can_react_to_posts`,
+más `auth_department_id()` — el hook de access token ahora también mete `department_id` en el
+JWT (`add_department_id_to_access_token_hook`), porque la audiencia por área se evalúa en cada
+`select` del feed y consultar `profiles` desde una política es la recursión infinita de siempre.
+
+RLS (12 políticas, deny-by-default): `posts_select` / `posts_insert` / `posts_update_own` /
+`posts_delete_own`, las cuatro equivalentes en `post_comments`, y `post_permissions_select` +
+tres de escritura solo-admin. `posts_select` deja pasar un post programado en cuanto
+`publish_at <= now()`, así que la marca "Programada" de la UI se calcula por tiempo y no por
+`publish_at is not null` (ver `isScheduled` en `src/lib/conectados/schema.ts`).
+
+Cuatro RPC `security definer`, porque las tres primeras escriben un `jsonb` que el autor de la
+fila no puede tocar con un `update` directo (la política de update es solo-propia):
+`toggle_post_reaction`, `toggle_post_comment_reaction`, `vote_post_poll` (un voto por persona,
+cambiarlo mueve el `uuid` de opción) y `release_scheduled_posts(p_dry_run)`, que limpia la
+programación vencida y la llama el cron de Vercel — **diario, no cada hora**: el plan Hobby
+solo admite un cron al día y el `0 * * * *` original hacía fallar **todos** los deploys (ver
+napkin). Realtime: `posts` y `post_comments` en la publicación `supabase_realtime`.
+
+Storage: bucket **privado** `conectados-adjuntos` (ver tabla de Storage arriba).
+
+## Dos correcciones de marca (2026-09-11)
+
+- **`marca_publico_sin_svg`** — `marca-publico.allowed_mime_types` aceptaba `image/svg+xml`
+  aunque la aplicación nunca sube SVG a propósito (`EXTENSION_BY_MIME` en
+  `src/lib/organizations/actions.ts`): el bucket es público y sirve el archivo tal cual, sin
+  CSP propio, así que un SVG con `<script>` se ejecutaría al abrir la URL directa. Además
+  `next.config.ts` depende de eso — no tiene `dangerouslyAllowSVG`. El bucket ya no lo acepta.
+- **`quitar_logo_dark_url`** — `organizations.logo_dark_url` existía desde la migración `02` y
+  **nunca se renderizó en ninguna pantalla**. Su campo en `/configuracion/marca` subía el
+  archivo, lo guardaba y no producía ningún cambio visible; la pista decía "Se usa en el menú
+  flotante y correos" y las dos cosas eran falsas (el menú flotante solo lleva iconos, los
+  correos no llevan logo). Se quitó el campo y con él la columna, sin pérdida: el valor era
+  `NULL` y no había ningún objeto `*/logo_dark_url.*` en el bucket. El campo que queda se llama
+  ahora "Logo" y no "Logo para fondo claro", que insinuaba una contraparte que no existe.
 
 ## Seed
 

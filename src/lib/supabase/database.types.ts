@@ -1748,7 +1748,6 @@ export type Database = {
           id: string
           login_image_url: string | null
           login_video_url: string | null
-          logo_dark_url: string | null
           logo_url: string | null
           name: string
           platform_name: string
@@ -1766,7 +1765,6 @@ export type Database = {
           id?: string
           login_image_url?: string | null
           login_video_url?: string | null
-          logo_dark_url?: string | null
           logo_url?: string | null
           name: string
           platform_name?: string
@@ -1784,7 +1782,6 @@ export type Database = {
           id?: string
           login_image_url?: string | null
           login_video_url?: string | null
-          logo_dark_url?: string | null
           logo_url?: string | null
           name?: string
           platform_name?: string

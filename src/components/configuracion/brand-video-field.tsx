@@ -1,14 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   createBrandVideoUploadUrl,
   confirmBrandVideoUpload,
   removeBrandVideo,
-  type BrandVideoField,
 } from "@/lib/organizations/actions";
+import { BRAND_FIELD_COPY, type BrandVideoField } from "@/lib/organizations/brand-fields";
 import { LicenseNote } from "./license-note";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
@@ -23,19 +23,17 @@ const ALLOWED_TYPES = new Set(["video/mp4", "video/webm"]);
  * servidor solo autoriza la ruta (createBrandVideoUploadUrl) y confirma
  * después de que el archivo ya está en Storage (confirmBrandVideoUpload).
  */
-export function BrandVideoField({
-  field,
-  label,
-  hint,
-  currentUrl,
-}: {
-  field: BrandVideoField;
-  label: string;
-  hint: string;
-  currentUrl: string | null;
-}) {
+export function BrandVideoField({ field, currentUrl }: { field: BrandVideoField; currentUrl: string | null }) {
+  const copy = BRAND_FIELD_COPY[field];
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Ver el comentario en BrandImageField: la etiqueta visible no está
+  // asociada al input por anidamiento, así que sin htmlFor + id el campo
+  // queda sin nombre para un lector de pantalla.
+  const id = useId();
+  const inputId = `${id}-file`;
+  const hintId = `${id}-hint`;
+  const licenseId = `${id}-licencia`;
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -74,7 +72,16 @@ export function BrandVideoField({
         notifyError(confirmed.error);
         return;
       }
-      notifySuccess(`${label} actualizado`);
+      // `?? copy.uploaded` y no un `if`: este flujo son tres await seguidos y
+      // cada salida sin mensaje se lee como "no pasó nada" — el usuario
+      // reintenta sobre algo que sí se guardó.
+      notifySuccess(confirmed?.success ?? copy.uploaded);
+    } catch {
+      // Sin este catch, un rechazo de cualquiera de las tres llamadas (500,
+      // red caída, un deploy que invalida el id de la Server Action) salía
+      // como unhandled rejection: `finally` apagaba "Subiendo…" y no
+      // aparecía ningún mensaje. Regla 5 — todo error se muestra.
+      notifyError("No se pudo subir el video", "Algo se rompió de nuestro lado. Puedes intentarlo de nuevo.");
     } finally {
       setPending(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -83,7 +90,9 @@ export function BrandVideoField({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">{label}</label>
+      <label htmlFor={inputId} className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
+        {copy.label}
+      </label>
       {/* Mismo patrón que BrandImageField: flex-col en celular, la fila
           única de escritorio no cabe en un teléfono. */}
       <div className="flex flex-col gap-3 rounded-md border border-dashed bg-background p-3.5 sm:flex-row sm:items-center sm:gap-3.5">
@@ -91,7 +100,9 @@ export function BrandVideoField({
           <div className="flex h-11 w-[62px] flex-none items-center justify-center rounded-md border border-border bg-card">
             <Video className="size-4 text-muted-foreground" aria-hidden />
           </div>
-          <p className="min-w-0 flex-1 text-xs leading-snug text-muted-foreground">{hint}</p>
+          <p id={hintId} className="min-w-0 flex-1 text-xs leading-snug text-muted-foreground">
+            {copy.hint}
+          </p>
         </div>
         {/* flex-wrap, no min-w-0/flex-1 en el input: ver el comentario en
             BrandImageField — un <input type="file"> nativo no se achica por
@@ -100,6 +111,8 @@ export function BrandVideoField({
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={inputRef}
+            id={inputId}
+            aria-describedby={`${hintId} ${licenseId}`}
             type="file"
             accept="video/mp4,video/webm"
             onChange={handleUpload}
@@ -107,17 +120,18 @@ export function BrandVideoField({
             className="max-w-full text-xs file:mr-2 file:rounded file:border file:border-border file:bg-card file:px-2 file:py-1 file:text-xs sm:w-32"
           />
           {pending && <span className="flex-none text-xs text-muted-foreground">Subiendo…</span>}
-          {currentUrl && (
+          {/* Ver BrandImageField: eliminar con una subida en vuelo dejaría la
+              columna apuntando a un objeto ya borrado. */}
+          {currentUrl && !pending && (
             <DeleteButton
               iconOnly
-              itemLabel={label.toLowerCase()}
+              itemLabel={copy.label.toLowerCase()}
               onDelete={() => removeBrandVideo(field)}
-              successMessage={`${label} eliminado`}
-              confirmDescription="Se quitará de la plataforma hasta que subas otro."
+              confirmDescription={copy.confirm}
             />
           )}
         </div>
-        <LicenseNote />
+        <LicenseNote id={licenseId} />
       </div>
     </div>
   );

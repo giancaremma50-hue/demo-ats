@@ -8,11 +8,15 @@
  * enteramente futuro — entra con lo que suba el cliente.
  *
  * En un solo componente y no repetido en cada campo: la frase la comparten
- * los 6 puntos de subida de `/configuracion/marca` y así no se desvía.
+ * los 5 puntos de subida de `/configuracion/marca` y así no se desvía.
+ *
+ * Tenía una variante `dark` para el único campo que se dibujaba sobre fondo
+ * de color (el logo para fondo oscuro). Ese campo se quitó el 2026-09-11 y
+ * con él la variante: todos los campos que quedan van sobre `bg-background`.
  */
-export function LicenseNote({ dark = false }: { dark?: boolean }) {
+export function LicenseNote({ id }: { id?: string }) {
   return (
-    <p className={`text-[11px] leading-snug ${dark ? "text-primary-foreground/50" : "text-muted-foreground/80"}`}>
+    <p id={id} className="text-[11px] leading-snug text-muted-foreground/80">
       Sube solo material propio o con licencia de uso comercial.
     </p>
   );
