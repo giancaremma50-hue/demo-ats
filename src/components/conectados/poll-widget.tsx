@@ -54,8 +54,8 @@ export function PollWidget({
               style={{ width: `${pct}%` }}
             />
             <span className="relative flex items-center justify-between gap-2">
-              <span className={mine ? "font-semibold" : ""}>{option.label}</span>
-              <span className="tabular-nums text-xs text-muted-foreground">{pct}%</span>
+              <span className={`min-w-0 truncate ${mine ? "font-semibold" : ""}`}>{option.label}</span>
+              <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{pct}%</span>
             </span>
           </button>
         );
