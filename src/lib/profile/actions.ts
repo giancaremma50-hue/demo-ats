@@ -19,7 +19,9 @@ function avatarPaths(profileId: string) {
   return Object.values(EXTENSION_BY_MIME).map((ext) => `${profileId}/avatar.${ext}`);
 }
 
-export type UploadAvatarState = { error?: string; success?: boolean } | undefined;
+// El texto de confirmación lo devuelve la mutación, no lo arma el cliente
+// (regla de interacción 2).
+export type UploadAvatarState = { error?: string; success?: string } | undefined;
 
 export async function uploadAvatar(_prevState: UploadAvatarState, formData: FormData): Promise<UploadAvatarState> {
   const profile = await requireProfile();
@@ -67,10 +69,10 @@ export async function uploadAvatar(_prevState: UploadAvatarState, formData: Form
   await supabase.storage.from("avatares").remove(stalePaths);
 
   revalidatePath("/", "layout");
-  return { success: true };
+  return { success: "Foto de perfil actualizada" };
 }
 
-export async function removeAvatar(): Promise<void> {
+export async function removeAvatar(): Promise<string> {
   const profile = await requireProfile();
   const supabase = await createClient();
 
@@ -79,4 +81,5 @@ export async function removeAvatar(): Promise<void> {
 
   await supabase.storage.from("avatares").remove(avatarPaths(profile.id));
   revalidatePath("/", "layout");
+  return "Foto de perfil eliminada";
 }

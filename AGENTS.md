@@ -88,6 +88,15 @@ Están codificadas en componentes para que no dependan de la disciplina de nadie
 
 7. **Todo elemento clickeable que representa un registro concreto (una notificación, una tarea asignada, un ítem de actividad) navega a esa instancia real.** Nunca un clic que no mueve nada en pantalla — eso se lee como "no está pasando nada" y el usuario reintenta o abandona. Si todavía no hay una ruta o vista a la que mandarlo, es más honesto no hacerlo clickeable que fingir que lo es.
 
+8. **Toda subida de archivo se hace con `<MediaPicker>`: un solo cuadro que es a la vez vista previa y selector.**
+   Nada de "miniatura decorativa + `<input type=file>` nativo al lado" — son dos controles que parecen dos botones distintos, y el nativo solo muestra el NOMBRE del archivo. Quien sube tiene que **ver** lo que eligió antes de guardarlo: la miniatura muestra el archivo local (`blob:`) apenas se elige, y lo guardado en el servidor después. El `<input>` va `sr-only` dentro del `<label>` que es el cuadro, para que el clic en cualquier parte abra el diálogo y el foco de teclado se vea (`focus-within:ring`). Un PDF u otro archivo sin vista previa posible muestra su ícono y su nombre. Vale para marca, foto de perfil, adjuntos del muro y cualquier punto de subida nuevo.
+
+9. **Una pantalla de configuración muestra en el acto lo que se acaba de cambiar.**
+   Guardar sin ver el cambio obliga a recargar para confirmar, y eso se lee como que no se guardó. Cada campo de configuración muestra su valor actual en pantalla, y donde el cambio afecta a otra superficie (el logo en el encabezado, el acento en los botones, la portada de la bolsa) hay una vista previa en la misma pantalla. Toda mutación de configuración revalida **todas** las rutas que pinta ese dato, no solo la actual: `revalidatePath("/", "layout")` no alcanza para una ruta ISR anidada como `/empleos` — ver `revalidateBrandSurfaces()` en `src/lib/organizations/actions.ts`.
+
+10. **La configuración de la plataforma es independiente del módulo.**
+   El botón de Ajustes de la barra flotante aparece en TODOS los módulos para admin y super admin, siempre en la misma posición. Es configuración de la plataforma (marca, usuarios, departamentos), no una pantalla del ATS: tener que entrar a Reclutamiento para cambiar el logo mientras se está en AJE Conectados es un callejón sin salida.
+
 ---
 
 ## Reglas de diseño visual — "AJE look" (ref. ajegroup.com, adoptado 2026-09-09)

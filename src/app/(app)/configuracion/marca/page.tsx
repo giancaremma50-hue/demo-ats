@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { getOrganization } from "@/lib/organizations/get-organization";
 import { BrandingForm } from "@/components/configuracion/branding-form";
@@ -61,7 +62,21 @@ export default async function MarcaPage() {
         <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Vista previa en vivo</p>
         <Card className="grid grid-cols-2" style={{ height: 340 }}>
           <div className="flex flex-col justify-center bg-background p-7">
-            <span className="font-serif text-lg">{org.platform_name}</span>
+            {/* El logo también acá, no solo en su campo: la vista previa es
+                donde se confirma que lo que se acaba de subir se ve como uno
+                esperaba, con el nombre al lado y al tamaño real del
+                encabezado. Mismo respaldo que AppHeader (la inicial en un
+                cuadro) para que la pantalla sin logo no mienta. */}
+            <div className="flex items-center gap-2.5">
+              {org.logo_url ? (
+                <Image src={org.logo_url} alt="" width={24} height={24} className="shrink-0 object-contain" />
+              ) : (
+                <div className="flex size-6 flex-none items-center justify-center border border-foreground">
+                  <span className="font-serif text-[15px] leading-none">{org.platform_name.charAt(0)}</span>
+                </div>
+              )}
+              <span className="font-serif text-lg">{org.platform_name}</span>
+            </div>
             <p className="mt-6 text-[10px] tracking-[0.16em] text-muted-foreground uppercase">Reclutamiento</p>
             <p className="font-serif mt-2 text-2xl leading-tight">Bienvenido de vuelta</p>
           </div>

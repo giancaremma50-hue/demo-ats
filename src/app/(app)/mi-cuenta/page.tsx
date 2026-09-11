@@ -27,6 +27,10 @@ export default async function MiCuentaPage() {
       <h1 className="font-serif text-[32px]">Mi cuenta</h1>
       <p className="mt-1 text-sm text-muted-foreground">{profile.display_name} · {profile.email}</p>
 
+      {/* El encabezado de sección se queda (las otras dos secciones tienen el
+          suyo y sin este la foto quedaba fuera de la navegación por títulos);
+          el cuadro de subida lleva el mismo nombre como `aria-label` pero no
+          lo pinta (`labelHidden`), para no repetir el texto dos veces. */}
       <section className="mt-8">
         <h2 className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Foto de perfil</h2>
         <div className="mt-4">

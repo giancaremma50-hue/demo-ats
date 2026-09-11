@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 /**
  * Recordatorio de procedencia junto a cada campo de subida de marca.
  *
@@ -14,9 +16,9 @@
  * de color (el logo para fondo oscuro). Ese campo se quitó el 2026-09-11 y
  * con él la variante: todos los campos que quedan van sobre `bg-background`.
  */
-export function LicenseNote({ id }: { id?: string }) {
+export function LicenseNote({ id, className }: { id?: string; className?: string }) {
   return (
-    <p id={id} className="text-[11px] leading-snug text-muted-foreground/80">
+    <p id={id} className={cn("text-[11px] leading-snug text-muted-foreground/80", className)}>
       Sube solo material propio o con licencia de uso comercial.
     </p>
   );
