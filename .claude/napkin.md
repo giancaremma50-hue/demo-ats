@@ -7,7 +7,7 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (en la barra flotante, Inicio y el selector de módulos son anclas que no desaparecen nunca; lo que se adapta al contexto son los submenús)_
+_Última actualización: 2026-09-11 (auditoría completa de seguridad: RLS de `jobs` dejaba a un gestor auto-publicarse saltando RH, y un MCP de Supabase conectado a la sesión resultó ser OTRA base)_
 
 ## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11) — MÁXIMA PRIORIDAD
 
@@ -443,6 +443,107 @@ recargado de página las mostraba.
    Do instead: cuando un componente necesita estado LOCAL derivado de un prop (para poder mutarlo de forma optimista) pero el prop en sí puede cambiar por una fuente externa (Realtime, polling, un padre que revalida), agregar una sincronización explícita: comparar el prop contra una copia guardada y, si cambió, actualizar el estado local **durante el render** (`if (synced !== prop) { setSynced(prop); setState(prop); }`), nunca solo `useState(prop)` a secas. Este proyecto además prohíbe hacerlo con un `useEffect` + `setState` síncrono (es error de build, ver la entrada de abajo sobre notas) — el ajuste en render es el patrón correcto para esto, no un rodeo.
 2. **La revisión de recuperación (revertir un optimista fallido) tenía el mismo tipo de bug, dos veces: "togglear de nuevo" no es lo mismo que "restaurar el valor anterior".** `ReactionBar` revertía una reacción fallida llamando a la misma función de toggle con el mismo tipo — que solo deshace correctamente si el estado previo era "sin reacción"; si la persona ya tenía otra reacción puesta y cambiaba a una nueva que el servidor rechazaba, el revert la dejaba en "sin reacción" en vez de devolverla a la que tenía. Mismo patrón en `PollWidget`, que directamente no revertía nada. Do instead: una función de actualización optimista que también sirve para revertir tiene que recibir el valor EXACTO al que debe quedar (`onOptimisticSet(valor | null)`), nunca un "toggle" — capturar el valor previo ANTES de aplicar el cambio optimista, y pasar ESE valor exacto de vuelta si el servidor rechaza, no repetir la operación que lo cambió.
 3. **Un `read-modify-write` de un array `jsonb` hecho en paralelo pierde escrituras, aunque cada llamada individual sea correcta.** El compositor subía varios adjuntos con `Promise.all`, y cada subida hacía SELECT de `posts.attachments`, agregaba su propia entrada, y hacía UPDATE — sin ningún lock ni expresión atómica. Con 3 archivos en paralelo, los 3 SELECT leían la lista vacía (ninguno había terminado de escribir todavía), y el último UPDATE en confirmar ganaba, pisando a los otros dos. Do instead: cuando una mutación es "leer una columna, modificarla en memoria, escribirla de vuelta" (sin una expresión SQL atómica tipo `columna = columna || nuevo_valor`), disparar esas llamadas en SECUENCIA (`for...of` con `await`), nunca en paralelo — cada lectura necesita ver lo que la escritura anterior ya confirmó. Si el volumen lo justifica alguna vez, la alternativa real es una expresión atómica del lado de la base (o una RPC), no paralelizar un read-modify-write del lado del cliente.
+
+---
+
+## Un MCP de Supabase conectado a la sesión no es necesariamente LA base de este proyecto (2026-09-11) — MÁXIMA PRIORIDAD
+
+Al pedir una auditoría completa de seguridad/RLS, la sesión tenía DOS servidores
+MCP de Supabase disponibles: uno genérico (acepta `project_id`) y uno nombrado
+`ferco-produccion` (ya "conectado", sin pedir `project_id`). Se corrió
+`get_advisors`/`list_tables` contra `ferco-produccion` primero, por ser el más
+directo de invocar.
+
+1. **Casi se audita y casi se migra la base equivocada.** `ferco-produccion`
+   resultó ser el ERP comercial de Ferco (tablas `area_comercial_*`, ninguna
+   relación con el ATS) — un proyecto Supabase totalmente distinto,
+   simplemente conectado a la misma sesión de Claude Code. Se notó porque los
+   nombres de tabla no calzaban con nada del dominio de reclutamiento, no por
+   ningún aviso del sistema. Si el mismatch hubiera sido menos obvio (dos
+   bases del mismo dominio, o nombres de tabla parecidos), una `apply_migration`
+   mal dirigida habría alterado la base de otro sistema en producción sin
+   ningún error — el MCP no rechaza queries solo porque "no es la base
+   correcta para esta tarea", ejecuta lo que se le pida contra el proyecto que
+   tiene configurado.
+   Do instead: **antes de correr `get_advisors`, `execute_sql` o
+   `apply_migration` contra cualquier servidor MCP de Supabase — sobre todo si
+   hay más de uno conectado — comparar su `get_project_url()` (o el `id` de
+   `list_projects()`) contra `NEXT_PUBLIC_SUPABASE_URL` de `.env.local`.** El
+   nombre del servidor MCP (`ferco-produccion`, o el que sea) es una etiqueta
+   puesta por quien configuró la sesión, no una garantía — puede apuntar a
+   cualquier proyecto de la organización. El proyecto real de este ATS es
+   `cgudnnlcwcotovcslgzu`.
+
+---
+
+## RLS de `jobs`: el `WITH CHECK` no repetía el estado/rol — un `gestor` se auto-publicaba saltando RH (2026-09-11)
+
+Auditoría de seguridad completa (agente `security-auditor` + verificación manual
+contra la base real). Mismo tipo de hueco que `applications` ya había cerrado
+con un trigger — acá no se había replicado.
+
+1. **BUG REAL DE SEGURIDAD: la política `jobs_update` dejaba pasar a un
+   no-admin (`USING`: dueño + `status = 'borrador'`, correcto), pero el
+   `WITH CHECK` solo validaba `organization_id = private.auth_org_id()`.**
+   Nada impedía que ese mismo `UPDATE` trajera `status: "abierta"`,
+   `owner_id: "<su-propio-id>"`, `visibility: "publica"` en una sola llamada
+   — la máquina de estados completa (`VALID_TRANSITIONS`,
+   `adminOnly`/`ownerOrAdmin`/`cancelGuard`) vivía únicamente en
+   `src/lib/jobs/actions.ts`, nunca en la base. Cualquier `gestor` con su
+   propia sesión (anon key + JWT, ambos ya expuestos en el navegador) podía
+   saltarse la interfaz por completo con un `PATCH` directo a
+   `/rest/v1/jobs` y publicar su propia vacante sin pasar por
+   `pendiente_aprobacion`/`aceptada`, quedando además como dueño
+   (`owner_id`) — `can_decide_application` pasa a `true` para siempre sobre
+   esa vacante.
+   Do instead: **cuando una Server Action implementa una máquina de estados
+   (`VALID_TRANSITIONS` o equivalente) y la tabla tiene RLS, el `WITH CHECK`
+   de esa tabla NO puede comparar `OLD` contra `NEW` — hace falta un trigger
+   `BEFORE UPDATE`**, igual al patrón que `applications` ya usa
+   (`private.enforce_application_permission_tiers`, ver napkin 2026-09 más
+   abajo). El fix acá fue deliberadamente MÁS SIMPLE que replicar el grafo
+   completo de `VALID_TRANSITIONS` en SQL (eso sería una segunda copia para
+   mantener sincronizada, el mismo riesgo de drift que ya documenta AGENTS.md
+   para `permissions.ts`): como `USING` ya garantiza que un no-admin solo
+   toca su propia fila en `borrador`, el trigger
+   (`private.enforce_job_permission_tiers`) solo necesita acotar QUÉ puede
+   escribir ahí — `status` solo a `pendiente_aprobacion`/`cancelada`, y
+   `owner_id`/`visibility` intocables para no-admin. Cero cambios en
+   TypeScript, cero cambios de comportamiento para la UI real.
+2. **Se encontró leyendo la política real de Postgres (`pg_policies`), no
+   el código de la Server Action.** El código de `transitionJob()` se ve
+   perfectamente seguro leído solo — el hueco es invisible sin comparar
+   contra el `WITH CHECK` real de la base. Do instead: cualquier auditoría de
+   permisos donde exista una Server Action "gatekeeper" tiene que verificar
+   que el `WITH CHECK`/trigger de la tabla imponga la MISMA restricción, no
+   asumir que la única puerta de entrada es la función de TypeScript.
+3. **Pendiente, no bloqueante**: el mismo patrón (Server Action con estados,
+   sin trigger espejo en la tabla) vale la pena revisarlo en
+   `job_templates`/`pipeline_templates` — no auditado a fondo esta vez.
+
+---
+
+## Storage `cvs_privado_insert` sin acotar por organización — cualquier autenticado podía escribir en la carpeta de otra empresa (2026-09-11)
+
+1. **BUG REAL: la política de `INSERT` del bucket privado de CVs
+   (`cvs_privado_insert`) solo exigía `bucket_id = 'cvs-privado'`** — a
+   diferencia de `cvs_privado_select`/`cvs_privado_delete`, que sí llaman
+   `private.can_access_candidate(...)` sobre el segundo segmento de la ruta.
+   Cualquier usuario autenticado, de cualquier organización, podía subir un
+   archivo a la carpeta de candidatos de OTRA organización — no permitía leer
+   CVs ajenos (la lectura sí estaba bien acotada), pero sí abuso de
+   almacenamiento y plantar archivos sin fila en `attachments`.
+   Do instead: al agregar un bucket privado nuevo, las políticas de
+   `INSERT`/`SELECT`/`DELETE` se escriben JUNTAS y se comparan entre sí antes
+   de aplicarlas — quedan más fácil "abiertas por default" que una tabla,
+   porque no hay una fila con `organization_id` a la vista para notar el
+   hueco a simple lectura.
+2. **Fix: se ELIMINÓ la política en vez de acotarla.** Verificado por grep
+   (`cvs-privado` en `src/`) que el único escritor real es
+   `src/app/api/postular/route.ts`, con el cliente **admin** (service role,
+   que ignora RLS de todas formas) — ningún componente cliente sube CVs
+   directo. Deny-by-default sin política es más simple y más seguro que
+   acotar un `INSERT` que nadie legítimo necesita.
 
 ---
 
