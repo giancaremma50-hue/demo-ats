@@ -7,7 +7,82 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (un `<input type="file">` con `hidden` no se alcanza con el teclado, y el texto del `<label>` que lo envuelve se convierte en el nombre accesible del control)_
+_Última actualización: 2026-09-11 (ningún archivo viaja dentro del cuerpo de una Server Action: Vercel corta a ~4.5 MB antes de que corra código propio, y el fallo es mudo)_
+
+## El cuerpo de una Server Action tiene un tope de ~4.5 MB en Vercel que `bodySizeLimit` NO sube — y pasarlo es un fallo MUDO (2026-09-11) — MÁXIMA PRIORIDAD
+
+Reporte: "cargué el logo y la portada del login y no se ven". Verificado
+contra la base antes de tocar nada: las cinco columnas de marca en `NULL` y el
+bucket `marca-publico` con **cero objetos**. O sea que el archivo nunca llegó
+al servidor, y la pantalla no dijo absolutamente nada.
+
+1. **`serverActions.bodySizeLimit` es un límite de Next, no de la
+   plataforma.** El proyecto lo tenía en `6mb` con un comentario que explicaba
+   por qué se había subido desde 1 MB — y aun así fallaba, porque **Vercel
+   corta el cuerpo de una petición a una función serverless en ~4.5 MB** antes
+   de que Next lo vea. Una foto o una captura de un teléfono de hoy pasa ese
+   tope sin esfuerzo.
+2. **Lo peor no es que falle: es que falla en silencio.** La petición se
+   rechaza antes de que corra una línea propia, así que `useActionState` nunca
+   cambia de estado: no hay `state.error` que mostrar, no hay toast, no hay
+   nada. El usuario toca "Subir" y la pantalla se queda igual. Un `try/catch`
+   alrededor del `await` tampoco alcanza cuando el envío lo hace React por un
+   `<form action>`.
+   Do instead: **ningún archivo dentro del cuerpo de una Server Action.** URL
+   firmada de Storage y subida directa desde el navegador
+   (`createSignedUploadUrl` → `uploadToSignedUrl` → confirmar). El tope pasa a
+   ser el del bucket, que es el que la interfaz promete. El flujo del video de
+   login ya lo hacía por esta misma razón y estaba documentado en el propio
+   archivo — el de imágenes no, y ese fue el que falló.
+3. **La misma trampa estaba en los adjuntos del muro, con una consecuencia
+   peor.** `uploadPostAttachment` prometía 10 MB por el mismo camino; cuando el
+   `await` lanzaba, vivía dentro de un `startTransition` sin `catch`, así que
+   moría el resto del envío: la publicación quedaba creada, la lista de
+   archivos sin limpiar y ni un mensaje en pantalla. Todo `await` dentro de un
+   transition necesita su `catch`.
+4. **Un límite anunciado que la plataforma no aguanta es una promesa falsa.**
+   Antes de escribir "máx. 10 MB" en una pista, el camino tiene que soportar
+   10 MB de punta a punta: bucket, plataforma y validación. Si no, o se baja el
+   número o se cambia el camino.
+5. **Dos pasos para guardar es uno de más.** El cuadro mostraba la miniatura y
+   el botón "Subir" quedaba abajo, chico y secundario: con la foto ya puesta,
+   el campo se lee como listo. No se puede saber a distancia si el usuario no
+   tocó el botón o si lo tocó y la petición murió muda — las dos hipótesis
+   explican la misma evidencia, así que se arreglaron las dos. Ahora elegir el
+   archivo ES guardarlo, con el spinner en el propio cuadro.
+6. **Al guardar bien, NO limpiar la vista previa local.** La URL nueva del
+   servidor llega por revalidación, unos cientos de ms después; si se remonta
+   el cuadro al confirmar, queda vacío en el medio y eso se lee exactamente
+   como "no se guardó". Se limpia solo al rechazar un archivo o al borrarlo.
+7. **Una ruta fija + `upsert: true` pisa lo publicado ANTES de confirmar.** Si
+   algo falla después de la subida (la confirmación, la red, un rechazo por
+   tamaño real), el archivo bueno ya fue reemplazado mientras la pantalla dice
+   que no se guardó — y borrar el que sobra deja la columna apuntando a un
+   objeto que ya no existe: 404 en todo el producto. Ruta nueva por subida
+   (`{stem}-{uuid}.{ext}`), la columna se actualiza recién al confirmar, y las
+   versiones viejas se limpian después. De paso desaparece el `?v=` de
+   cache-busting: la URL ya es distinta.
+8. **El tamaño que valida el servidor al AUTORIZAR la subida lo declara el
+   cliente.** Con URL firmada, pedir permiso para 1 MB y subir 19 no cuesta
+   nada; el único tope que queda vivo es el del bucket. Al confirmar hay que
+   preguntarle a Storage cuánto pesa de verdad. Y `metadata.size` ausente es
+   **no verificable**, no cero: `Number(x ?? 0) > tope` convierte la
+   verificación en un no-op silencioso.
+9. **Un `list` de Storage que FALLA no prueba que el archivo no llegó.**
+   Descartar ahí pierde una subida buena y deja un huérfano. Solo una respuesta
+   correcta y vacía prueba la ausencia (`if (!listError && !subido)`). Y
+   `search` es coincidencia parcial: siempre exigir el nombre exacto.
+10. **Guardias de tamaño y tipo en el cliente, además de las del servidor.** No
+   por seguridad (el servidor y el bucket siguen validando) sino porque son las
+   únicas que pueden dar un mensaje cuando el problema es que el archivo ni
+   siquiera va a poder viajar. En el compositor del muro son todavía más
+   importantes: sin ellas el archivo se rechazaba DESPUÉS de crear la
+   publicación, que ya había salido para toda la organización sin su adjunto y
+   sin forma de agregarlo.
+11. **Dos toasts en el mismo tick: el último tapa al primero.** El aviso de
+   "un adjunto se perdió" salía junto con "Publicación creada" y el verde se
+   leía primero. Cuando parte de una operación falla, va UN mensaje que lo
+   diga, no dos que se contradigan.
 
 ## Un `<input type="file">` con `hidden` queda inalcanzable por teclado, y su vista previa tiene tres trampas propias (2026-09-11) — MÁXIMA PRIORIDAD
 

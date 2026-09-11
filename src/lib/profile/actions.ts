@@ -3,17 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-
-const MAX_AVATAR_BYTES = 3 * 1024 * 1024;
+import {
+  AVATAR_EXTENSION_BY_MIME,
+  AVATAR_MAX_BYTES,
+  AVATAR_MIME_TYPES,
+  avatarRejectionMessage,
+} from "./avatar-fields";
 
 // Sin SVG a propósito, mismo motivo que las imágenes de marca: el bucket es
-// público y sirve el archivo tal cual, sin CSP propio.
-const EXTENSION_BY_MIME: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
-const ALLOWED_TYPES = new Set(Object.keys(EXTENSION_BY_MIME));
+// público y sirve el archivo tal cual, sin CSP propio. Los límites y los
+// mensajes viven en `avatar-fields.ts` porque los comparte el cliente.
+const EXTENSION_BY_MIME = AVATAR_EXTENSION_BY_MIME;
+const ALLOWED_TYPES = new Set(AVATAR_MIME_TYPES);
 
 function avatarPaths(profileId: string) {
   return Object.values(EXTENSION_BY_MIME).map((ext) => `${profileId}/avatar.${ext}`);
@@ -27,14 +28,17 @@ export async function uploadAvatar(_prevState: UploadAvatarState, formData: Form
   const profile = await requireProfile();
   const file = formData.get("file");
 
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof File)) {
     return { error: "Selecciona una foto primero." };
   }
-  if (file.size > MAX_AVATAR_BYTES) {
-    return { error: "La foto pesa más de 3 MB. Prueba con una más liviana." };
+  if (file.size === 0) {
+    return { error: avatarRejectionMessage("vacio") };
+  }
+  if (file.size > AVATAR_MAX_BYTES) {
+    return { error: avatarRejectionMessage("tamano") };
   }
   if (!ALLOWED_TYPES.has(file.type)) {
-    return { error: "Formato no admitido. Usa PNG, JPG o WebP." };
+    return { error: avatarRejectionMessage("formato") };
   }
 
   const supabase = await createClient();

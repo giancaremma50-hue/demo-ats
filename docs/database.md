@@ -895,7 +895,7 @@ Aplicación: `src/lib/users/invite-actions.ts` (crear/borrar invitación, RLS-sc
 
 | Bucket | Público | Tipos permitidos | Límite | Contenido |
 |---|---|---|---|---|
-| `marca-publico` | sí | PNG, JPG, WebP + video MP4/WebM. **Sin SVG desde `marca_publico_sin_svg`** (2026-09-11): el bucket es público y sin CSP propio, un SVG con `<script>` se ejecutaría en su URL directa. La app sube PNG/JPG/WebP (ver `EXTENSION_BY_MIME` en `src/lib/organizations/actions.ts`), los videos directo por URL firmada | 20 MB | Logo, imagen/video de login, foto/video de portada de la bolsa de empleo — editables por el super admin. Ruta: `{organization_id}/{campo}.{ext}` (imágenes) o `{organization_id}/{stem}.{ext}` (videos, `VIDEO_PATH_STEM` en `actions.ts` — el nombre de archivo no coincide 1:1 con la columna, `login_video_url` sigue usando el stem `login_video` por compatibilidad) |
+| `marca-publico` | sí | PNG, JPG, WebP + video MP4/WebM. **Sin SVG desde `marca_publico_sin_svg`** (2026-09-11): el bucket es público y sin CSP propio, un SVG con `<script>` se ejecutaría en su URL directa. La app sube PNG/JPG/WebP (ver `BRAND_EXTENSION_BY_MIME` en `src/lib/organizations/brand-fields.ts`); **los 5 campos suben directo por URL firmada** desde el 2026-09-11 — ningún archivo viaja dentro del cuerpo de una Server Action | 20 MB | Logo, imagen/video de login, foto/video de portada de la bolsa de empleo — editables por el super admin. Ruta: `{organization_id}/{campo}.{ext}` (imágenes) o `{organization_id}/{stem}.{ext}` (el nombre sale de `BRAND_FIELD_SPEC[campo].stem` en `brand-fields.ts`; no coincide 1:1 con la columna: `login_video_url` usa el stem `login_video` por compatibilidad) |
 | `cvs-privado` | no | PDF, DOC, DOCX, JPG, PNG | 10 MB | CVs y adjuntos de postulación, servidos siempre por URL firmada de 60 s. Ruta: `{organization_id}/{candidate_id}/{archivo}` (el segundo segmento tiene que ser el `candidate_id` — lo exige la política RLS de `storage.objects`, no es solo convención) |
 | `avatares` | sí | PNG, JPG, WebP | 3 MB | Foto de perfil de cada usuario, ruta `{user_id}/{archivo}` — cada quien solo escribe/borra la suya |
 | `conectados-adjuntos` | no | PNG, JPG, WebP, MP4, PDF | 10 MB | Adjuntos de las publicaciones del muro interno, ruta `{organization_id}/{post_id}/{uuid}.{ext}` — el nombre de archivo lo genera el servidor (`randomUUID()`), nunca el cliente. Servidos con URL firmada de 1 h, firmadas todas juntas por página del feed. Tipos y límite verificados iguales en bucket, Server Action y `accept` del compositor |
@@ -939,9 +939,9 @@ yendo al detalle clásico directamente.
 
 Pedido directo del usuario tras revisar un informe de investigación de marca de un cliente
 (AJE Group) — la bolsa pública (`/empleos`) pasó de título + lista plana a un héroe de foto o
-video de portada (reusa exactamente el patrón del video de login: `createBrandVideoUploadUrl`/
-`confirmBrandVideoUpload`/`removeBrandVideo`, generalizados con un `BrandVideoField` — antes
-eran 3 funciones solo para `login_video_url`), con las leyendas reales del configurador
+video de portada (reusa exactamente el patrón del video de login; desde el 2026-09-11 ese
+patrón es el de TODOS los campos de marca: `createBrandUploadUrl`/`confirmBrandUpload`/
+`removeBrandMedia`), con las leyendas reales del configurador
 (`careers_headline`/`careers_intro`, sin copy inventado), cifras de confianza calculadas de
 datos reales (nunca inventadas), y filtros de país/modalidad/área que solo se muestran si hay
 2+ valores distintos entre las vacantes abiertas.

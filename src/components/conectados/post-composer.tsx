@@ -8,12 +8,20 @@ import { Card } from "@/components/ui/card";
 import { MediaThumb } from "@/components/ui/media-picker";
 import { kindOfMime } from "@/lib/media-kind";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
-import { createPost, uploadPostAttachment } from "@/lib/conectados/actions";
+import { createPost, createAttachmentUploadUrl, confirmPostAttachment } from "@/lib/conectados/actions";
+import { createClient } from "@/lib/supabase/client";
 import { useConectados } from "./conectados-feed";
 import { useMentionState } from "./mention-overlay";
 import type { FeedPost } from "@/lib/conectados/queries";
 
 const MAX_POLL_OPTIONS = 6;
+
+// Espejo de las guardias del servidor (`EXTENSION_BY_MIME` y
+// `MAX_ATTACHMENT_BYTES` en src/lib/conectados/actions.ts). Acá no son
+// seguridad — el servidor y el bucket siguen validando — sino lo único que
+// puede dar un mensaje antes de crear la publicación.
+const MIME_ADJUNTOS = ["image/jpeg", "image/png", "image/webp", "video/mp4", "application/pdf"];
+const MAX_ADJUNTO_BYTES = 10 * 1024 * 1024;
 
 export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => void }) {
   const { viewer, departments, mentionable } = useConectados();
@@ -51,9 +59,30 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
   }, []);
 
   function agregarArchivos(nuevos: File[]) {
-    const conUrl = nuevos.map((file) => ({ file, url: URL.createObjectURL(file) }));
-    urlsRef.current = [...urlsRef.current, ...conUrl.map((f) => f.url)];
-    setFiles((prev) => [...prev, ...conUrl]);
+    // Se valida ACÁ y no al publicar: sin esta guardia, un archivo rechazable
+    // creaba la publicación primero y fallaba después, dejando un post
+    // publicado para toda la organización sin lo que su autor quería adjuntar
+    // (y sin forma de agregarlo a posteriori). Misma lección que los campos de
+    // marca y la foto de perfil — ver .claude/napkin.md, 2026-09-11.
+    const aceptados: { file: File; url: string }[] = [];
+    for (const file of nuevos) {
+      if (!MIME_ADJUNTOS.includes(file.type)) {
+        notifyError(`"${file.name}" no se puede adjuntar.`, "Usa imagen (JPG/PNG/WebP), video MP4 o PDF.");
+        continue;
+      }
+      if (file.size <= 0) {
+        notifyError(`"${file.name}" está vacío.`, "Elige otro archivo.");
+        continue;
+      }
+      if (file.size > MAX_ADJUNTO_BYTES) {
+        notifyError(`"${file.name}" pesa más de 10 MB.`, "Prueba con un archivo más liviano.");
+        continue;
+      }
+      aceptados.push({ file, url: URL.createObjectURL(file) });
+    }
+    if (aceptados.length === 0) return;
+    urlsRef.current = [...urlsRef.current, ...aceptados.map((f) => f.url)];
+    setFiles((prev) => [...prev, ...aceptados]);
   }
 
   function quitarArchivo(indice: number) {
@@ -140,30 +169,67 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
         // un `await`, y TypeScript no conserva el angostamiento de
         // `if (result.post)` a través de una llamada async.
         const createdPost = result.post;
-        // Secuencial, no `Promise.all`: `uploadPostAttachment` hace un
+        // Secuencial, no `Promise.all`: `confirmPostAttachment` hace una
         // lectura-modificación-escritura de `posts.attachments` (lee la lista
-        // actual, agrega una entrada, escribe) — en paralelo, cada subida lee
-        // la lista ANTES de que la anterior termine de escribir, y todas
-        // menos la última en confirmar pisan a las demás (se pierden
-        // adjuntos, hallado en /code-review). Uno a la vez, cada lectura ya
-        // ve lo que la subida anterior escribió.
+        // actual, agrega una entrada, escribe) — en paralelo, cada confirmación
+        // lee la lista ANTES de que la anterior termine de escribir, y todas
+        // menos la última pisan a las demás (se pierden adjuntos, hallado en
+        // /code-review). Uno a la vez, cada lectura ya ve lo anterior.
         const attachments: (typeof createdPost.attachments)[number][] = [];
         const failedNames: string[] = [];
+        // El motivo del PRIMER fallo, tal como lo dio el servidor ("Formato no
+        // admitido…", "El archivo pesa más de 10 MB."). Sin esto el aviso decía
+        // solo "No se pudo subir X" y sugería reintentar, que con un formato
+        // no admitido falla igual para siempre.
+        let motivo = "";
+        const supabase = createClient();
         for (const { file } of files) {
-          const formData = new FormData();
-          formData.set("file", file);
-          const r = await uploadPostAttachment(createdPost.id, formData);
-          if (r.attachment) attachments.push(r.attachment);
-          else failedNames.push(file.name);
-        }
-        if (failedNames.length > 0) {
-          notifyError(
-            failedNames.length === 1 ? `No se pudo subir "${failedNames[0]}".` : `No se pudieron subir ${failedNames.length} archivos.`,
-            "La publicación sí se creó — puedes intentar adjuntarlos de nuevo.",
-          );
+          // Cada adjunto: el servidor autoriza la ruta, el navegador sube
+          // directo a Storage, el servidor confirma. Ningún archivo pasa por
+          // el cuerpo de una Server Action (ver `createAttachmentUploadUrl`).
+          // El try/catch es lo que evita que un fallo de red mate el resto
+          // del envío: sin él, el `await` lanzaba dentro del transition y la
+          // publicación quedaba creada pero la pantalla no se enteraba.
+          try {
+            const prepared = await createAttachmentUploadUrl(createdPost.id, file.type, file.size);
+            if (!prepared.path || !prepared.token) {
+              failedNames.push(file.name);
+              motivo ||= prepared.error ?? "";
+              continue;
+            }
+            const { error: uploadError } = await supabase.storage
+              .from("conectados-adjuntos")
+              .uploadToSignedUrl(prepared.path, prepared.token, file, { contentType: file.type });
+            if (uploadError) {
+              failedNames.push(file.name);
+              motivo ||= "Revisa tu conexión e inténtalo de nuevo.";
+              continue;
+            }
+            const confirmed = await confirmPostAttachment(createdPost.id, prepared.path, file.name);
+            if (confirmed.attachment) {
+              attachments.push(confirmed.attachment);
+            } else {
+              failedNames.push(file.name);
+              motivo ||= confirmed.error ?? "";
+            }
+          } catch {
+            failedNames.push(file.name);
+          }
         }
         onCreated({ ...createdPost, attachments });
-        notifySuccess(result.success ?? "Publicación creada");
+        // Un solo mensaje: el toast verde y el rojo salían en el mismo tick y
+        // el de éxito tapaba al del adjunto perdido, así que la publicación
+        // parecía completa. Si algo se perdió, manda ese mensaje.
+        if (failedNames.length > 0) {
+          notifyError(
+            failedNames.length === 1
+              ? `La publicación se creó, pero sin "${failedNames[0]}".`
+              : `La publicación se creó, pero sin ${failedNames.length} de los archivos.`,
+            motivo || "Para incluirlo hay que borrar la publicación y volver a crearla.",
+          );
+        } else {
+          notifySuccess(result.success ?? "Publicación creada");
+        }
         mention.reset();
         setDepartmentId("");
         setRoles([]);
@@ -326,8 +392,13 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
                 {kindOfMime(f.file.type) === "archivo" && (
                   <span className="mt-1 block max-w-20 truncate text-[11px] text-muted-foreground">{f.file.name}</span>
                 )}
+                {/* Deshabilitado mientras se publica: el bucle de subidas
+                    itera sobre la copia que capturó el closure, así que
+                    quitar o agregar algo a mitad de camino se perdía en
+                    silencio al limpiar la lista al final. */}
                 <button
                   type="button"
+                  disabled={isPending}
                   aria-label={`Quitar ${f.file.name}`}
                   onClick={() => quitarArchivo(i)}
                   className="absolute -top-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-elevated"
@@ -383,7 +454,8 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
             <input
               type="file"
               multiple
-              accept="image/jpeg,image/png,image/webp,video/mp4,application/pdf"
+              accept={MIME_ADJUNTOS.join(",")}
+              disabled={isPending}
               className="sr-only"
               onChange={(e) => {
                 agregarArchivos(Array.from(e.target.files ?? []));

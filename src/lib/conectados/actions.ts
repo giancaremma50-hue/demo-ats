@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -394,22 +395,92 @@ export async function deleteComment(commentId: string): Promise<ConectadosAction
   return {};
 }
 
-export async function uploadPostAttachment(
+/**
+ * Los adjuntos NO viajan dentro del cuerpo de una Server Action.
+ *
+ * Igual que la marca (ver `createBrandUploadUrl`): una Server Action es una
+ * función serverless y en Vercel el cuerpo de una petición tiene un tope de
+ * ~4.5 MB que `serverActions.bodySizeLimit` no puede subir. El tope que
+ * promete esta pantalla es 10 MB, así que un video de teléfono caía en esa
+ * franja y la petición se rechazaba antes de correr una línea de este
+ * archivo: el `await` lanzaba, y como vivía dentro de un `startTransition`
+ * sin `catch`, moría la publicación entera a medio camino — el post creado,
+ * la lista sin limpiar y ni un mensaje en pantalla.
+ *
+ * Con URL firmada el navegador sube directo a Storage; acá solo se autoriza
+ * la ruta (que la arma el servidor, nunca el cliente) y se confirma después.
+ */
+const CreateAttachmentSchema = z.object({
+  postId: z.uuid(),
+  mimeType: z.string().max(120),
+  sizeBytes: z.number().int().finite(),
+});
+const ConfirmAttachmentSchema = z.object({
+  postId: z.uuid(),
+  path: z.string().min(1).max(300),
+  nombre: z.string().max(400),
+});
+
+export async function createAttachmentUploadUrl(
   postId: string,
-  formData: FormData,
-): Promise<ConectadosActionResult<{ attachment: Attachment & { url: string } }>> {
+  mimeType: string,
+  sizeBytes: number,
+): Promise<ConectadosActionResult<{ path: string; token: string }>> {
   const profile = await requireProfile();
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Selecciona un archivo primero." };
-  if (file.size > MAX_ATTACHMENT_BYTES) return { error: "El archivo pesa más de 10 MB." };
-  const extension = EXTENSION_BY_MIME[file.type];
+
+  // Los parámetros de una Server Action son entrada del cliente: el tipo de
+  // TypeScript no existe en runtime (AGENTS.md, Seguridad).
+  const parsed = CreateAttachmentSchema.safeParse({ postId, mimeType, sizeBytes });
+  if (!parsed.success) return { error: "No se pudo preparar la subida." };
+
+  const extension = EXTENSION_BY_MIME[parsed.data.mimeType];
   if (!extension) return { error: "Formato no admitido. Usa imagen (JPG/PNG/WebP), video MP4 o PDF." };
+  // Vacío y pasado de tamaño son dos cosas distintas: "pesa más de 10 MB"
+  // sobre un archivo de 0 bytes dice lo contrario de lo que pasó.
+  if (parsed.data.sizeBytes <= 0) return { error: "Ese archivo está vacío. Elige otro." };
+  if (parsed.data.sizeBytes > MAX_ATTACHMENT_BYTES) return { error: "El archivo pesa más de 10 MB." };
 
   const supabase = await createClient();
-  // Confirma que el post es del autor actual ANTES de escribir en Storage —
-  // `posts_update_own` ya lo exigiría al final (el `update` de abajo), pero
-  // fallar acá da un mensaje claro en vez de subir el archivo y recién ahí
-  // descubrir que el `update` fue rechazado por RLS.
+  const { data: post } = await supabase.from("posts").select("id, author_id").eq("id", postId).maybeSingle();
+  if (!post || post.author_id !== profile.id) return { error: "No puedes agregar adjuntos a esta publicación." };
+
+  // El nombre del archivo del cliente NUNCA entra a la key de Storage: la
+  // arma el servidor entera con datos que ya validó (la extensión sale del
+  // MIME, el uuid es propio). El nombre original se guarda aparte, en
+  // `Attachment.name`, solo para mostrarlo.
+  const path = `${profile.organization_id}/${postId}/${randomUUID()}.${extension}`;
+  const { data, error } = await supabase.storage.from("conectados-adjuntos").createSignedUploadUrl(path);
+  if (error || !data) return { error: "No se pudo preparar la subida. Inténtalo de nuevo." };
+
+  return { path: data.path, token: data.token };
+}
+
+/** Cuántos caracteres del nombre original se guardan para mostrar. */
+const MAX_NOMBRE_ADJUNTO = 120;
+
+export async function confirmPostAttachment(
+  postId: string,
+  path: string,
+  nombre: string,
+): Promise<ConectadosActionResult<{ attachment: Attachment & { url: string } }>> {
+  const profile = await requireProfile();
+
+  const parsed = ConfirmAttachmentSchema.safeParse({ postId, path, nombre });
+  if (!parsed.success) return { error: "Ruta de archivo inválida." };
+
+  // La ruta tiene que ser una que ESTE servidor generó para ESTA persona y
+  // ESTE post: organización + post + un uuid con una extensión conocida. Se
+  // valida con operaciones de string y no armando un RegExp con `postId`
+  // adentro — `postId` viene del cliente, y meterlo en un patrón lo deja
+  // decidir qué significa el patrón.
+  const carpeta = `${profile.organization_id}/${postId}`;
+  const archivo = path.startsWith(`${carpeta}/`) ? path.slice(carpeta.length + 1) : null;
+  if (!archivo || archivo.includes("/")) return { error: "Ruta de archivo inválida." };
+  const punto = archivo.lastIndexOf(".");
+  if (punto <= 0) return { error: "Ruta de archivo inválida." };
+  if (!UUID_RE.test(archivo.slice(0, punto))) return { error: "Ruta de archivo inválida." };
+
+  const supabase = await createClient();
   const { data: post } = await supabase
     .from("posts")
     .select("id, author_id, attachments")
@@ -417,18 +488,50 @@ export async function uploadPostAttachment(
     .maybeSingle();
   if (!post || post.author_id !== profile.id) return { error: "No puedes agregar adjuntos a esta publicación." };
 
-  // El nombre de archivo del cliente NUNCA entra a la key de Storage —
-  // mismo patrón que `uploadAvatar` (`avatar.${extension}`): la key la arma
-  // el servidor entero a partir de datos que ya validó (extensión derivada
-  // del MIME, un uuid propio). El nombre original se guarda aparte, en
-  // `Attachment.name`, solo para mostrarlo — nunca para direccionar Storage.
-  const path = `${profile.organization_id}/${postId}/${randomUUID()}.${extension}`;
-  const { error: uploadError } = await supabase.storage
-    .from("conectados-adjuntos")
-    .upload(path, file, { contentType: file.type });
-  if (uploadError) return { error: "No se pudo subir el archivo. Inténtalo de nuevo." };
+  // El MIME sale de la extensión de la ruta (que puso el servidor), no de lo
+  // que diga el cliente al confirmar: es lo que decide después si el adjunto
+  // se pinta como imagen, video o archivo.
+  const extension = archivo.slice(punto + 1);
+  const mimeType = Object.keys(EXTENSION_BY_MIME).find((m) => EXTENSION_BY_MIME[m] === extension);
+  if (!mimeType) return { error: "Ruta de archivo inválida." };
 
-  const attachment: Attachment = { path, mimeType: file.type, name: file.name, size: file.size };
+  // El tamaño real lo reporta Storage. Ojo con el manejo de errores: si la
+  // consulta FALLA (red, 5xx) no se puede concluir que el archivo no llegó —
+  // descartarlo ahí dejaba un objeto huérfano en el bucket, la publicación
+  // sin su adjunto y al usuario con un "no se pudo subir" sobre algo que sí
+  // se subió, y sin forma de reintentar porque el compositor ya limpió la
+  // lista. Solo una respuesta OK y vacía prueba que no llegó. `search` es una
+  // coincidencia parcial, así que hay que exigir el nombre exacto.
+  const { data: objetos, error: listError } = await supabase.storage
+    .from("conectados-adjuntos")
+    .list(carpeta, { search: archivo });
+  const subido = objetos?.find((o) => o.name === archivo);
+  if (!listError && !subido) return { error: "El archivo no llegó completo. Inténtalo de nuevo." };
+
+  // El tamaño que se validó al pedir la URL lo declaró el cliente; el real lo
+  // dice Storage. Ausente = no verificable, NO cero. Se puede borrar sin miedo
+  // porque la ruta es única por subida y todavía no la referencia nadie.
+  const tamanoReal = subido?.metadata?.size;
+  if (typeof tamanoReal === "number" && tamanoReal > MAX_ATTACHMENT_BYTES) {
+    await supabase.storage.from("conectados-adjuntos").remove([path]);
+    return { error: "El archivo pesa más de 10 MB." };
+  }
+
+  const attachment: Attachment = {
+    path,
+    mimeType,
+    name: parsed.data.nombre.slice(0, MAX_NOMBRE_ADJUNTO),
+    // Si el `list` falló, el tamaño queda en 0: es solo informativo (nada lo
+    // usa para decidir), y perder el dato es mejor que perder el adjunto.
+    size: Number(subido?.metadata?.size ?? 0),
+  };
+  // Lectura-modificación-escritura: se sostiene porque el único que puede
+  // escribir adjuntos de un post es su autor (`posts_update_own` + el chequeo
+  // de arriba) y porque el compositor confirma de a uno. No se cambió a un
+  // append atómico en SQL porque el post acaba de crearse en ESTA pantalla:
+  // no hay un segundo escritor posible. Si algún día se pueden agregar
+  // adjuntos a un post ya publicado desde otra sesión, esto necesita una RPC
+  // que haga `attachments = attachments || $1` en una sola sentencia.
   const current = Array.isArray(post.attachments) ? (post.attachments as Attachment[]) : [];
   const { error: updateError } = await supabase
     .from("posts")

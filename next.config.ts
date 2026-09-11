@@ -24,11 +24,15 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   experimental: {
-    // Default es 1 MB — el configurador de marca admite imágenes de hasta
-    // 5 MB (ver MAX_IMAGE_BYTES en src/lib/organizations/actions.ts); sin
-    // este override, cualquier "imagen de inicio de sesión" real (recomendada
-    // 1200x1600 vertical) pasa el chequeo de la Server Action pero Next.js la
-    // rechaza antes de que ese código corra.
+    // Sube el default de 1 MB de Next, nada más. NO es el límite que manda:
+    // en Vercel el cuerpo de una petición a una función serverless se corta
+    // en ~4.5 MB y eso no se configura desde acá — creer lo contrario fue
+    // justo lo que hizo que subir un logo desde un teléfono fallara EN
+    // SILENCIO (ver .claude/napkin.md, 2026-09-11). Por eso ningún archivo
+    // viaja ya dentro del cuerpo de una Server Action: van directo a Storage
+    // con URL firmada (`createBrandUploadUrl`, `createAttachmentUploadUrl`).
+    // Lo único que sigue pasando por acá es la foto de perfil, con un tope
+    // propio de 3 MB validado en el cliente antes de enviar.
     serverActions: { bodySizeLimit: "6mb" },
   },
   images: {
@@ -59,8 +63,10 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.googleusercontent.com" },
     ],
     // Sin dangerouslyAllowSVG a propósito: el configurador de marca no
-    // admite subir SVG (ver src/lib/organizations/actions.ts) precisamente
-    // para no tener que sandboxear nada aquí.
+    // admite subir SVG (ver BRAND_EXTENSION_BY_MIME en
+    // src/lib/organizations/brand-fields.ts, y la migración
+    // `marca_publico_sin_svg` que se lo prohíbe también al bucket)
+    // precisamente para no tener que sandboxear nada aquí.
   },
 };
 
