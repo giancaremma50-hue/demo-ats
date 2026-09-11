@@ -7,7 +7,44 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (avisos de entrevista/tarea que nunca llegaban a los internos, pendiente #16 — dos plantillas nuevas duplicaban el cálculo de fecha y ya habían perdido una línea entre sí)_
+_Última actualización: 2026-09-11 (primer runner de tests del proyecto — vitest, con las 20 comprobaciones de menciones que nunca habían quedado en el repo)_
+
+## El proyecto ya tiene runner de tests: vitest (2026-09-11)
+
+Pendiente #18 de `docs/PENDIENTE.md`. La lógica pura de menciones
+(`src/lib/mentions.ts`: `parseMentions`, `extractMentionIds`,
+`canonicalizeMentions`, `resolveMentionTokens`, `activeMentionQuery`) se había
+verificado a mano el 2026-09-09 con un script suelto que nunca quedó en el
+repo — `node` exige `.ts` en el import y `tsc` lo prohíbe
+(`allowImportingTsExtensions`), así que dejarlo habría roto el `typecheck`
+del CI. Sin runner, esa lógica no tenía red.
+
+1. **`vitest@5` pide `@types/node` ^22 o ^24; el proyecto tenía `^20`.**
+   Bloqueó el install con un conflicto de peer dependency. Se subió
+   `@types/node` a `^24` (types-only, sin efecto en runtime) en vez de fijar
+   una versión vieja de vitest — el proyecto ya corre Node 24 en CI
+   (`.github/workflows/ci.yml`) y en producción (Vercel, Node 24 LTS por
+   default), así que las declaraciones de tipos ya deberían decir eso.
+2. **Al escribir la prueba del caso de anidamiento
+   (`@[@[Directora](idFalso)](idReal)`), la primera aserción
+   (`not.toContain('](idReal)')`) fue la equivocada** — el string degradado
+   real SÍ contiene ese fragmento (`"@Directora](idReal)"`, resultado
+   correcto y esperado), lo que hizo fallar la prueba aunque el código de
+   `resolveMentionTokens` estuviera bien. El invariante real no es "el string
+   no contiene tal substring" sino "el string, vuelto a pasar por
+   `parseMentions`, no produce ninguna mención" — eso es lo que
+   `resolveMentionTokens` promete (que no se reconstruya un token nuevo), no
+   una forma textual específica del resultado degradado.
+   Do instead: al probar una función que transforma texto para IMPEDIR que
+   se vuelva a interpretar de cierta forma, la aserción correcta pasa el
+   resultado de nuevo por el parser real (acá, `parseMentions`) y comprueba
+   la ausencia del efecto — no por una forma de string a mano, que puede
+   acertar por casualidad o fallar por un detalle irrelevante (como sucedió).
+3. **`vitest.config.ts` sin alias de `@/`** — `mentions.ts` no importa nada
+   con ese alias (es la única lógica pura sin dependencias del árbol de
+   `src/lib` hoy), así que no hizo falta `vite-tsconfig-paths` todavía.
+   Agregar esa dependencia recién cuando el primer archivo de test necesite
+   importar algo vía `@/...`.
 
 ## Dos flujos nunca notificaban a nadie: agendar entrevista y asignar tarea (2026-09-11)
 

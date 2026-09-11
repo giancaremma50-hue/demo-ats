@@ -269,18 +269,16 @@ efecto en sesiones NUEVAS — los servidores MCP se cargan al arrancar.
 El ATS se opera por el servidor que exige `project_id` en cada llamada, con
 `cgudnnlcwcotovcslgzu`.
 
-### 16. Avisos que no llegan: entrevistas y tareas
+### 16. ~~Avisos que no llegan: entrevistas y tareas~~ — Resuelto 2026-09-11
 
-Pedido del usuario, dejado aparte a propósito el 2026-09-09 para no mezclarlo
-con el lote de menciones/kanban/vacantes. Son dos huecos reales:
+`scheduleInterview` guardaba `interview_attendees` y solo avisaba al
+**candidato**; los colegas agregados como destinatarios no recibían ni
+campana ni correo. `addTask` no llamaba a `notify()` en absoluto. Dos
+`notification_type` nuevos (`entrevista_agendada`, `tarea_asignada`), dos
+plantillas internas sin pie de privacidad, mismo patrón que `mencion_nota`.
+Detalle en `.claude/napkin.md`.
 
-**Agendar reunión — los internos no se enteran.** `scheduleInterview` guarda
-`interview_attendees` y después solo le manda correo **al candidato**. Los
-colegas que se agregan como destinatarios no reciben ni campana ni correo.
-Hace falta un valor nuevo en `notification_type` (no existe ninguno de
-entrevista), una plantilla de correo, y la llamada a `notify()`.
-
-Y tres cosas más del mismo flujo, menores pero reales:
+Sigue sin resolver, menor, del mismo flujo:
 - No hay evento de calendario real ni sala de videollamada: es un enlace
   "agregar a Google Calendar" que cada uno pulsa. El link de Meet/Zoom se pega
   a mano en "Lugar o enlace". (OAuth de Calendar está fuera de alcance por
@@ -289,11 +287,6 @@ Y tres cosas más del mismo flujo, menores pero reales:
   horaria por organización. Para Centroamérica se lee 6 horas corrido si el
   lector no ve el "hora UTC". En una invitación a reunión, confunde.
 - No hay recordatorio antes de la reunión.
-
-**Asignar tarea — el asignado no se entera.** `addTask` no llama a `notify()`
-en absoluto. Mismo requisito: `notification_type` nuevo (`tarea_asignada`),
-plantilla, y la llamada. Es la misma forma que ya quedó construida para
-menciones, así que es rápido.
 
 ### 17. El kanban recorta el DOM, no la red
 
@@ -314,21 +307,12 @@ pipeline quien lleva más esperando es por quien hay que actuar. El
 triaje de postulaciones frescas. Si se cambia, cambiar también el comentario de
 `kanban-column.tsx`.
 
-### 18. El proyecto no tiene runner de tests
+### 18. ~~El proyecto no tiene runner de tests~~ — Resuelto 2026-09-11
 
-Lo destapó el lote de menciones. `parseMentions` / `activeMentionQuery` son
-regex con offsets y posición de cursor — la clase de código que se rompe en
-silencio. Se verificaron con 20 comprobaciones (`node --experimental-strip-types`
-sobre un script suelto: XSS, correo que no debe abrir el autocompletado,
-uuid en mayúsculas, token malformado, nombre con corchetes, cursor antes del
-`@`), todas verdes, **pero ese script no quedó en el repo**: `node` exige la
-extensión `.ts` en el import y `tsc` la prohíbe (`allowImportingTsExtensions`),
-así que dejarlo habría roto el `typecheck` del CI.
-
-El CI que agregó la otra sesión corre lint + typecheck + build. Falta un runner
-(vitest es el que menos fricción tiene con este stack) y, con él, mover esas 20
-comprobaciones al repo. Mientras no exista, la lógica pura del proyecto no
-tiene red.
+`vitest`, con `src/lib/mentions.test.ts` cubriendo las 20 comprobaciones que
+se habían verificado a mano el 2026-09-09 y nunca quedaron en el repo. `npm
+test` corre en CI junto a lint/typecheck/build. Detalle (incluido un ajuste
+de `@types/node`) en `.claude/napkin.md`.
 
 ### 19. ~~Techo de Vercel de 4.5 MB vs. el límite de 10 MB del código~~ — Resuelto 2026-09-09
 
