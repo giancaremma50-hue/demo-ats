@@ -1,4 +1,4 @@
-# Pendiente — ATS Ferco
+# Pendiente — ATS Aje
 
 _Última actualización: 2026-09-09, al cerrar los dos bloqueantes de producción (key corrupta y protección de Vercel). **Ya no queda ningún bloqueante técnico**: lo que sigue abierto depende del cliente, del abogado o de una decisión suya._
 

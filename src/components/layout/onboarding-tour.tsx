@@ -54,7 +54,7 @@ export function OnboardingTour({ hasSeenTutorial }: { hasSeenTutorial: boolean }
       steps: [
         {
           popover: {
-            title: "Bienvenido a Talento Ferco",
+            title: "Bienvenido a Talento AJE",
             description: "Un recorrido de un minuto antes de empezar. Puedes cerrarlo cuando quieras.",
           },
         },
