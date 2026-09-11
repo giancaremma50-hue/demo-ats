@@ -21,9 +21,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         initialNotifications={notifications}
         initialUnreadCount={unreadCount}
       />
-      {/* pb calculado igual que el padding del propio FloatingNav (7rem +
-          safe-area-inset-bottom) — con solo pb-28 el borde de la píldora en
-          un iPhone con home indicator queda más alto que el aire reservado.
+      {/* El aire de abajo se reserva contra la barra flotante DESPLEGADA, que
+          es su tamaño máximo: 10px de separación (`bottom-2.5`) + 56 de alto
+          = 66px. El `pb-28` que pide AGENTS.md son 112, así que sobra.
+          El término `env(safe-area-inset-bottom)` hoy vale 0 —la app no
+          declara `viewport-fit=cover`, así que iOS ya recorta el viewport él
+          mismo— y está para que la cuenta siga cerrando si algún día se
+          declara: es el mismo término que respeta la barra. No se quita
+          justamente por eso.
 
           Los gutters horizontales usan la misma escala que AppHeader
           (`px-4 sm:px-6 lg:px-10`): antes el main arrancaba en `px-6` fijo,

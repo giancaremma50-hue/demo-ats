@@ -7,7 +7,112 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (paginación real del kanban — 3 bugs de concurrencia/paginación encontrados por `/code-review` antes de tocar producción, ninguno visible con los datos de demo)_
+_Última actualización: 2026-09-11 (una barra que se esconde deja rastro, y el rastro es ELLA plegada; y paginación real del kanban, con 3 bugs de concurrencia encontrados por `/code-review`)_
+
+## Una barra que se esconde tiene que dejar rastro, y el rastro tiene que ser ELLA (2026-09-11) — MÁXIMA PRIORIDAD
+
+La barra flotante se desmontaba al bajar y no quedaba nada en pantalla: el
+usuario reportó que "desapareció". Las primeras propuestas —un asa aparte, un
+riel, un botón circular— se descartaron con una frase suya que vale como
+regla: *"lo único que quiero es que se contraiga, que se haga una línea
+delgada visible"*. La señal no es un objeto nuevo al lado del menú: es el menú
+plegado. Lo que costó, en orden de cuánto tardó en aparecer:
+
+1. **CSS no sabe animar de `auto` a un tamaño fijo.** La píldora mide lo que
+   mide su contenido, así que contraerla a 108 px saltaba en vez de animar. Se
+   MIDE el ancho abierto y se escribe como variable CSS en el DOM desde un
+   efecto (escribir en el DOM no es `setState`, que en un efecto es error de
+   build acá). Se re-mide con `ResizeObserver`, no con el `resize` de la
+   ventana: la tipografía que llega tarde y el zoom de texto del navegador
+   cambian el ancho sin disparar `resize` ni cambiar de ruta.
+2. **Esa misma transición hay que APAGARLA al re-medir.** Cambiar de módulo
+   cambia el contenido y el ancho: con la transición viva, el ancho anima 300 ms
+   con el contenido nuevo YA pintado y se lo ve asomar fuera de la píldora. Se
+   apaga (`transitionProperty = "none"`), se escribe el valor, se fuerza el
+   recálculo leyendo `getBoundingClientRect()` y recién ahí se devuelve. La
+   transición es para plegar y desplegar, no para medir.
+3. **Medir con `scrollWidth`, no con la caja.** Cuando el contenido no cabe se
+   le da scroll propio, y desde ese momento su caja mide lo que el recorte le
+   deja: medir eso encoge la píldora un poco más en cada vuelta del observer.
+4. **El recorte solo mientras está plegada.** `overflow: hidden` hace falta
+   para que el contenido no asome mientras se encoge, pero desplegada tiene
+   que ser `visible` o se come los tooltips, que viven arriba de la píldora
+   (CSS Overflow 3: fijar un eje arrastra al otro, y `clip` no salva el caso
+   porque acá el eje que importa es el mismo). Y cuando de verdad no cabe
+   —teléfono de 320 con el nombre del módulo y cuatro submenús— se paga el
+   precio: scroll horizontal propio. Y el scroll es el valor POR DEFECTO, con
+   la medición LEVANTÁNDOLO cuando comprueba que cabe, nunca al revés: hasta
+   que hidrate no hay atributo que leer, y un contenido que no puede encogerse
+   (hijos `flex-none`) se sale de la píldora y lo recorta el `overflow-x:
+   hidden` del `<body>`, sin scroll con el que alcanzarlo. Sin salida de
+   emergencia, el selector y el engranaje (dos de las tres anclas) se recortan
+   contra el borde. Y el tope de ancho
+   va TAMBIÉN en CSS (`max-w-[calc(100vw-1rem)]`), no solo en la medición:
+   hasta que hidrate —y para siempre si la hidratación falla— el ancho es
+   `auto`, y lo que se sale por la izquierda de un elemento centrado no se
+   alcanza ni con scroll.
+5. **"Plegada" y "el contenido no se ve" NO son lo mismo, y de confundirlas
+   sale todo el lío del foco.** Al plegar, el contenido deja de servir en el
+   acto; al desplegar tarda 300 ms en aparecer (espera + fundido). Una sola
+   bandera para las tres cosas que dependen de eso —`inert`, si la píldora
+   puede tener el foco, y cuándo devolvérselo al contenido— porque atarlas a
+   `plegada` rompía cada una por su lado: enlaces invisibles que igual reciben
+   el clic (el mismo con el que se abrió la barra), y un `tabIndex` que
+   desaparece mientras el foco está encima, que el navegador resuelve
+   soltándolo en `<body>`. La opacidad va con demora asimétrica: al plegar se
+   desvanece de inmediato (si no, se ve aplastado), al desplegar espera.
+6. **Mientras el contenido no sirve, la píldora ES el botón** (`role` +
+   `aria-label` + `tabIndex` + `aria-expanded`, las cuatro cosas atadas a la
+   MISMA bandera: desplegada contiene enlaces y un botón no puede contenerlos,
+   pero dejarla focusable sin nombre ni rol durante la animación deja al
+   lector de pantalla con un elemento anónimo enfocado, que es WCAG 4.1.2).
+   Y el foco hay que anotarlo **antes** de cada commit, en los DOS sentidos:
+   la regla de *focus fixup* del HTML dice que el navegador suelta en `<body>`
+   el foco de un elemento que dejó de ser focusable, así que para cuando corre
+   el efecto ya no hay nada que preguntar. Vale al plegar (el `inert` se traga
+   el foco del enlace) y vale al terminar de desplegar (quitarle el `tabIndex`
+   a la píldora se traga el foco que se le había aparcado). Cada anotación se
+   consume en el efecto siguiente; una que sobreviva le roba el foco minutos
+   después a lo que el usuario esté escribiendo. Y
+   Radix devuelve el foco al disparador del Popover al cerrarse — si la barra
+   se plegó con el selector abierto, ese disparador quedó `inert`: se atiende
+   en `onCloseAutoFocus`, preguntándole al DOM (no al estado, que en un
+   desmontaje es el del render de entonces). Todo `focus()` sobre un elemento
+   `fixed` va con `{ preventScroll: true }`: en iOS el navegador corre la
+   página unos píxeles para "traerlo a la vista" y eso dispara el manejador de
+   scroll, que vuelve a plegar la barra recién abierta.
+7. **12 px de alto no alcanzan para un destino táctil** (WCAG 2.5.8 pide
+   24×24). El parche invisible que lo lleva a 26 va AFUERA de la píldora
+   (plegada es `overflow: hidden` y recorta cualquier cosa que le cuelgue) y
+   crece hacia ABAJO, hacia el aire que la barra ya ocupa: una franja gruesa
+   por encima del lomo se traga los toques de lo último de la página sin que
+   se vea ningún control ahí. Y vive tanto como el lomo se vea, no como dure
+   el estado "plegada": desmontarlo en el primer fotograma del despliegue deja
+   el segundo toque —el que todos damos cuando el primero no pareció hacer
+   nada— cayendo en la página.
+8. **TypeScript no conserva el estrechamiento de un `const` en una función
+   DECLARADA adentro del efecto** (se iza sobre la comprobación de `null`).
+   Con `const medir = () => {}` sí lo conserva. Trampa de sintaxis pura, pero
+   cuesta cinco minutos cada vez.
+
+## `env(safe-area-inset-*)` vale 0 mientras el viewport no declare `viewport-fit=cover` (2026-09-11) — MÁXIMA PRIORIDAD
+
+Hay `env(safe-area-inset-bottom)` en el padding de `<main>`, en la barra
+flotante y en varios `calc()` de alto. **Hoy todos resuelven a 0**: la app no
+exporta ningún `viewport` (Next emite el `width=device-width, initial-scale=1`
+por defecto), y sin `viewport-fit=cover` iOS recorta el viewport él mismo, así
+que las insets quedan en cero. O sea que la barra ya está por encima del home
+indicator por otra razón, no por el `env()`.
+
+No son código muerto —la cuenta sigue cerrando si algún día se declara
+`viewport-fit: "cover"`, y es justo el término que haría falta— pero sí lo son
+las justificaciones. Dos veces se escribió en un comentario que sin ese
+término "en un iPhone el borde queda 34px más abajo": describe un
+comportamiento que la app no tiene. **Antes de usar un `env()` como argumento
+de un cálculo o de un comentario, comprobar si hay `viewport-fit=cover`.** Y
+al declararlo algún día, hay que revisar TODA pantalla que hoy asume un
+viewport ya recortado, porque pasarían a pintarse debajo de la barra de inicio.
+
 
 ## Paginación real del kanban: 3 bugs de estado que solo salen con volumen o con dos acciones casi simultáneas (2026-09-11)
 
@@ -148,6 +253,7 @@ la entrevista; de la tarea no se enteraba nadie.
    regenerados con `generate_typescript_types` y pegados sobre
    `database.types.ts` (diff de 4 líneas, nada más cambió — confirma que no
    hubo drift de otro schema mientras tanto).
+
 
 ## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11) — MÁXIMA PRIORIDAD
 
