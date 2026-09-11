@@ -1,14 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import Image from "next/image";
-import { User } from "lucide-react";
 import { uploadAvatar, removeAvatar } from "@/lib/profile/actions";
 import { ActionButton } from "@/components/ui/action-button";
+import { Avatar } from "@/components/ui/avatar";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 
-export function AvatarField({ currentUrl, initials }: { currentUrl: string | null; initials: string }) {
+export function AvatarField({ currentUrl, displayName }: { currentUrl: string | null; displayName: string }) {
   const [state, formAction] = useActionState(uploadAvatar, undefined);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -23,15 +22,19 @@ export function AvatarField({ currentUrl, initials }: { currentUrl: string | nul
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex size-16 flex-none items-center justify-center overflow-hidden rounded-full border border-border bg-card">
-        {currentUrl ? (
-          <Image src={currentUrl} alt="" width={64} height={64} className="size-full object-cover" />
-        ) : initials ? (
-          <span className="font-serif text-lg text-muted-foreground">{initials}</span>
-        ) : (
-          <User className="size-6 text-muted-foreground" aria-hidden />
-        )}
-      </div>
+      {/* El mismo <Avatar> que el resto de la app: esta es justo la pantalla
+          donde se administra la foto, así que tener acá un respaldo distinto
+          (iniciales serif grises) del que se ve en el encabezado y en las
+          publicaciones (inicial blanca sobre verde) era la inconsistencia
+          más confusa posible. */}
+      <Avatar
+        name={displayName}
+        src={currentUrl}
+        size={64}
+        // Única pantalla donde la foto ES el contenido (no hay nombre al lado
+        // que la explique): acá sí se anuncia, y dice si hay foto o no.
+        label={currentUrl ? "Tu foto de perfil actual" : "Todavía no tienes foto de perfil"}
+      />
       <div className="flex flex-1 flex-col gap-2">
         {/* flex-wrap: un <input type="file"> nativo no se achica por CSS —
             si no cabe junto al botón "Subir", este cae a la línea de abajo

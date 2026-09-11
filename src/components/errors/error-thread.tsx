@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { replyToErrorReport } from "@/lib/errors/actions";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import type { ErrorReportMessageRow } from "@/lib/errors/get-error-reports";
 
@@ -39,9 +40,7 @@ export function ErrorThread({
         )}
         {messages.map((m) => (
           <div key={m.id} className="flex gap-3">
-            <div className="flex size-8 flex-none items-center justify-center rounded-full bg-muted text-[11px] font-medium">
-              {(m.author?.display_name ?? "?").slice(0, 2).toUpperCase()}
-            </div>
+            <Avatar name={m.author?.display_name ?? "?"} src={m.author?.avatar_url} size={32} />
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="text-[13px] font-medium">{m.author?.display_name ?? "Alguien"}</span>

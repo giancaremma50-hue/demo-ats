@@ -4,6 +4,7 @@ import { useState } from "react";
 import { NoteForm } from "./note-form";
 import { NoteBody } from "./note-body";
 import { TaskRow } from "./task-list";
+import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import type { ApplicationNote, ApplicationTask, MentionableProfile } from "@/lib/applications/get-applications";
 
@@ -13,6 +14,7 @@ const RESPUESTAS_VISIBLES = 2;
 function Meta({ note }: { note: ApplicationNote }) {
   return (
     <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <Avatar name={note.authorName} src={note.authorAvatarUrl} size={24} />
       {note.authorName} · {new Date(note.createdAt).toLocaleString("es")}
       {note.isPrivate && (
         <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] tracking-wide uppercase">

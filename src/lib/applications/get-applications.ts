@@ -56,6 +56,9 @@ export type ApplicationNote = {
   id: string;
   authorId: string;
   authorName: string;
+  /** Foto ACTUAL del perfil (el join la trae viva, no una copia del momento
+   * en que se escribió la nota). `null` si esa persona no subió ninguna. */
+  authorAvatarUrl: string | null;
   body: string;
   isPrivate: boolean;
   /** NULL = nota raíz. Si trae valor, es una respuesta dentro de ese hilo. */
@@ -125,7 +128,7 @@ export async function getApplicationDetail(applicationId: string): Promise<Appli
       .order("created_at"),
     supabase
       .from("notes")
-      .select("id, author_id, body, is_private, parent_id, mentions, created_at, profiles(display_name)")
+      .select("id, author_id, body, is_private, parent_id, mentions, created_at, profiles(display_name, avatar_url)")
       .eq("application_id", applicationId)
       .order("created_at"),
     supabase
@@ -173,6 +176,7 @@ export async function getApplicationDetail(applicationId: string): Promise<Appli
       id: n.id,
       authorId: n.author_id,
       authorName: n.profiles?.display_name ?? "Alguien",
+      authorAvatarUrl: n.profiles?.avatar_url ?? null,
       body: n.body,
       isPrivate: n.is_private,
       parentId: n.parent_id,

@@ -72,11 +72,42 @@ function resolveAttachments(attachments: unknown, urlByPath: Map<string, string>
   return list.map((a) => ({ ...a, url: urlByPath.get(a.path) ?? "" })).filter((a) => a.url !== "");
 }
 
+/**
+ * `posts.author_avatar_url` / `post_comments.author_avatar_url` son una COPIA
+ * congelada al momento de publicar. Sirven de respaldo para cuando el perfil
+ * ya no existe (`author_id` queda en NULL al borrarlo), pero no pueden ser lo
+ * que se muestra: quien sube una foto nueva la vería en el encabezado y
+ * seguiría apareciendo con la vieja en todo lo que publicó antes.
+ *
+ * Por eso la foto se resuelve al LEER, contra el perfil actual — con el
+ * `embed` de PostgREST en la MISMA consulta (una sola ida al servidor, no una
+ * extra por feed y otra por hilo de comentarios abierto).
+ *
+ * El perfil embebido distingue dos casos que un `??` sobre la copia guardada
+ * confundiría: `null` = ese perfil ya no existe (recién ahí vale el respaldo),
+ * y `{ avatar_url: null }` = el perfil existe y NO tiene foto. Sin esa
+ * distinción, quitar la foto desde /mi-cuenta resucitaba la vieja en todas
+ * las publicaciones anteriores — y encima rota, porque `removeAvatar` borra
+ * también el archivo del bucket.
+ */
+function currentAvatar(
+  autor: { avatar_url: string | null } | null,
+  copiaGuardada: string | null,
+): string | null {
+  // `autor === null` cubre dos situaciones distintas y las dos terminan en la
+  // copia guardada, que es lo único que queda: el perfil se borró (`author_id`
+  // quedó NULL), o el perfil existe pero no se pudo leer. Lo segundo no
+  // debería pasar —`profiles_select_org` deja ver a todo el mundo de la misma
+  // organización— pero si `auth_org_id()` viniera vacío por un hook de JWT mal
+  // configurado, el feed se vería con las fotos viejas en vez de romperse.
+  return autor ? autor.avatar_url : copiaGuardada;
+}
+
 export async function getPosts(): Promise<FeedPost[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("posts")
-    .select("*")
+    .select("*, autor:profiles(avatar_url)")
     .order("created_at", { ascending: false })
     .limit(FEED_LIMIT);
   if (error) throw error;
@@ -84,8 +115,9 @@ export async function getPosts(): Promise<FeedPost[]> {
   const rows = data ?? [];
   const urlByPath = await hydrateAllAttachments(supabase, rows);
 
-  return rows.map((row) => ({
+  return rows.map(({ autor, ...row }) => ({
     ...row,
+    author_avatar_url: currentAvatar(autor, row.author_avatar_url),
     attachments: resolveAttachments(row.attachments, urlByPath),
     poll: (row.poll as Poll | null) ?? null,
     reactions: (row.reactions as Reactions) ?? {},
@@ -97,11 +129,16 @@ export async function getPostComments(postId: string): Promise<FeedComment[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("post_comments")
-    .select("*")
+    .select("*, autor:profiles(avatar_url)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row) => ({ ...row, reactions: (row.reactions as Reactions) ?? {} }));
+
+  return (data ?? []).map(({ autor, ...row }) => ({
+    ...row,
+    author_avatar_url: currentAvatar(autor, row.author_avatar_url),
+    reactions: (row.reactions as Reactions) ?? {},
+  }));
 }
 
 export async function getOwnPostPermissions(profileId: string): Promise<PostPermission | null> {

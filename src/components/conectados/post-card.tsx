@@ -4,6 +4,7 @@ import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { MessageCircle } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { deletePost } from "@/lib/conectados/actions";
@@ -84,14 +85,7 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
     // encuesta) ya lo trae en su propio contenedor.
     <Card className="flex flex-col gap-3 overflow-visible p-4">
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-semibold">
-          {post.author_avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- avatar externo, mismo patrón que el resto de la app
-            <img src={post.author_avatar_url} alt="" className="size-full object-cover" />
-          ) : (
-            post.author_name.slice(0, 1).toUpperCase()
-          )}
-        </span>
+        <Avatar name={post.author_name} src={post.author_avatar_url} size={36} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2">
             <p className="text-sm font-semibold">{post.author_name}</p>

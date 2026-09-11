@@ -4,8 +4,8 @@ import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 import { ROLE_LABEL } from "@/lib/auth/role-labels";
 import { ActionButton } from "@/components/ui/action-button";
+import { Avatar } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/layout/notification-bell";
-import { getInitials } from "@/lib/profile/initials";
 import type { NotificationItem } from "@/lib/notifications/get-notifications";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -20,8 +20,6 @@ export function AppHeader({
   initialNotifications: NotificationItem[];
   initialUnreadCount: number;
 }) {
-  const initials = getInitials(profile.display_name);
-
   return (
     <header className="flex h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6 lg:px-10">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -53,19 +51,14 @@ export function AppHeader({
         />
         <span className="hidden text-xs text-muted-foreground md:inline">{ROLE_LABEL[profile.role]}</span>
         <Link href="/mi-cuenta" data-tour="mi-cuenta" className="flex items-center gap-2">
-          {profile.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt=""
-              width={30}
-              height={30}
-              className="size-[30px] rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex size-[30px] flex-none items-center justify-center rounded-full bg-primary text-[12px] font-medium text-primary-foreground">
-              {initials}
-            </div>
-          )}
+          <Avatar name={profile.display_name} src={profile.avatar_url} size={30} />
+          {/* `sr-only` y no `aria-label` en el <Link>: un aria-label PISA el
+              nombre accesible, y desde `sm` el texto visible es el nombre de
+              la persona — quien navega por voz diría ese nombre y no
+              encontraría nada ("Label in Name", WCAG 2.5.3). Así el nombre
+              accesible es "Mi cuenta" + el nombre visible cuando se ve, y
+              "Mi cuenta" a secas en un teléfono, donde el avatar va solo. */}
+          <span className="sr-only">Mi cuenta</span>
           {/* Nombre del usuario: solo desde sm — en celular el avatar solo
               (con su alt/aria implícito vía el link a "Mi cuenta") ya es
               suficiente affordance, y liberar ese espacio es lo que evita

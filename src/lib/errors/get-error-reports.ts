@@ -6,7 +6,7 @@ export type ErrorReportRow = Tables<"error_reports"> & {
   reporter: { display_name: string; email: string } | null;
 };
 export type ErrorReportMessageRow = Tables<"error_report_messages"> & {
-  author: { display_name: string } | null;
+  author: { display_name: string; avatar_url: string | null } | null;
 };
 
 const REPORT_SELECT = "*, reporter:profiles!error_reports_reporter_id_fkey(display_name, email)";
@@ -57,7 +57,7 @@ export async function getErrorReportMessages(reportId: string, organizationId: s
   const supabase = await createClient();
   const { data } = await supabase
     .from("error_report_messages")
-    .select("*, author:profiles!error_report_messages_author_id_fkey(display_name)")
+    .select("*, author:profiles!error_report_messages_author_id_fkey(display_name, avatar_url)")
     .eq("error_report_id", reportId)
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: true });
