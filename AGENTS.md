@@ -80,7 +80,8 @@ Están codificadas en componentes para que no dependan de la disciplina de nadie
    Se usa `<DeleteButton>`, que abre `<ConfirmDialog>` nombrando el elemento a eliminar. Confirmar en rojo, cancelar neutro. **Nunca se elimina en un solo clic.**
 
 4. **El menú principal es una barra flotante inferior.**
-   Píldora fija en `bottom-6`, centrada, fondo sólido con sombra sutil (`0 -1px 6px rgba(0,0,0,.05)`, ver reglas de diseño visual). Acompaña la pantalla sin invadirla: se oculta al bajar, reaparece al subir, respeta `safe-area-inset-bottom`. Todo el contenido lleva `pb-28` para que nunca quede tapado. Máximo 5 ítems, según rol.
+   Píldora fija en `bottom-2.5` (10 px + `safe-area-inset-bottom`), centrada, fondo sólido con sombra sutil (`0 -1px 6px rgba(0,0,0,.05)`, ver reglas de diseño visual). Todo el contenido lleva `pb-28` para que nunca quede tapado. Máximo 5 ítems, según rol.
+   **Al bajar se PLIEGA, no desaparece** (mockup "Lomo", aprobado el 2026-09-11): la misma píldora se contrae a un bloque de 12 px que conserva su sombra —se lee como un objeto cerrado, no como una raya decorativa— y se despliega al subir o al tocarla. Nunca se desmonta: es el mismo elemento cambiando de tamaño. Una barra que desaparece entera no dice que va a volver, y eso se reportó como "desapareció el menú".
 
 5. **Todo error se captura con un mensaje amigable y reportable.**
    Nada de stacks ni códigos crudos frente al usuario. Ver "Centro de errores" abajo.
