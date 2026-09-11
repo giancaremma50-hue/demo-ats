@@ -7,7 +7,7 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (auditoría completa de seguridad: RLS de `jobs` dejaba a un gestor auto-publicarse saltando RH, y un MCP de Supabase conectado a la sesión resultó ser OTRA base)_
+_Última actualización: 2026-09-11 (cierre de la auditoría de seguridad: drift real en el espejo TS↔SQL de permisos, y comparación del secreto del cron sin timing-safe)_
 
 ## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11) — MÁXIMA PRIORIDAD
 
@@ -520,6 +520,49 @@ con un trigger — acá no se había replicado.
 3. **Pendiente, no bloqueante**: el mismo patrón (Server Action con estados,
    sin trigger espejo en la tabla) vale la pena revisarlo en
    `job_templates`/`pipeline_templates` — no auditado a fondo esta vez.
+
+---
+
+## Espejo TS↔SQL de permisos con drift real: `permissions.ts` tenía 3 valores que el SQL ya no acepta (2026-09-11)
+
+Mismo audit. `WRITE_PERMISSIONS` en `src/lib/applications/permissions.ts` traía
+`["lectura_escritura", "interviewer", "approver", "owner"]`; `private.can_write_application`
+en Postgres solo reconoce `'lectura_escritura'` en su `IN`.
+
+1. **No explotable hoy (verificado: 0 filas de `job_collaborators` usan esos 3
+   valores), pero rompía la regla propia del proyecto de que el espejo se
+   actualiza en la misma sesión que el umbral.** Si alguna vez apareciera una
+   fila vieja sin migrar con `permission = 'owner'`,
+   `canWriteApplication()` habría devuelto `true` en TypeScript mientras la
+   base seguía rechazando el `INSERT`/`UPDATE` — un permiso fantasma que se ve
+   en la UI (el botón aparece habilitado) y falla recién al enviar, el peor
+   tipo de bug de permisos porque no se nota hasta que alguien lo intenta.
+   Do instead: el Set de TypeScript de una lista blanca de permisos se recorta
+   para que sea EXACTAMENTE lo que el `IN`/`= ANY` del lado de Postgres acepta
+   — nunca "lo que aceptaba antes más lo que acepta ahora", ni siquiera "por
+   si acaso queda una fila vieja": si una fila vieja necesita seguir
+   funcionando, se migra la fila, no se infla la lista blanca de TypeScript
+   para taparla.
+
+---
+
+## Comparación del secreto del cron no era tiempo-constante (2026-09-11)
+
+`src/app/api/cron/release-scheduled-posts/route.ts` comparaba el header
+`Authorization` contra `Bearer ${CRON_SECRET}` con `!==` de string normal.
+
+1. **Canal lateral de tiempo teórico, mismo tipo de cuidado que ya se aplicó
+   en `/api/postular` (ver napkin 2026-09-08) — impráctico de explotar contra
+   un endpoint remoto por el jitter de red, pero es la misma clase de bug.**
+   Fix: `crypto.timingSafeEqual` sobre dos hashes SHA-256 (`secretMatches()`),
+   nunca sobre los strings crudos — `timingSafeEqual` exige buffers del MISMO
+   largo o lanza, y hashear primero evita tener que ramificar por longitud
+   antes de comparar (esa rama sería en sí misma otro canal lateral).
+   Do instead: cualquier comparación de un secreto contra un valor que llega
+   del exterior (header, query param, body) pasa por `timingSafeEqual` sobre
+   hashes de largo fijo, nunca por `===`/`!==` de string — sin importar qué
+   tan remoto se vea el ataque de temporización, es el mismo costo escribirlo
+   bien la primera vez.
 
 ---
 

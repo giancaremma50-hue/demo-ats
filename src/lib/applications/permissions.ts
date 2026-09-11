@@ -8,13 +8,17 @@ type Permission = Database["public"]["Enums"]["job_collaborator_permission"];
 
 /**
  * Niveles que otorgan escritura, como lista de PERMITIDOS — nunca de negados.
- * El enum de Postgres conserva 4 valores históricos que ya no se asignan
- * (viewer/interviewer/approver/owner: no se pueden borrar valores de un
- * enum), y un valor futuro no debe otorgar escritura por omisión
- * (deny-by-default, AGENTS.md). Los históricos que sí escribían se mantienen
- * acá por si quedara alguna fila sin migrar.
+ * El enum de Postgres conserva valores históricos que ya no se asignan (no se
+ * pueden borrar valores de un enum), y un valor futuro no debe otorgar
+ * escritura por omisión (deny-by-default, AGENTS.md). Este set es el espejo
+ * exacto de `private.can_write_application` en SQL — esa función solo acepta
+ * `'lectura_escritura'`, así que ningún otro valor va acá (auditoría
+ * 2026-09-11: `interviewer`/`approver`/`owner` estaban en este Set sin tener
+ * contraparte en el SQL — 0 filas los usan hoy, pero de aparecer una,
+ * `canWriteApplication()` habría dicho `true` mientras la base seguía
+ * rechazando el `INSERT`/`UPDATE`).
  */
-const WRITE_PERMISSIONS = new Set<Permission>(["lectura_escritura", "interviewer", "approver", "owner"]);
+const WRITE_PERMISSIONS = new Set<Permission>(["lectura_escritura"]);
 
 /**
  * De dónde sale el permiso sobre UNA postulación — dos niveles, sin
