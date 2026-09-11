@@ -1,5 +1,47 @@
 # Napkin Runbook — ATS
-_Última actualización: 2026-09-11 (estado local derivado de un prop se congela para siempre si no se re-sincroniza — encontrado en el feed de Conectados)_
+_Última actualización: 2026-09-11 (un cron por hora en `vercel.json` rompe TODOS los deploys en el plan Hobby de Vercel, en silencio — production llevaba días congelado en un build viejo)_
+
+## Un cron con frecuencia menor a diaria rompe TODO deploy de Vercel en plan Hobby — sin avisar en ningún log local (2026-09-11) — MÁXIMA PRIORIDAD
+
+Al abrir el PR del feed de AJE Conectados, el deploy de Vercel del PR falló:
+`"Hobby accounts are limited to daily cron jobs. This cron expression (0 * * * *)
+would run more than once per day."` — `vercel.json` traía el cron de liberación de
+posts programados (Task 19 de la fase de backend, agregado varios días antes) con
+`"0 * * * *"` (cada hora).
+
+1. **BUG REAL Y CARO: esa misma configuración ya estaba en `main` desde la fase de
+   backend — cada deploy de producción desde entonces venía fallando, y Vercel
+   sencillamente se queda sirviendo el ÚLTIMO build exitoso sin avisar en ningún
+   lugar visible para quien no entra a mirar el dashboard.** El usuario reportó
+   "aún no se reflejan los cambios" viendo en `demo-atrio.vercel.app` una versión
+   VIEJA (tipografía serif, sin el rediseño "AJE look", sin selector de módulos) —
+   se leía como que faltaba mergear trabajo, pero `main` ya tenía todo eso. La causa
+   real: producción llevaba congelada desde el último build que sí compiló, de antes
+   de que el cron se agregara. `npm run dev`/`typecheck`/`lint` en local nunca lo
+   iban a agarrar — el límite de crons es una restricción del PLAN de Vercel, no del
+   código ni de ninguna herramienta que corra en este repo.
+   Do instead: **cualquier cron en `vercel.json` con una frecuencia menor a "una vez
+   por día" es candidato a romper TODOS los deploys en un proyecto de plan Hobby.**
+   Antes de agregar o cambiar un cron, confirmar el plan del proyecto de Vercel — en
+   Hobby, la única frecuencia segura es diaria (`0 H * * *`), nunca por hora/minuto.
+   Y ante un reporte de "no veo mis cambios en producción" cuando `git log` confirma
+   que sí están mergeados, el primer sospechoso no es "falta mergear" — es que el
+   ÚLTIMO deploy exitoso es más viejo que el cambio, y hay que revisar el estado de
+   los deploys (o los checks del PR/commit) antes de asumir cualquier otra cosa.
+2. **Encontrado por el check de Vercel en el PR (comentario automático de
+   `vercel[bot]`), no por nada que yo corriera antes de abrirlo.** Ningún
+   `typecheck`/`lint`/`npm run dev` local hubiera mostrado esto — el límite es
+   externo al código. Revisar los comentarios/checks automáticos de un PR recién
+   abierto (no solo los checks "propios" del repo) antes de dar un deploy por
+   sano.
+3. **Fix**: se bajó el cron a una vez al día (`"0 12 * * *"`). Costo real: un post
+   "programado" puede tardar hasta ~24h en liberarse en vez de hasta 1h — trade-off
+   aceptado por la restricción de plan, no un error de diseño. Si alguna vez se
+   necesita liberación más frecuente, la alternativa es subir el proyecto a Vercel
+   Pro, no inventar un cron externo.
+
+---
+
 
 ## Estado de cliente sembrado con `useState(prop)` se congela si el prop cambia después — Realtime lo expone de inmediato (2026-09-11) — MÁXIMA PRIORIDAD
 
