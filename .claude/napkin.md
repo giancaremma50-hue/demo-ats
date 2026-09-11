@@ -45,16 +45,38 @@ de inmediato.
    sin portada subida, `/empleos` no pinta un héroe oscuro sino un encabezado
    normal — una vista previa que muestra siempre el héroe hace afinar el
    título contra un contraste que nadie va a ver.
-6. **Cinco ítems son el tope de la barra flotante, y el tope se verifica en
+6. **Poner TEXTO sobre el color de marca obliga a rehacer el contraste de toda
+   la barra.** Al meter el nombre del módulo en la píldora apareció el primer
+   texto sobre el verde AJE, y blanco sobre `#00b348` da 2.8:1. Pasarlo a tinta
+   oscura (`--aje-dark`, 6.5:1) dejó en evidencia que los íconos vecinos
+   estaban peor: blanco al 60% sobre ese verde es 1.9:1, y son los destinos de
+   navegación. Toda la barra pasó a tinta oscura. La regla: el primer elemento
+   de texto que se apoya en un color de marca es el momento de medir TODO lo
+   que ya estaba apoyado ahí.
+7. **Un contenedor con `overflow-x` recorta también el eje vertical.** Por
+   CSS Overflow 3, si un eje no es `visible` el otro pasa de `visible` a
+   `auto`. La píldora con `overflow-x-auto` se comía los tooltips, que están
+   `-top-9` — o sea afuera —, y los tooltips son la ÚNICA etiqueta que tienen
+   los íconos cuando no están activos. Queda `overflow-x-auto sm:overflow-visible`:
+   el deslizamiento hace falta en pantallas de 320px, donde no hay hover.
+8. **Un nombre que dice dónde estás miente si la pantalla no es de nadie.**
+   `/configuracion` cae en Reclutamiento por descarte (alguien tiene que poner
+   el Home y los submenús), pero eso no autoriza a afirmar que el usuario está
+   en ese módulo: quien llegó desde Conectados leería "Reclutamiento". El
+   nombre se oculta en las rutas sin módulo; los tres anclas se quedan.
+9. **Dos ítems activos a la vez rompen un `layoutId` compartido.** Con
+   `/conectados` y un hipotético `/conectados/ajustes`, el match por prefijo
+   marcaba los dos. El activo es el de la ruta MÁS ESPECÍFICA que coincide.
+10. **Cinco ítems son el tope de la barra flotante, y el tope se verifica en
    píxeles.** Al agregar "Bolsa" la píldora llegó a ~406px: en un teléfono de
    390px se recortaba por los dos lados, comiéndose el selector de módulos y
    Ajustes. La etiqueta del ítem activo es lo más ancho de todo, así que en
    móvil se oculta (queda el fondo blanco como marca de "estás acá") y el
    padding se achica. `max-w-[calc(100vw-1.5rem)]` como red de seguridad.
-7. **Un `.delete()` sin `.select()` reporta éxito cuando RLS filtró todo.**
+11. **Un `.delete()` sin `.select()` reporta éxito cuando RLS filtró todo.**
    Devuelve `error: null` con cero filas: la tarjeta desaparece de la pantalla
    y vuelve al recargar. Todo borrado tiene que mirar cuántas filas tocó.
-8. **Un `.then()` sin `.catch()` deja la pantalla cargando para siempre.** El
+12. **Un `.then()` sin `.catch()` deja la pantalla cargando para siempre.** El
    hilo de comentarios se quedaba en "Cargando comentarios…" ante cualquier
    fallo de red, con un unhandled rejection en la consola y nada en pantalla.
 
