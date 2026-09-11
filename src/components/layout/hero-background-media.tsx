@@ -12,6 +12,7 @@ export function HeroBackgroundMedia({
   videoUrl,
   imageUrl,
   priority = false,
+  sizes = "100vw",
 }: {
   videoUrl: string | null;
   imageUrl: string | null;
@@ -19,6 +20,10 @@ export function HeroBackgroundMedia({
    * vista previa en /configuracion/marca no está sobre el pliegue y no
    * debe precargarse. */
   priority?: boolean;
+  /** Ancho que va a ocupar la imagen. El default es el de un héroe a todo el
+   * viewport; una vista previa que mide ~560px tiene que decirlo, o el
+   * navegador baja la variante de 2560px para pintar una tarjeta. */
+  sizes?: string;
 }) {
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -60,10 +65,11 @@ export function HeroBackgroundMedia({
   }
 
   if (imageUrl) {
-    // Hero a todo el ancho del viewport, siempre — sin `sizes`, next/image
-    // ignora el viewport real y sirve el tamaño más grande configurado
-    // (gasta ancho de banda de más en cada visita a un portal público).
-    return <Image src={imageUrl} alt="" fill sizes="100vw" className="object-cover" priority={priority} />;
+    // Sin `sizes`, next/image ignora el viewport real y sirve el tamaño más
+    // grande configurado (gasta ancho de banda de más en cada visita a un
+    // portal público). El default cubre el héroe; las vistas previas pasan el
+    // suyo.
+    return <Image src={imageUrl} alt="" fill sizes={sizes} className="object-cover" priority={priority} />;
   }
 
   return null;

@@ -7,7 +7,56 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (ningún archivo viaja dentro del cuerpo de una Server Action: Vercel corta a ~4.5 MB antes de que corra código propio, y el fallo es mudo)_
+_Última actualización: 2026-09-11 (en la barra flotante, Inicio y el selector de módulos son anclas que no desaparecen nunca; lo que se adapta al contexto son los submenús)_
+
+## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11) — MÁXIMA PRIORIDAD
+
+Al hacer que `/configuracion` dejara de fingir que pertenece a un módulo, la
+barra flotante pasó a mostrar ahí una composición "neutral" (puerta a los dos
+módulos + Ajustes). Resolvía el problema de que "Inicio" llevara al ATS estando
+en Conectados… y creaba uno peor: **Inicio desaparecía**. El usuario lo reportó
+de inmediato.
+
+1. **Hay ítems que no se negocian por contexto.** El selector de módulos y el
+   Inicio del módulo son anclas: si cambian o desaparecen según la pantalla, la
+   barra deja de ser un mapa y se vuelve adivinanza. Lo que se adapta son los
+   submenús, no los anclas.
+2. **"Técnicamente correcto" no gana contra "me quedé sin salida".** La barra
+   neutral era más honesta (el selector no marcaba un módulo falso como
+   activo), pero costaba el botón de volver a la pantalla principal. Entre las
+   dos, la salida siempre.
+3. **Una pantalla escondida dentro de la configuración es una pantalla que no
+   existe.** La portada y las leyendas de la bolsa de empleo vivían en una
+   sección de `/configuracion/marca`, tres niveles adentro de un menú de super
+   admin. Ahora es `/bolsa`, un ítem del módulo, al lado de Vacantes y
+   Candidatos. Pregunta que lo decide: **¿quién hace esta tarea?** Si la hace
+   quien recluta, va en el módulo de reclutamiento; si la hace quien administra
+   la plataforma, va en Ajustes.
+4. **Separar una pantalla obliga a separar su Server Action.** `updateBranding`
+   guardaba identidad + leyendas de la bolsa en un solo `update`; con dos
+   formularios en dos pantallas, cada uno tendría que reenviar los campos del
+   otro para no borrarlos. Dos acciones (`updateBranding` y
+   `updateCareersContent`), cada una con su esquema.
+5. **Una vista previa no se parece al destino: ES el destino.** El primer
+   intento copiaba el degradado y el respaldo del título del héroe de
+   `/empleos`; con eso, oscurecer el héroe real dejaría a la vista previa
+   aprobando portadas ilegibles. Las dos pintan ahora el MISMO componente
+   (`CareersHero`), con un `compact` para la escala. Y replica las DOS ramas:
+   sin portada subida, `/empleos` no pinta un héroe oscuro sino un encabezado
+   normal — una vista previa que muestra siempre el héroe hace afinar el
+   título contra un contraste que nadie va a ver.
+6. **Cinco ítems son el tope de la barra flotante, y el tope se verifica en
+   píxeles.** Al agregar "Bolsa" la píldora llegó a ~406px: en un teléfono de
+   390px se recortaba por los dos lados, comiéndose el selector de módulos y
+   Ajustes. La etiqueta del ítem activo es lo más ancho de todo, así que en
+   móvil se oculta (queda el fondo blanco como marca de "estás acá") y el
+   padding se achica. `max-w-[calc(100vw-1.5rem)]` como red de seguridad.
+7. **Un `.delete()` sin `.select()` reporta éxito cuando RLS filtró todo.**
+   Devuelve `error: null` con cero filas: la tarjeta desaparece de la pantalla
+   y vuelve al recargar. Todo borrado tiene que mirar cuántas filas tocó.
+8. **Un `.then()` sin `.catch()` deja la pantalla cargando para siempre.** El
+   hilo de comentarios se quedaba en "Cargando comentarios…" ante cualquier
+   fallo de red, con un unhandled rejection en la consola y nada en pantalla.
 
 ## El cuerpo de una Server Action tiene un tope de ~4.5 MB en Vercel que `bodySizeLimit` NO sube — y pasarlo es un fallo MUDO (2026-09-11) — MÁXIMA PRIORIDAD
 

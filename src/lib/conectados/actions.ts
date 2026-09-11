@@ -2,13 +2,21 @@
 
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { UuidSchema } from "@/lib/zod-helpers";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify, notifyBestEffort } from "@/lib/notifications/notify";
 import { extractMentionIds, resolveMentionTokens } from "@/lib/mentions";
 import type { Database } from "@/lib/supabase/database.types";
-import { CreatePostSchema, CreateCommentSchema, REACTION_TYPES, isScheduled, type ReactionType } from "./schema";
+import {
+  CreatePostSchema,
+  CreateCommentSchema,
+  REACTION_TYPES,
+  MAX_POLL_OPTIONS,
+  isScheduled,
+  type ReactionType,
+} from "./schema";
 import { getPostComments, type FeedPost, type FeedComment, type Attachment, type Poll, type Reactions } from "./queries";
 
 export type ConectadosActionResult<T = undefined> = { error?: string; success?: string } & (T extends undefined
@@ -19,6 +27,26 @@ export type ConectadosActionResult<T = undefined> = { error?: string; success?: 
  * entra ~66 tokens, y cada mención dispara aviso in-app y correo. */
 const MAX_MENCIONES = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Los parámetros de una Server Action son entrada del cliente igual que un
+// formulario: el tipo de TypeScript no existe en runtime (AGENTS.md,
+// Seguridad). Sin esto, un id inventado llega crudo a `.eq()` o a una RPC y
+// vuelve como un 22P02 de Postgres — un 500 en vez de un mensaje.
+const PostIdSchema = UuidSchema;
+const CommentIdSchema = UuidSchema;
+const ReactionTypeSchema = z.enum(REACTION_TYPES);
+// Cota exterior, no el número de opciones de ESA encuesta: el tope lo fija
+// `PollSchema` en schema.ts. Un índice dentro de la cota pero fuera de la
+// encuesta no corrompe nada — `vote_post_poll` recorre `0..length-1` y solo
+// agrega el voto donde el índice coincide, así que un índice inexistente
+// equivale a quitar el voto (verificado contra la definición de la función).
+const OptionIndexSchema = z.number().int().min(0).max(MAX_POLL_OPTIONS - 1);
+
+// Hoisted como los demás: se rearmaban en cada llamada, y reaccionar es lo
+// más repetido del feed.
+const ToggleReactionSchema = z.object({ postId: PostIdSchema, type: ReactionTypeSchema });
+const ToggleCommentReactionSchema = z.object({ commentId: CommentIdSchema, type: ReactionTypeSchema });
+const VotePollSchema = z.object({ postId: PostIdSchema, optionIndex: OptionIndexSchema });
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const EXTENSION_BY_MIME: Record<string, string> = {
@@ -316,10 +344,14 @@ export async function addComment(input: unknown): Promise<ConectadosActionResult
 
 export async function toggleReaction(postId: string, type: ReactionType): Promise<ConectadosActionResult> {
   await requireProfile();
-  if (!REACTION_TYPES.includes(type)) return { error: "Tipo de reacción inválido." };
+  const parsed = ToggleReactionSchema.safeParse({ postId, type });
+  if (!parsed.success) return { error: "No se pudo reaccionar." };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("toggle_post_reaction", { p_post_id: postId, p_type: type });
+  const { data, error } = await supabase.rpc("toggle_post_reaction", {
+    p_post_id: parsed.data.postId,
+    p_type: parsed.data.type,
+  });
   if (error) return { error: "No se pudo reaccionar." };
 
   const aviso = data as { organization_id: string; recipient_id: string } | null;
@@ -343,12 +375,13 @@ export async function toggleReaction(postId: string, type: ReactionType): Promis
 
 export async function toggleCommentReaction(commentId: string, type: ReactionType): Promise<ConectadosActionResult> {
   await requireProfile();
-  if (!REACTION_TYPES.includes(type)) return { error: "Tipo de reacción inválido." };
+  const parsed = ToggleCommentReactionSchema.safeParse({ commentId, type });
+  if (!parsed.success) return { error: "No se pudo reaccionar." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("toggle_post_comment_reaction", {
-    p_comment_id: commentId,
-    p_type: type,
+    p_comment_id: parsed.data.commentId,
+    p_type: parsed.data.type,
   });
   if (error) return { error: "No se pudo reaccionar." };
 
@@ -373,25 +406,44 @@ export async function toggleCommentReaction(commentId: string, type: ReactionTyp
 
 export async function votePoll(postId: string, optionIndex: number): Promise<ConectadosActionResult> {
   await requireProfile();
+  const parsed = VotePollSchema.safeParse({ postId, optionIndex });
+  if (!parsed.success) return { error: "No se pudo votar." };
+
   const supabase = await createClient();
-  const { error } = await supabase.rpc("vote_post_poll", { p_post_id: postId, p_option_index: optionIndex });
+  const { error } = await supabase.rpc("vote_post_poll", {
+    p_post_id: parsed.data.postId,
+    p_option_index: parsed.data.optionIndex,
+  });
   if (error) return { error: "No se pudo votar." };
   return {};
 }
 
 export async function deletePost(postId: string): Promise<ConectadosActionResult> {
   await requireProfile();
+  const parsed = PostIdSchema.safeParse(postId);
+  if (!parsed.success) return { error: "No se pudo eliminar la publicación." };
+
+  // `.select("id")` y no un delete a secas: sin él, un borrado que RLS filtra
+  // devuelve `error: null` con cero filas y la interfaz festeja un borrado que
+  // no ocurrió — la tarjeta desaparece y vuelve al recargar.
   const supabase = await createClient();
-  const { error } = await supabase.from("posts").delete().eq("id", postId);
-  if (error) return { error: "No se pudo eliminar la publicación." };
+  const { data, error } = await supabase.from("posts").delete().eq("id", parsed.data).select("id");
+  if (error || !data || data.length === 0) return { error: "No se pudo eliminar la publicación." };
   return {};
 }
 
 export async function deleteComment(commentId: string): Promise<ConectadosActionResult> {
   await requireProfile();
+  const parsed = CommentIdSchema.safeParse(commentId);
+  if (!parsed.success) return { error: "No se pudo eliminar el comentario." };
+
   const supabase = await createClient();
-  const { error } = await supabase.from("post_comments").delete().eq("id", commentId);
-  if (error) return { error: "No se pudo eliminar el comentario." };
+  const { data, error } = await supabase
+    .from("post_comments")
+    .delete()
+    .eq("id", parsed.data)
+    .select("id");
+  if (error || !data || data.length === 0) return { error: "No se pudo eliminar el comentario." };
   return {};
 }
 
@@ -411,12 +463,12 @@ export async function deleteComment(commentId: string): Promise<ConectadosAction
  * la ruta (que la arma el servidor, nunca el cliente) y se confirma después.
  */
 const CreateAttachmentSchema = z.object({
-  postId: z.uuid(),
+  postId: PostIdSchema,
   mimeType: z.string().max(120),
   sizeBytes: z.number().int().finite(),
 });
 const ConfirmAttachmentSchema = z.object({
-  postId: z.uuid(),
+  postId: PostIdSchema,
   path: z.string().min(1).max(300),
   nombre: z.string().max(400),
 });
@@ -545,5 +597,9 @@ export async function confirmPostAttachment(
 
 export async function listComments(postId: string) {
   await requireProfile();
-  return getPostComments(postId);
+  const parsed = PostIdSchema.safeParse(postId);
+  // Una lista vacía es un retorno válido de `getPostComments`, así que un id
+  // inválido devuelve "no hay comentarios" en vez de reventar.
+  if (!parsed.success) return [];
+  return getPostComments(parsed.data);
 }

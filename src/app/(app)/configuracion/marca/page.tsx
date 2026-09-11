@@ -15,10 +15,6 @@ export default async function MarcaPage() {
     logo_url: null,
     login_image_url: null,
     login_video_url: null,
-    careers_headline: null,
-    careers_intro: null,
-    careers_cover_image_url: null,
-    careers_cover_video_url: null,
   };
 
   return (
@@ -35,23 +31,14 @@ export default async function MarcaPage() {
           <BrandMediaField field="login_video_url" currentUrl={org.login_video_url} />
 
           <div className="border-t border-border pt-5">
-            <h3 className="font-serif text-lg">Bolsa de empleo pública</h3>
-            <p className="mt-1 mb-4 text-[13px] leading-relaxed text-muted-foreground">
-              Foto o video de portada de /empleos — si subes un video, reemplaza a la foto.
-            </p>
-            <div className="flex flex-col gap-5">
-              <BrandMediaField field="careers_cover_image_url" currentUrl={org.careers_cover_image_url} />
-              <BrandMediaField field="careers_cover_video_url" currentUrl={org.careers_cover_video_url} />
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-5">
+            {/* La portada y las leyendas de la bolsa ya no están acá: se
+                fueron a /bolsa, que es una pantalla del módulo de
+                Reclutamiento. Esta pantalla es la identidad de la plataforma
+                y nada más. */}
             <BrandingForm
-              key={`${org.platform_name}-${org.accent_color}-${org.careers_headline}-${org.careers_intro}`}
+              key={`${org.platform_name}-${org.accent_color}`}
               platformName={org.platform_name}
               accentColor={org.accent_color}
-              careersHeadline={org.careers_headline}
-              careersIntro={org.careers_intro}
             />
           </div>
         </div>

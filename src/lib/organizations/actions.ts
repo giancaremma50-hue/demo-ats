@@ -34,6 +34,13 @@ const BrandingSchema = z.object({
     .refine((hex) => contrastRatio(hex, APP_BACKGROUND) >= MIN_FOCUS_CONTRAST, {
       error: "Este color es muy parecido al fondo: el foco de teclado no se vería. Prueba uno más oscuro o más saturado.",
     }),
+});
+
+// Las leyendas de la bolsa pública se guardan aparte desde que la bolsa dejó
+// de vivir dentro del configurador general (ver `/bolsa`): son dos pantallas
+// distintas, así que son dos formularios y dos acciones. Mandarlas juntas
+// obligaba a que cada una reenviara los campos de la otra.
+const CareersSchema = z.object({
   careers_headline: optionalText(120),
   careers_intro: optionalText(500),
 });
@@ -49,6 +56,36 @@ export async function updateBranding(
   const parsed = BrandingSchema.safeParse({
     platform_name: formData.get("platform_name"),
     accent_color: formData.get("accent_color"),
+  });
+
+  if (!parsed.success) {
+    return zodFieldError(parsed.error);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("organizations")
+    .update(parsed.data)
+    .eq("id", profile.organization_id)
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    return { error: "No se pudo guardar. Inténtalo de nuevo en unos segundos." };
+  }
+
+  // Las tres superficies: `platform_name` y `accent_color` se pintan también
+  // en /login y en /empleos, no solo en el layout de la app.
+  revalidateBrandSurfaces();
+  return { success: "Marca actualizada" };
+}
+
+export async function updateCareersContent(
+  _prevState: BrandingActionState,
+  formData: FormData,
+): Promise<BrandingActionState> {
+  const profile = await requireSuperAdmin();
+
+  const parsed = CareersSchema.safeParse({
     careers_headline: formData.get("careers_headline"),
     careers_intro: formData.get("careers_intro"),
   });
@@ -61,14 +98,13 @@ export async function updateBranding(
   const { data, error } = await supabase
     .from("organizations")
     .update({
-      ...parsed.data,
       // undefined en un .update() de Supabase omite la columna en vez de
       // limpiarla — si el campo se dejó vacío a propósito, hay que mandar
       // null explícito para que sí se borre (mismo gotcha de Fase 9 con
       // normalizeDepartmentFields). `||` y no `??`: optionalText solo
       // convierte "" a undefined ANTES de recortar espacios — un valor de
-      // puros espacios sobrevive el preprocess y llega aquí ya recortado
-      // a "" (no undefined), que `??` no habría capturado.
+      // puros espacios sobrevive el preprocess y llega aquí ya recortado a ""
+      // (no undefined), que `??` no habría capturado.
       careers_headline: parsed.data.careers_headline || null,
       careers_intro: parsed.data.careers_intro || null,
     })
@@ -79,11 +115,8 @@ export async function updateBranding(
     return { error: "No se pudo guardar. Inténtalo de nuevo en unos segundos." };
   }
 
-  // Las mismas tres superficies: `careers_headline`/`careers_intro` son la
-  // portada de /empleos (ISR) y `platform_name`/`accent_color` se pintan en
-  // /login.
   revalidateBrandSurfaces();
-  return { success: "Marca actualizada" };
+  return { success: "Bolsa de empleo actualizada" };
 }
 
 const BrandMediaFieldSchema = z.enum(BRAND_MEDIA_FIELDS);

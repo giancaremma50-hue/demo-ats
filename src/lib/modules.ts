@@ -1,4 +1,4 @@
-import { Briefcase, Home, MessageCircle, Settings, Users } from "lucide-react";
+import { Briefcase, Home, MessageCircle, Settings, Store, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ADMIN_ROLES } from "@/lib/auth/role-labels";
 import type { Database } from "@/lib/supabase/database.types";
@@ -16,12 +16,23 @@ export type ModuleConfig = {
 };
 
 /**
- * Ajustes NO pertenece a ningún módulo: es la configuración de la plataforma
- * entera (marca, usuarios, departamentos, motivos). Vivía solo dentro de
- * Reclutamiento, así que estando en AJE Conectados el botón desaparecía y
- * para cambiar el logo había que pasar primero por el ATS — reportado por el
- * usuario el 2026-09-11. Se agrega al final de CADA módulo, siempre en la
- * misma posición, para que no se mueva al cambiar de módulo.
+ * Composición de la barra flotante, según el reporte del usuario del
+ * 2026-09-11:
+ *
+ * - **Inicio y el selector de módulos son fijos siempre.** Entrar a
+ *   Configuración hacía desaparecer Inicio (la barra se reemplazaba por una
+ *   "neutral" con la puerta a los dos módulos), y eso dejaba sin salida
+ *   obvia: el botón de volver a la pantalla principal no estaba.
+ * - **El resto se adapta al módulo**: en el ATS salen sus submenús (Vacantes,
+ *   Candidatos, Bolsa), en Conectados el suyo.
+ * - **Ajustes es la configuración general** y cierra la barra. La bolsa de
+ *   empleo dejó de vivir dentro de él: es una pantalla del ATS (`/bolsa`),
+ *   porque configurar la portada y las leyendas de la bolsa es operación de
+ *   reclutamiento, no configuración de la plataforma.
+ *
+ * Tope de AGENTS.md: 5 ítems. Un super admin en el ATS ve exactamente 5
+ * (Inicio, Vacantes, Candidatos, Bolsa, Ajustes); el selector de módulos no
+ * cuenta como ítem de navegación.
  */
 function conAjustes(items: NavItem[], role: Role): NavItem[] {
   if (!ADMIN_ROLES.has(role)) return items;
@@ -36,41 +47,18 @@ function reclutamientoItemsForRole(role: Role): NavItem[] {
   if (role === "gestor" || ADMIN_ROLES.has(role)) {
     base.push({ href: "/candidatos", label: "Candidatos", icon: Users });
   }
-  // Con Ajustes son 4 ítems: dentro del tope de 5 que fija AGENTS.md para la
-  // barra flotante (el selector de módulos no es un ítem de navegación).
+  // La bolsa comparte las políticas de Storage y de `organizations` con la
+  // marca, que son de super admin: ofrecerla a un `admin` sería un botón que
+  // lleva a una pantalla que no puede guardar nada.
+  if (role === "super_admin") {
+    base.push({ href: "/bolsa", label: "Bolsa", icon: Store });
+  }
   return conAjustes(base, role);
 }
 
 function conectadosItemsForRole(role: Role): NavItem[] {
   return conAjustes([{ href: "/conectados", label: "Inicio", icon: Home }], role);
 }
-
-/**
- * `/configuracion` no pertenece a ningún módulo: al entrar ahí desde AJE
- * Conectados, dejar la barra del módulo de Reclutamiento mentía dos veces —
- * el selector marcaba Reclutamiento como activo y su "Inicio" llevaba al ATS,
- * no de vuelta a Conectados. Mientras se está en Ajustes la barra ofrece la
- * puerta a los dos módulos y marca Ajustes como activo; el selector no marca
- * ninguno, que es la verdad.
- *
- * No entra en MODULES a propósito: no es un módulo entre el que cambiar, es
- * una zona compartida.
- */
-const CONFIGURACION: ModuleConfig = {
-  id: "configuracion",
-  label: "Configuración",
-  icon: Settings,
-  accentColor: "var(--aje-yellow)",
-  basePath: "/configuracion",
-  itemsForRole: (role) =>
-    conAjustes(
-      [
-        { href: "/inicio", label: "Reclutamiento", icon: Briefcase },
-        { href: "/conectados", label: "Conectados", icon: MessageCircle },
-      ],
-      role,
-    ),
-};
 
 export const MODULES: ModuleConfig[] = [
   {
@@ -97,7 +85,6 @@ export const MODULES: ModuleConfig[] = [
 // (MODULES[0]) que el fallback, no a un string "reclutamiento" aparte, para
 // que reordenar/renombrar el id no los desincronice en silencio.
 export function activeModuleFor(pathname: string): ModuleConfig {
-  if (pathname.startsWith(CONFIGURACION.basePath)) return CONFIGURACION;
   const match = MODULES.find((m) => m !== MODULES[0] && pathname.startsWith(m.basePath));
   return match ?? MODULES[0];
 }
