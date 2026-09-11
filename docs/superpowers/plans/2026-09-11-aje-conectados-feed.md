@@ -35,11 +35,11 @@
 **Interfaces:**
 - Produces: `parseMentions(body: string): MentionPart[]`, `extractMentionIds(body: string): string[]`, `canonicalizeMentions(body: string, nombrePorId: ReadonlyMap<string, string>): string`, `buildMentionToken(nombre: string, profileId: string): string`, `activeMentionQuery(texto: string, cursor: number): { query: string; desde: number } | null`, tipo `MentionPart`.
 
-- [ ] **Paso 1: Crear `src/lib/mentions.ts` con el contenido actual de `src/lib/applications/mentions.ts`**
+- [x] **Paso 1: Crear `src/lib/mentions.ts` con el contenido actual de `src/lib/applications/mentions.ts`**
 
 Copia el archivo tal cual (comentarios incluidos — documentan decisiones de seguridad reales, no se resumen). Ruta nueva, mismo contenido byte a byte.
 
-- [ ] **Paso 2: Reemplazar `src/lib/applications/mentions.ts` por un re-export**
+- [x] **Paso 2: Reemplazar `src/lib/applications/mentions.ts` por un re-export**
 
 ```typescript
 /**
@@ -51,7 +51,7 @@ Copia el archivo tal cual (comentarios incluidos — documentan decisiones de se
 export * from "@/lib/mentions";
 ```
 
-- [ ] **Paso 3: Verificar que nada más quedó roto**
+- [x] **Paso 3: Verificar que nada más quedó roto**
 
 Run: `grep -rn "from \"@/lib/applications/mentions\"" src/`
 Expected: solo los imports que ya existían antes de este cambio (siguen funcionando via el re-export, no hace falta tocarlos).
@@ -59,7 +59,7 @@ Expected: solo los imports que ya existían antes de este cambio (siguen funcion
 Run: `npm run typecheck`
 Expected: sin errores nuevos.
 
-- [ ] **Paso 4: Commit**
+- [x] **Paso 4: Commit**
 
 ```bash
 git add src/lib/mentions.ts src/lib/applications/mentions.ts
@@ -78,7 +78,7 @@ git commit -m "refactor(mentions): mueve el algoritmo de menciones a src/lib/men
 - Consumes: nada nuevo de otras tareas.
 - Produces: `PollSchema` (Zod), `CreatePostInput.poll: Poll | null`, tipos `Attachment` y `Poll` exportados desde `queries.ts`, `Post["attachments"]`/`Post["poll"]` tipados (no `Json` crudo) via el tipo `FeedPost` que las tareas 3-9 consumen.
 
-- [ ] **Paso 1: Agregar `PollSchema` a `src/lib/conectados/schema.ts`**
+- [x] **Paso 1: Agregar `PollSchema` a `src/lib/conectados/schema.ts`**
 
 ```typescript
 import { z } from "zod";
@@ -114,7 +114,7 @@ export type CreateCommentInput = z.infer<typeof CreateCommentSchema>;
 
 Nota: `content` puede quedar vacío (`""`) si el post es solo una encuesta o solo adjuntos — por eso no lleva `.min(1)`. `createPost` (Task 4) exige que al menos uno de contenido/encuesta/adjuntos exista, ahí sí con un mensaje de error real.
 
-- [ ] **Paso 2: Definir los tipos `Attachment`/`Poll` y el `FeedPost` en `src/lib/conectados/queries.ts`**
+- [x] **Paso 2: Definir los tipos `Attachment`/`Poll` y el `FeedPost` en `src/lib/conectados/queries.ts`**
 
 Reemplaza el contenido completo del archivo:
 
@@ -235,12 +235,12 @@ export async function getDepartmentsForAudience(organizationId: string): Promise
 }
 ```
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores. (`createSignedUrls` es un método real de `supabase-js` storage — si el tipo no resuelve, confirmar la versión del paquete con `npm ls @supabase/supabase-js` antes de asumir un typo.)
 
-- [ ] **Paso 4: Commit**
+- [x] **Paso 4: Commit**
 
 ```bash
 git add src/lib/conectados/schema.ts src/lib/conectados/queries.ts
@@ -259,7 +259,7 @@ git commit -m "feat(conectados): fija la forma de attachments/poll, agrega signe
 - Consumes: `FeedPost`/`FeedComment`/`Attachment`/`Poll` de Task 2; `parseMentions`/etc. no se usan acá (eso es del lado del cliente).
 - Produces: `createPost(input): Promise<{ error?: string; success?: string; post?: FeedPost }>`, `addComment(input): Promise<{ error?: string; success?: string; comment?: FeedComment }>`, `toggleReaction(postId, type)`, `votePoll(postId, optionIndex)` (mismas firmas, ya no llaman `revalidatePath`), `deletePost(postId: string): Promise<{ error?: string }>`, `deleteComment(commentId: string): Promise<{ error?: string }>`, `uploadPostAttachment(postId: string, formData: FormData): Promise<{ error?: string; attachment?: Attachment & { url: string } }>`.
 
-- [ ] **Paso 1: Reemplazar el contenido completo de `src/lib/conectados/actions.ts`**
+- [x] **Paso 1: Reemplazar el contenido completo de `src/lib/conectados/actions.ts`**
 
 ```typescript
 "use server";
@@ -612,7 +612,7 @@ export async function uploadPostAttachment(
 }
 ```
 
-- [ ] **Paso 2: Agregar un comentario en `preferences-schema.ts`** (sin agregar los 4 tipos a `PREFERENCE_TYPES` — decisión de alcance, ver spec)
+- [x] **Paso 2: Agregar un comentario en `preferences-schema.ts`** (sin agregar los 4 tipos a `PREFERENCE_TYPES` — decisión de alcance, ver spec)
 
 Editar el comentario existente sobre `post_nuevo`/etc. para que quede correcto ahora que SÍ hay UI real:
 
@@ -627,12 +627,12 @@ Editar el comentario existente sobre `post_nuevo`/etc. para que quede correcto a
 // documentó una vez con mencion_nota. Agregarlos cuando exista la plantilla.
 ```
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores. (`ConectadosActionResult<T>` con `Partial<T>` es un tipo utilitario nuevo — si el intersection da un error de tipo raro en algún callsite, simplificar a un tipo de retorno explícito por función en vez de forzar la genérica; no vale la pena pelear con una abstracción que no rinde.)
 
-- [ ] **Paso 4: Commit**
+- [x] **Paso 4: Commit**
 
 ```bash
 git add src/lib/conectados/actions.ts src/lib/notifications/preferences-schema.ts
@@ -651,7 +651,7 @@ git commit -m "feat(conectados): actions devuelven la fila creada, notifican com
 - Consumes: `FeedPost`, `FeedComment` (Task 2); `createPost`, `toggleReaction`, `votePoll`, `deletePost` (Task 3, importados dentro de los componentes hijos de las Tasks 5-8, no acá).
 - Produces: `<ConectadosFeed initialPosts organizationId profile canPost departments mentionable />`, tipo `ConectadosContext` (permisos + datos compartidos) vía React Context para que `PostComposer`/`PostCard`/`CommentThread` no reciban todo por props en cascada.
 
-- [ ] **Paso 1: Crear `src/components/conectados/types.ts`**
+- [x] **Paso 1: Crear `src/components/conectados/types.ts`**
 
 ```typescript
 export type MentionableProfile = { id: string; display_name: string };
@@ -665,7 +665,7 @@ export type ConectadosViewer = {
 };
 ```
 
-- [ ] **Paso 2: Crear `src/components/conectados/conectados-feed.tsx`**
+- [x] **Paso 2: Crear `src/components/conectados/conectados-feed.tsx`**
 
 ```typescript
 "use client";
@@ -789,12 +789,12 @@ export function ConectadosFeed({
 
 Nota sobre `postId`/comentarios: este componente NO se suscribe a `post_comments` directamente — `CommentThread` (Task 8) abre su propio canal, scopeado a `post_id`, solo cuando el usuario expande los comentarios de un post puntual (evita 50 suscripciones activas por cada post del feed cuando nadie miró sus comentarios).
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: errores esperados de imports que todavía no existen (`./post-composer`, `./post-card`) — se resuelven en las Tasks 5 y 7. Confirmar que el ÚNICO error reportado es "Cannot find module" para esos dos, nada más.
 
-- [ ] **Paso 4: Commit** (junto con Tasks 5-8, ver Task 8 — este archivo no compila solo hasta que existan sus dos imports).
+- [x] **Paso 4: Commit** (junto con Tasks 5-8, ver Task 8 — este archivo no compila solo hasta que existan sus dos imports).
 
 ---
 
@@ -808,7 +808,7 @@ Expected: errores esperados de imports que todavía no existen (`./post-composer
 - Consumes: `useConectados()` (Task 4), `createPost`/`uploadPostAttachment` (Task 3), `parseMentions`/`activeMentionQuery`/`buildMentionToken` (Task 1, desde `@/lib/mentions`), `ActionButton`, `Card`, `notifySuccess`/`notifyError`.
 - Produces: `<PostComposer onCreated={(post: FeedPost) => void} />`; exporta `useMentionState(candidates: MentionableProfile[])` desde `mention-overlay.ts` para que `CommentThread` (Task 8) no reimplemente el mismo manejo de `body`/`mentions`/`cursor`/`elegido`/`cerrada`.
 
-- [ ] **Paso 1: Crear `src/components/conectados/mention-overlay.ts`**
+- [x] **Paso 1: Crear `src/components/conectados/mention-overlay.ts`**
 
 Extrae la parte de `NoteForm` que es pura lógica de estado (no JSX) para que el compositor y el formulario de comentario la compartan — el JSX del overlay (que sí depende del layout de cada formulario: alto de textarea, si hay lista de sugerencias arriba o abajo) se queda en cada componente.
 
@@ -937,7 +937,7 @@ export function useMentionState(candidates: MentionableProfile[]) {
 }
 ```
 
-- [ ] **Paso 2: Crear `src/components/conectados/post-composer.tsx`**
+- [x] **Paso 2: Crear `src/components/conectados/post-composer.tsx`**
 
 ```typescript
 "use client";
@@ -1232,12 +1232,12 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
 }
 ```
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: error esperado en `conectados-feed.tsx` por el import de `./post-card` (Task 7 todavía no existe) — nada más nuevo.
 
-- [ ] **Paso 4: No commitear todavía** (este archivo depende de `useConectados`, que ya existe desde Task 4 — sí puede commitearse solo si typecheck no arrastra el error de post-card. Si el error es únicamente por `post-card`, hacer commit ahora es seguro igual: TypeScript reporta por archivo, no bloquea un commit de git.)
+- [x] **Paso 4: No commitear todavía** (este archivo depende de `useConectados`, que ya existe desde Task 4 — sí puede commitearse solo si typecheck no arrastra el error de post-card. Si el error es únicamente por `post-card`, hacer commit ahora es seguro igual: TypeScript reporta por archivo, no bloquea un commit de git.)
 
 ```bash
 git add src/components/conectados/mention-overlay.ts src/components/conectados/post-composer.tsx
@@ -1256,7 +1256,7 @@ git commit -m "feat(conectados): compositor con menciones, audiencia, encuesta, 
 - Consumes: `toggleReaction`/`toggleCommentReaction`/`votePoll` (Task 3), `useConectados()` (Task 4).
 - Produces: `<ReactionBar targetId reactions onOptimisticToggle scope="post"|"comment" />`, `<PollWidget postId poll viewerId onOptimisticVote />`.
 
-- [ ] **Paso 1: Crear `src/components/conectados/reaction-bar.tsx`**
+- [x] **Paso 1: Crear `src/components/conectados/reaction-bar.tsx`**
 
 ```typescript
 "use client";
@@ -1343,7 +1343,7 @@ export function ReactionBar({
 }
 ```
 
-- [ ] **Paso 2: Crear `src/components/conectados/poll-widget.tsx`**
+- [x] **Paso 2: Crear `src/components/conectados/poll-widget.tsx`**
 
 ```typescript
 "use client";
@@ -1407,12 +1407,12 @@ export function PollWidget({
 }
 ```
 
-- [ ] **Paso 3: Verificar que los íconos elegidos existen en `lucide-react`**
+- [x] **Paso 3: Verificar que los íconos elegidos existen en `lucide-react`**
 
 Run: `grep -rn "PartyPopper\|ThumbsUp\|Flame\b" node_modules/lucide-react/dist/lucide-react.d.ts | head -5`
 Expected: los 3 nombres aparecen. Si `PartyPopper` no existe en la versión instalada, sustituir por `Sparkles` (también razonable para "aplauso") y ajustar el único import.
 
-- [ ] **Paso 4: Commit**
+- [x] **Paso 4: Commit**
 
 ```bash
 git add src/components/conectados/reaction-bar.tsx src/components/conectados/poll-widget.tsx
@@ -1432,7 +1432,7 @@ git commit -m "feat(conectados): barra de reacciones (post y comentario) y widge
 - Consumes: `parseMentions` (Task 1), `ReactionBar`/`PollWidget` (Task 6), `deletePost` (Task 3), `useConectados()` (Task 4), `CommentThread` (Task 8 — import queda declarado acá, la Task 8 lo crea).
 - Produces: `<PostCard post={FeedPost} onDeleted={(id: string) => void} />`.
 
-- [ ] **Paso 1: Crear `src/components/conectados/mention-text.tsx`**
+- [x] **Paso 1: Crear `src/components/conectados/mention-text.tsx`**
 
 ```typescript
 import { parseMentions } from "@/lib/mentions";
@@ -1457,7 +1457,7 @@ export function MentionText({ body }: { body: string }) {
 }
 ```
 
-- [ ] **Paso 2: Crear `src/components/conectados/attachment-gallery.tsx`**
+- [x] **Paso 2: Crear `src/components/conectados/attachment-gallery.tsx`**
 
 ```typescript
 import { FileText } from "lucide-react";
@@ -1493,7 +1493,7 @@ export function AttachmentGallery({ attachments }: { attachments: (Attachment & 
 }
 ```
 
-- [ ] **Paso 3: Crear `src/components/conectados/post-card.tsx`**
+- [x] **Paso 3: Crear `src/components/conectados/post-card.tsx`**
 
 ```typescript
 "use client";
@@ -1617,12 +1617,12 @@ export function PostCard({ post: initialPost, onDeleted }: { post: FeedPost; onD
 }
 ```
 
-- [ ] **Paso 4: Verificar tipos**
+- [x] **Paso 4: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: error esperado en `post-card.tsx` por `./comment-thread` (Task 8) y en `conectados-feed.tsx` ya resuelto (post-card ya existe). Ningún otro error nuevo.
 
-- [ ] **Paso 5: Commit**
+- [x] **Paso 5: Commit**
 
 ```bash
 git add src/components/conectados/post-card.tsx src/components/conectados/attachment-gallery.tsx src/components/conectados/mention-text.tsx
@@ -1640,7 +1640,7 @@ git commit -m "feat(conectados): tarjeta de post con adjuntos, encuesta, reaccio
 - Consumes: `getPostComments` NO se usa acá — los comentarios se cargan client-side al expandir (ver Paso 1) via una nueva Route-less fetch: en realidad, para no crear un Route Handler solo para esto, `CommentThread` llama una Server Action de lectura. Se agrega `listComments` a `actions.ts` en el Paso 1 de esta tarea (server actions también sirven para leer, no solo mutar — mismo patrón que ya usa el resto del repo para datos que se cargan después del render inicial).
 - Produces: `<CommentThread postId={string} />`.
 
-- [ ] **Paso 1: Agregar `listComments` a `src/lib/conectados/actions.ts`**
+- [x] **Paso 1: Agregar `listComments` a `src/lib/conectados/actions.ts`**
 
 Server Actions normalmente mutan, pero acá no hay Route Handler ni querystring razonable para "comentarios de este post, cargados al expandir" — una Server Action que solo lee es el patrón más simple, y ya lo valida `requireProfile()` + RLS igual que cualquier lectura.
 
@@ -1659,7 +1659,7 @@ export async function listComments(postId: string) {
 }
 ```
 
-- [ ] **Paso 2: Crear `src/components/conectados/comment-thread.tsx`**
+- [x] **Paso 2: Crear `src/components/conectados/comment-thread.tsx`**
 
 ```typescript
 "use client";
@@ -1900,12 +1900,12 @@ export function CommentThread({ postId }: { postId: string }) {
 }
 ```
 
-- [ ] **Paso 3: Verificar tipos**
+- [x] **Paso 3: Verificar tipos**
 
 Run: `npm run typecheck`
 Expected: sin errores en ningún archivo de `src/components/conectados/` (Tasks 4, 5, 6, 7 y 8 ya se resuelven entre sí).
 
-- [ ] **Paso 4: Commit**
+- [x] **Paso 4: Commit**
 
 ```bash
 git add src/lib/conectados/actions.ts src/components/conectados/comment-thread.tsx src/components/conectados/conectados-feed.tsx
@@ -1925,18 +1925,18 @@ git commit -m "feat(conectados): hilo de comentarios con menciones, reacciones y
 
 **Nota sobre `loading.tsx`:** el diseño evita depender de `revalidatePath` precisamente porque esta ruta tenía un Suspense boundary. Con `page.tsx` haciendo varias consultas en paralelo (nunca secuenciales, todas rápidas — ninguna espera de red larga tipo generación de IA), un `loading.tsx` no aporta nada real y sigue siendo la causa potencial de un remontaje si algo lo dispara más adelante (otra revalidación, un `router.refresh()` futuro). Se elimina; si la carga inicial demostrara ser lenta en producción, se puede reintroducir con un skeleton real en vez del genérico actual — pero medir antes de reintroducir, no reintroducir "por si acaso".
 
-- [ ] **Paso 1: Confirmar el contenido actual de `loading.tsx` antes de borrarlo**
+- [x] **Paso 1: Confirmar el contenido actual de `loading.tsx` antes de borrarlo**
 
 Run: `cat "src/app/(app)/conectados/loading.tsx"`
 Expected: un skeleton genérico sin lógica propia (si tuviera algo más específico, conservar esa idea como comentario en el nuevo `page.tsx` en vez de perderla).
 
-- [ ] **Paso 2: Borrar `src/app/(app)/conectados/loading.tsx`**
+- [x] **Paso 2: Borrar `src/app/(app)/conectados/loading.tsx`**
 
 ```bash
 git rm "src/app/(app)/conectados/loading.tsx"
 ```
 
-- [ ] **Paso 3: Reemplazar `src/app/(app)/conectados/page.tsx`**
+- [x] **Paso 3: Reemplazar `src/app/(app)/conectados/page.tsx`**
 
 ```typescript
 import { requireProfile } from "@/lib/auth/dal";
@@ -1975,7 +1975,7 @@ export default async function ConectadosPage() {
 }
 ```
 
-- [ ] **Paso 4: Verificar tipos y build**
+- [x] **Paso 4: Verificar tipos y build**
 
 Run: `npm run typecheck`
 Expected: sin errores.
@@ -1986,7 +1986,7 @@ Expected: sin errores nuevos (warnings preexistentes ajenos a esta rama, como ya
 Run: `npm run dev` (dejar corriendo en background el tiempo suficiente para confirmar que arranca)
 Expected: arranca sin error de compilación. Sin sesión no se puede ver el feed renderizado (mismo límite que Task 20 — login solo Google OAuth), pero sí confirma que la ruta compila y no hay un error de import/tipo que solo aparece en runtime de servidor.
 
-- [ ] **Paso 5: Commit**
+- [x] **Paso 5: Commit**
 
 ```bash
 git add "src/app/(app)/conectados/page.tsx"
@@ -1999,11 +1999,11 @@ git commit -m "feat(conectados): reemplaza el placeholder por el feed real"
 
 **Files:** ninguno nuevo — solo verificación y documentación.
 
-- [ ] **Paso 1: `npm run typecheck` y `npm run lint` sobre todo el diff de la fase**
+- [x] **Paso 1: `npm run typecheck` y `npm run lint` sobre todo el diff de la fase**
 
 Expected: 0 errores. Cualquier warning debe ser preexistente y ajeno a esta rama (confirmar con `git stash` + correr lint en `main` si hay duda de si un warning ya estaba).
 
-- [ ] **Paso 2: Auditoría manual de la regla no negociable de interacción**
+- [x] **Paso 2: Auditoría manual de la regla no negociable de interacción**
 
 Run: `grep -rn "type=\"submit\"" src/components/conectados/`
 Expected: cada `type="submit"` encontrado está dentro de un `<ActionButton>` (el compositor y el form de comentario), nunca un `<button type="submit">` crudo para una mutación.
@@ -2011,7 +2011,7 @@ Expected: cada `type="submit"` encontrado está dentro de un `<ActionButton>` (e
 Run: `grep -rn "DeleteButton" src/components/conectados/`
 Expected: aparece en `post-card.tsx` y `comment-thread.tsx` — ningún borrado en un solo clic.
 
-- [ ] **Paso 3: `/code-review` sobre el diff completo de la fase (desde el commit de Task 1 hasta el de Task 9)**
+- [x] **Paso 3: `/code-review` sobre el diff completo de la fase (desde el commit de Task 1 hasta el de Task 9)**
 
 Correr con el alcance más amplio disponible (line-by-line, reuse, simplificación, eficiencia, convenciones de `AGENTS.md`). Prestar atención particular a:
 - Que `filterMentionsInOrg` siga aplicándose a TODA mención nueva (compositor y comentario) — es el hueco de seguridad que ya se reintrodujo una vez en este mismo módulo.
@@ -2019,14 +2019,42 @@ Correr con el alcance más amplio disponible (line-by-line, reuse, simplificaci�
 - Que el merge de Realtime en `conectados-feed.tsx`/`comment-thread.tsx` no duplique filas cuando el propio autor ya insertó su post/comentario de forma optimista.
 - Corregir cualquier hallazgo real en el mismo commit de cierre (mismo patrón que Task 20 del backend: 6 hallazgos, todos corregidos antes de cerrar la fase).
 
-- [ ] **Paso 4: Actualizar `.claude/napkin.md`**
+- [x] **Paso 4: Actualizar `.claude/napkin.md`**
 
 Agregar (al principio, respetando el máximo de 10 ítems por categoría — recortar el más viejo/menos relevante si hace falta) cualquier gotcha real encontrado durante la implementación (no hipotético): por ejemplo, si `createSignedUrls` tuvo algún comportamiento inesperado con paths que no existen, si el merge de Realtime tuvo una condición de carrera real al probarlo, o si el hook `useMentionState` reveló algo que `NoteForm` no había mostrado al tener un textarea de una sola fila (el formulario de comentario) en vez de varias.
 
-- [ ] **Paso 5: Commit de cierre (fixes de code-review + napkin) y push final**
+- [x] **Paso 5: Commit de cierre (fixes de code-review + napkin) y push final**
 
 ```bash
 git add -A
 git commit -m "docs(conectados): code-review final del feed + napkin actualizado"
 git push -u origin claude/aje-conectados-feed-ch7xhv
 ```
+
+---
+
+## Cierre de la fase (auto-revisión)
+
+Ejecutado de punta a punta en modo automático (usuario en reunión), sin checkpoints intermedios, commit por tarea:
+
+- Task 1 (mover menciones): `a6ee3ee`
+- Task 2 (schema/queries): `51ef9ba`
+- Task 3 (actions): `124532a`
+- Task 4 (ConectadosFeed): `878811a`
+- Task 5 (compositor): `b2060aa`
+- Task 6 (reacciones + encuesta): `a6051d4`
+- Task 7 (tarjeta de post): `b93c01e`
+- Task 8 (comentarios): `f57f576`
+- Task 9 (page.tsx real): `5618d32`
+- Task 10 (`/code-review` + napkin): `cbdb463`
+
+`/code-review` (nivel high) sobre el diff completo encontró **12 hallazgos reales, los 12 corregidos** en el commit de cierre — más que la fase de backend (6), esperable dado que esta fase es toda UI de cliente nueva (estado optimista, Realtime, formularios) en vez de SQL. El más serio: `PostCard` nunca releía su prop tras el primer render, así que Realtime en los hechos solo servía para el propio autor de una acción, nunca para el resto de quienes miran el feed — ver `.claude/napkin.md` para el detalle y la lección general (estado derivado de un prop necesita sincronizarse explícitamente, no solo `useState(prop)`).
+
+**Desviaciones reales del plan escrito, con motivo:**
+- El guard de "contenido o encuesta obligatorios" se movió de `createPost` (servidor) al compositor (cliente): el servidor no puede saber en el momento de crear el post si vienen adjuntos (se suben después, en un segundo paso, referenciando el `id` ya creado) — exigirlo ahí bloqueaba un post válido de "solo fotos". Documentado en el propio código y en el commit de cierre.
+- Los adjuntos se suben secuencialmente, no en paralelo (`Promise.all` original) — un `read-modify-write` sobre `posts.attachments` en paralelo pierde escrituras (hallado en `/code-review`, ver napkin).
+- La key de Storage del adjunto ya no usa `file.name` del cliente — solo un uuid propio + extensión derivada del MIME ya validado, igual que `uploadAvatar`.
+
+**Sin migraciones nuevas** — se confirma lo previsto en el diseño: toda la RLS/RPCs del backend (fase anterior) ya cubrían lo que esta UI necesitaba.
+
+**Pendiente para el usuario, no para un agente:** click-through real en el navegador (login Google OAuth, publicar, comentar, reaccionar, votar una encuesta, ver un adjunto). Mismo límite que Task 20 de la fase de backend — sin credenciales de prueba no hay forma de autenticarse en este entorno, y esta sesión además no tenía `node_modules` ni variables de entorno de Supabase configuradas (se instalaron las dependencias; las credenciales de Supabase siguen sin estar disponibles acá). Se compensó con `typecheck`/`lint` limpios en cada tarea y `/code-review` de cierre — no reemplaza probarlo con una cuenta real.
