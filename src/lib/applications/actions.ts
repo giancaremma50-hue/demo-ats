@@ -14,6 +14,7 @@ import { CambioEtapaEmail } from "@/emails/cambio-etapa";
 import { MovimientoReferidoEmail } from "@/emails/movimiento-referido";
 import { MensajeCandidatoEmail } from "@/emails/mensaje-candidato";
 import { MencionNotaEmail } from "@/emails/mencion-nota";
+import { TareaAsignadaEmail } from "@/emails/tarea-asignada";
 import { canDecideApplication, canWriteApplication } from "./permissions";
 import { isProfileAssignable } from "./get-applications";
 import { getMentionableProfiles } from "./get-applications";
@@ -527,6 +528,34 @@ export async function addTask(
     created_by: profile.id,
   });
   if (error) return { error: "No se pudo agregar la tarea." };
+
+  // Nadie se notifica a sí mismo — mismo criterio que el resto de los avisos.
+  if (parsed.data.assigned_to && parsed.data.assigned_to !== profile.id) {
+    notifyBestEffort(async () => {
+      const candidateName = await noteCandidateName(supabase, applicationId);
+      const { platformName, siteUrl } = await getEmailContext();
+      const applicationUrl = `${siteUrl}/postulaciones/${applicationId}`;
+      await notify({
+        organizationId: profile.organization_id,
+        recipientId: parsed.data.assigned_to!,
+        type: "tarea_asignada",
+        title: `${profile.display_name} te asignó una tarea`,
+        body: `En el seguimiento de ${candidateName}: ${parsed.data.description}`,
+        url: applicationUrl,
+        entityType: "candidate_task",
+        email: {
+          subject: `${profile.display_name} te asignó una tarea — ${candidateName}`,
+          react: TareaAsignadaEmail({
+            platformName,
+            assignerName: profile.display_name,
+            candidateName,
+            description: parsed.data.description,
+            applicationUrl,
+          }),
+        },
+      });
+    });
+  }
 
   await revalidateApplication(applicationId, taskJobId, { pipeline: false });
   return { success: "Tarea agregada" };

@@ -12,37 +12,92 @@ export type KanbanCard = {
   stageId: string;
   appliedAt: string;
 };
-export type KanbanData = { stages: KanbanStage[]; cards: KanbanCard[] };
+/** El total real de la columna y el punto desde donde pedir la página siguiente — `null` cuando ya no queda más. */
+export type KanbanStageMeta = { totalCount: number; nextCursor: string | null };
+export type KanbanData = { stages: KanbanStage[]; cards: KanbanCard[]; stageMeta: Record<string, KanbanStageMeta> };
 
-/** RLS de applications_select/job_stages_select ya decide qué ve este viewer. */
+/**
+ * Tarjetas por página, por columna. Antes `getKanbanData` traía TODAS las
+ * postulaciones activas de la vacante en un solo payload RSC (el tope de 50
+ * era solo del lado del cliente, cortaba el DOM pero no la red) — con el pico
+ * de 1000+ postulantes que apunta la auditoría de lanzamiento, eso son 1000
+ * tarjetas viajando para pintar 50. Compartida con `kanban-actions.ts`
+ * (`loadMoreKanbanCards`), que pagina el resto: el número tiene que ser el
+ * mismo en las dos, o "ver N más" prometería un tamaño de página que la
+ * siguiente carga no cumple.
+ */
+export const KANBAN_PAGE_SIZE = 50;
+
+/** Compartida con kanban-actions.ts — una sola lista de columnas para las tres consultas (carga inicial, "ver más", búsqueda), para que agregar un campo nuevo no se quede a medias en una de las tres. */
+export const KANBAN_CARD_SELECT = "id, stage_id, rating, applied_at, candidates(id, full_name)";
+
+export function toKanbanCard(row: {
+  id: string;
+  stage_id: string;
+  rating: number | null;
+  applied_at: string;
+  candidates: { id: string; full_name: string } | null;
+}): KanbanCard {
+  return {
+    id: row.id,
+    candidateId: row.candidates!.id,
+    candidateName: row.candidates!.full_name,
+    rating: row.rating,
+    stageId: row.stage_id,
+    appliedAt: row.applied_at,
+  };
+}
+
+/**
+ * RLS de applications_select/job_stages_select ya decide qué ve este viewer.
+ *
+ * Una consulta por etapa, todas en paralelo — no una sola consulta con
+ * `LIMIT` global: PostgREST no ofrece "las primeras N POR GRUPO" a través
+ * del query builder, así que sin esto la primera etapa se comería el tope
+ * entero y las demás quedarían vacías con 1000 postulantes. Con seis-ocho
+ * etapas típicas, son 6-8 consultas pequeñas en paralelo, nada comparado con
+ * traer miles de filas de una vez. El conteo real viaja en la MISMA consulta
+ * (`{ count: "exact" }`, sin `head`) — PostgREST lo calcula sobre el total
+ * que cumple los filtros, antes de aplicar el `LIMIT`, así que no hace falta
+ * una segunda consulta aparte solo para contar.
+ */
 export async function getKanbanData(jobId: string): Promise<KanbanData> {
   const supabase = await createClient();
 
-  const [{ data: stages }, { data: applications }] = await Promise.all([
-    supabase.from("job_stages").select("id, name, position").eq("job_id", jobId).order("position"),
-    supabase
-      .from("applications")
-      .select("id, stage_id, rating, applied_at, candidates(id, full_name)")
-      .eq("job_id", jobId)
-      .eq("status", "activa")
-      // Orden determinista, obligatorio desde que KanbanColumn recorta a 50 por
-      // columna: sin ORDER BY, "las primeras 50" son 50 arbitrarias que Postgres
-      // puede devolver distintas entre cargas. Más reciente primero — decisión
-      // del usuario 2026-09-09 — para ver de entrada quién acaba de entrar a
-      // cada etapa, en vez de tener que bajar hasta el final de la columna.
-      .order("applied_at", { ascending: false }),
-  ]);
+  const { data: stages } = await supabase.from("job_stages").select("id, name, position").eq("job_id", jobId).order("position");
+  const stageList = stages ?? [];
 
-  const cards: KanbanCard[] = (applications ?? []).map((a) => ({
-    id: a.id,
-    candidateId: a.candidates!.id,
-    candidateName: a.candidates!.full_name,
-    rating: a.rating,
-    stageId: a.stage_id,
-    appliedAt: a.applied_at,
-  }));
+  const perStage = await Promise.all(
+    stageList.map(async (stage) => {
+      const { data: rows, count } = await supabase
+        .from("applications")
+        .select(KANBAN_CARD_SELECT, { count: "exact" })
+        .eq("job_id", jobId)
+        .eq("status", "activa")
+        .eq("stage_id", stage.id)
+        // Más reciente primero — decisión del usuario 2026-09-09, para ver
+        // de entrada quién acaba de entrar a cada etapa.
+        .order("applied_at", { ascending: false })
+        .limit(KANBAN_PAGE_SIZE);
 
-  return { stages: stages ?? [], cards };
+      const cards = (rows ?? []).map(toKanbanCard);
+      const totalCount = count ?? cards.length;
+      // ponytail: el cursor es solo applied_at, sin id de desempate — dos
+      // postulaciones con el MISMO applied_at exacto partidas justo en el
+      // borde de una página podrían saltarse o repetirse una entre las dos.
+      // Astronómicamente improbable con timestamptz de microsegundos en uso
+      // normal; si alguna vez se ve en la práctica (datos sembrados con el
+      // mismo NOW() en lote), agregar `id` como desempate con `.or()`.
+      const nextCursor = cards.length === KANBAN_PAGE_SIZE && totalCount > cards.length ? cards[cards.length - 1].appliedAt : null;
+
+      return { stageId: stage.id, cards, totalCount, nextCursor };
+    }),
+  );
+
+  const cards = perStage.flatMap((p) => p.cards);
+  const stageMeta = Object.fromEntries(perStage.map((p) => [p.stageId, { totalCount: p.totalCount, nextCursor: p.nextCursor }]));
+
+  return { stages: stageList, cards, stageMeta };
 }
 
 export type ApplicationEvent = {

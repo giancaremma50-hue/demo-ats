@@ -22,3 +22,15 @@ export function normalizarTexto(v: string): string {
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Un término de búsqueda de usuario, listo para meterse en un patrón ILIKE de
+ * PostgREST. Neutraliza sintaxis de filtros de PostgREST (`,()`), comodines
+ * de ILIKE (`%_\`) y el alias `*` que PostgREST sustituye por `%` antes de
+ * que Postgres vea el patrón — mismo saneo escrito primero para
+ * `getCandidateRows` (src/lib/candidates/get-candidates.ts), extraído acá
+ * para no copiarlo a mano en cada búsqueda nueva por `ilike`.
+ */
+export function sanitizeIlikeTerm(term: string): string {
+  return term.replace(/[,()*]/g, "").replace(/[%_\\]/g, (c) => `\\${c}`);
+}

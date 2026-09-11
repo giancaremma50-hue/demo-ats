@@ -1,6 +1,16 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notify } from "@/lib/notifications/notify";
+
+// sha256 antes de comparar: timingSafeEqual exige buffers del mismo largo, y
+// hashear primero evita tener que ramificar por longitud (esa rama sería en
+// sí misma un canal lateral de tiempo, lo mismo que se cerró en /api/postular).
+function secretMatches(received: string, expected: string): boolean {
+  const a = createHash("sha256").update(received).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
 
 interface AvisoPost {
   organization_id: string;
@@ -13,7 +23,9 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) return new NextResponse("CRON_SECRET not configured", { status: 500 });
-  if (authHeader !== `Bearer ${cronSecret}`) return new NextResponse("Unauthorized", { status: 401 });
+  if (!authHeader || !secretMatches(authHeader, `Bearer ${cronSecret}`)) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
 
   const admin = createAdminClient();
   const { data: resumenRaw, error } = await admin.rpc("release_scheduled_posts", { p_dry_run: false });

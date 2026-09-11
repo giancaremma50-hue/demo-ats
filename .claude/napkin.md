@@ -7,7 +7,7 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (una barra que se esconde deja rastro, y el rastro es ELLA plegada — no un objeto nuevo al lado)_
+_Última actualización: 2026-09-11 (una barra que se esconde deja rastro, y el rastro es ELLA plegada; y paginación real del kanban, con 3 bugs de concurrencia encontrados por `/code-review`)_
 
 ## Una barra que se esconde tiene que dejar rastro, y el rastro tiene que ser ELLA (2026-09-11) — MÁXIMA PRIORIDAD
 
@@ -112,6 +112,148 @@ comportamiento que la app no tiene. **Antes de usar un `env()` como argumento
 de un cálculo o de un comentario, comprobar si hay `viewport-fit=cover`.** Y
 al declararlo algún día, hay que revisar TODA pantalla que hoy asume un
 viewport ya recortado, porque pasarían a pintarse debajo de la barra de inicio.
+
+
+## Paginación real del kanban: 3 bugs de estado que solo salen con volumen o con dos acciones casi simultáneas (2026-09-11)
+
+Pendiente #17. `getKanbanData` traía TODAS las postulaciones activas de la
+vacante en un solo payload; el tope de 50 por columna era solo del cliente.
+Se rediseñó a una consulta por etapa (50 + conteo real), "ver más" por
+cursor (`applied_at`), y búsqueda por nombre movida al servidor (con
+debounce) para no perder resultados fuera de lo cargado. Nada de esto se
+pudo probar visualmente: la base de este proyecto no tiene ninguna etapa con
+más de 1 postulación activa hoy, y el login real (Google OAuth) no se puede
+completar desde este entorno — verificado por `npm run build` completo +
+`/code-review` a `medium` (4 ángulos en paralelo), no por navegador.
+
+1. **Los 3 hallazgos reales que salieron del review son del mismo género:
+   "funciona con una sola cosa pasando a la vez", y ni las pruebas unitarias
+   ni un build limpio lo agarran.**
+   - `moveCard` revertía con un snapshot completo (`previousCards`) en vez de
+     deshacer solo SU movimiento — dos arrastres casi seguidos donde el
+     primero falla tarde hacían que el rollback del primero borrara el éxito
+     del segundo. Fix: revertir puntualmente (volver esa tarjeta a su etapa
+     de origen), nunca restaurar una foto vieja completa.
+   - La búsqueda hidrataba tarjetas escribiendo por encima cualquier entrada
+     existente — un drag optimista corriendo al mismo tiempo que una
+     búsqueda debounced para ese candidato podía perder el cambio visual.
+     Fix: `addMissingCards()` solo AGREGA lo que falta, nunca pisa una
+     entrada que ya está en memoria.
+   - Ese mismo `addMissingCards()` cerró de paso un segundo bug: una tarjeta
+     hidratada por búsqueda podía volver a llegar sin deduplicar cuando
+     después se pedía "ver más" en esa columna — dos entradas con la misma
+     `key` de React.
+   Do instead: **cuando dos fuentes de datos (una acción optimista del
+   usuario y una respuesta de red que llega después) pueden escribir la
+   MISMA pieza de estado, la de la red nunca gana por default** — o se
+   fusiona con cuidado (agregar, no reemplazar) o se descarta si es más
+   vieja que lo que ya hay. "Restaurar el snapshot de antes" es tentador
+   como manejo de error porque es una línea, pero asume que nada más cambió
+   ese estado mientras tanto — falso en cuanto hay dos acciones en vuelo.
+2. **Un cálculo de "hay más" y un cálculo de "cuántas hay en total" tienen
+   que usar la MISMA fuente, o divergen en el borde exacto.** La carga
+   inicial marcaba `nextCursor` solo si `cards.length === PAGE_SIZE Y
+   totalCount > cards.length`; "ver más" solo miraba lo primero — con un
+   resto de exactamente una página completa (100 en total, columna con 50 +
+   50), prometía una tercera página vacía. Fix: pedir una fila de más
+   (`LIMIT PAGE_SIZE + 1`) en vez de una segunda consulta de conteo en cada
+   "ver más" — barato y sin el desfase.
+3. **Combinar dos consultas en una no es solo más rápido, evita que dos
+   números que deberían coincidir se calculen por caminos distintos.**
+   `{ count: "exact" }` en la MISMA consulta que trae las filas (PostgREST
+   cuenta sobre el total que cumple los filtros, antes del `LIMIT`) reemplazó
+   una segunda consulta `head: true` aparte — la mitad de los round-trips en
+   la carga inicial, y un solo lugar del que sale tanto `cards` como
+   `totalCount`.
+4. **Un `.select()` armado con `.replace()` en tiempo de ejecución pierde el
+   tipo que `supabase-js` infiere del string literal.** Se intentó compartir
+   la lista de columnas (`KANBAN_CARD_SELECT`) también para la consulta con
+   `candidates!inner(...)` reemplazando el texto a mano — compiló distinto:
+   la fila pasó a `any`/`GenericStringError`. El `.select()` de esa consulta
+   quedó como string literal propio, sin derivar del compartido. Do instead:
+   compartir la lista de columnas entre consultas CON EL MISMO tipo de join
+   (interno o no) es seguro; para una variante con un join distinto,
+   escribir el literal aparte es más simple y más seguro en tipos que
+   derivarlo a mano.
+
+## El proyecto ya tiene runner de tests: vitest (2026-09-11)
+
+Pendiente #18 de `docs/PENDIENTE.md`. La lógica pura de menciones
+(`src/lib/mentions.ts`: `parseMentions`, `extractMentionIds`,
+`canonicalizeMentions`, `resolveMentionTokens`, `activeMentionQuery`) se había
+verificado a mano el 2026-09-09 con un script suelto que nunca quedó en el
+repo — `node` exige `.ts` en el import y `tsc` lo prohíbe
+(`allowImportingTsExtensions`), así que dejarlo habría roto el `typecheck`
+del CI. Sin runner, esa lógica no tenía red.
+
+1. **`vitest@5` pide `@types/node` ^22 o ^24; el proyecto tenía `^20`.**
+   Bloqueó el install con un conflicto de peer dependency. Se subió
+   `@types/node` a `^24` (types-only, sin efecto en runtime) en vez de fijar
+   una versión vieja de vitest — el proyecto ya corre Node 24 en CI
+   (`.github/workflows/ci.yml`) y en producción (Vercel, Node 24 LTS por
+   default), así que las declaraciones de tipos ya deberían decir eso.
+2. **Al escribir la prueba del caso de anidamiento
+   (`@[@[Directora](idFalso)](idReal)`), la primera aserción
+   (`not.toContain('](idReal)')`) fue la equivocada** — el string degradado
+   real SÍ contiene ese fragmento (`"@Directora](idReal)"`, resultado
+   correcto y esperado), lo que hizo fallar la prueba aunque el código de
+   `resolveMentionTokens` estuviera bien. El invariante real no es "el string
+   no contiene tal substring" sino "el string, vuelto a pasar por
+   `parseMentions`, no produce ninguna mención" — eso es lo que
+   `resolveMentionTokens` promete (que no se reconstruya un token nuevo), no
+   una forma textual específica del resultado degradado.
+   Do instead: al probar una función que transforma texto para IMPEDIR que
+   se vuelva a interpretar de cierta forma, la aserción correcta pasa el
+   resultado de nuevo por el parser real (acá, `parseMentions`) y comprueba
+   la ausencia del efecto — no por una forma de string a mano, que puede
+   acertar por casualidad o fallar por un detalle irrelevante (como sucedió).
+3. **`vitest.config.ts` sin alias de `@/`** — `mentions.ts` no importa nada
+   con ese alias (es la única lógica pura sin dependencias del árbol de
+   `src/lib` hoy), así que no hizo falta `vite-tsconfig-paths` todavía.
+   Agregar esa dependencia recién cuando el primer archivo de test necesite
+   importar algo vía `@/...`.
+
+## Dos flujos nunca notificaban a nadie: agendar entrevista y asignar tarea (2026-09-11)
+
+Pendiente #16 de `docs/PENDIENTE.md`, dejado aparte a propósito el 2026-09-09.
+`scheduleInterview` y `addTask` guardaban la fila pero nunca llamaban a
+`notify()` para los destinatarios internos — solo el candidato se enteraba de
+la entrevista; de la tarea no se enteraba nadie.
+
+1. **No era un bug de lógica rota, era lógica que nunca se escribió** — mismo
+   patrón ya usado para `mencion_nota` (`src/lib/applications/actions.ts`) y
+   `vacante_pendiente_aprobacion` (`notifyPendingApproval` en
+   `src/lib/jobs/actions.ts`), solo que nadie lo replicó acá. Se copió ese
+   patrón exacto: `notifyBestEffort()` después del insert (nunca antes — la
+   fila ya tiene que estar guardada), auto-exclusión de quien dispara la
+   acción (nadie se notifica a sí mismo), y reuso de `isProfileAssignable`
+   que ya validaba destinatarios antes de esta sesión.
+2. **`/code-review` a `medium` encontró dos hallazgos reales, ninguno de
+   lógica.** (a) La función nueva `notifyAttendeesOfInterview` nació con 10
+   argumentos posicionales — mismo tipo de riesgo que un `WRITE_PERMISSIONS`
+   mal mantenido: nada evita trastocar `jobTitle` por `candidateName` en el
+   call site salvo mirar con cuidado. Se convirtió a un solo objeto de
+   opciones. (b) La plantilla nueva (`emails/entrevista-agendada-interno.tsx`)
+   copió el cálculo de fecha de `entrevista-programada.tsx` a mano y **ya
+   había perdido una línea** (la aclaración "se muestra en tu propia zona
+   horaria") — la duplicación ni llegó a un segundo commit antes de
+   divergir. Se extrajo `formatInterviewWhenUTC()` a
+   `src/lib/interviews/calendar-link.ts`, el mismo archivo que ya compartía
+   `buildInterviewCalendarUrl` entre los dos correos.
+   Do instead: **dos plantillas de correo que muestran la misma fecha
+   calculada de la misma forma comparten la función que la calcula, no el
+   copy-paste del bloque de tres líneas** — un cálculo de zona horaria es
+   exactamente el tipo de detalle que diverge en silencio (nadie prueba a
+   mano las dos plantillas lado a lado) y ya lo hizo en el primer intento.
+3. **Dos `notification_type` nuevos (`entrevista_agendada`, `tarea_asignada`)
+   vía `ALTER TYPE ... ADD VALUE`**, cada uno en su propia migración
+   separada de cualquier uso — Postgres permite usar un valor de enum recién
+   agregado en la MISMA sesión, pero conviene no depender de en qué versión
+   corre para saber si hace falta separarlo en dos transacciones. Tipos
+   regenerados con `generate_typescript_types` y pegados sobre
+   `database.types.ts` (diff de 4 líneas, nada más cambió — confirma que no
+   hubo drift de otro schema mientras tanto).
+
 
 ## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11) — MÁXIMA PRIORIDAD
 
@@ -569,6 +711,148 @@ recargado de página las mostraba.
    Do instead: cuando un componente necesita estado LOCAL derivado de un prop (para poder mutarlo de forma optimista) pero el prop en sí puede cambiar por una fuente externa (Realtime, polling, un padre que revalida), agregar una sincronización explícita: comparar el prop contra una copia guardada y, si cambió, actualizar el estado local **durante el render** (`if (synced !== prop) { setSynced(prop); setState(prop); }`), nunca solo `useState(prop)` a secas. Este proyecto además prohíbe hacerlo con un `useEffect` + `setState` síncrono (es error de build, ver la entrada de abajo sobre notas) — el ajuste en render es el patrón correcto para esto, no un rodeo.
 2. **La revisión de recuperación (revertir un optimista fallido) tenía el mismo tipo de bug, dos veces: "togglear de nuevo" no es lo mismo que "restaurar el valor anterior".** `ReactionBar` revertía una reacción fallida llamando a la misma función de toggle con el mismo tipo — que solo deshace correctamente si el estado previo era "sin reacción"; si la persona ya tenía otra reacción puesta y cambiaba a una nueva que el servidor rechazaba, el revert la dejaba en "sin reacción" en vez de devolverla a la que tenía. Mismo patrón en `PollWidget`, que directamente no revertía nada. Do instead: una función de actualización optimista que también sirve para revertir tiene que recibir el valor EXACTO al que debe quedar (`onOptimisticSet(valor | null)`), nunca un "toggle" — capturar el valor previo ANTES de aplicar el cambio optimista, y pasar ESE valor exacto de vuelta si el servidor rechaza, no repetir la operación que lo cambió.
 3. **Un `read-modify-write` de un array `jsonb` hecho en paralelo pierde escrituras, aunque cada llamada individual sea correcta.** El compositor subía varios adjuntos con `Promise.all`, y cada subida hacía SELECT de `posts.attachments`, agregaba su propia entrada, y hacía UPDATE — sin ningún lock ni expresión atómica. Con 3 archivos en paralelo, los 3 SELECT leían la lista vacía (ninguno había terminado de escribir todavía), y el último UPDATE en confirmar ganaba, pisando a los otros dos. Do instead: cuando una mutación es "leer una columna, modificarla en memoria, escribirla de vuelta" (sin una expresión SQL atómica tipo `columna = columna || nuevo_valor`), disparar esas llamadas en SECUENCIA (`for...of` con `await`), nunca en paralelo — cada lectura necesita ver lo que la escritura anterior ya confirmó. Si el volumen lo justifica alguna vez, la alternativa real es una expresión atómica del lado de la base (o una RPC), no paralelizar un read-modify-write del lado del cliente.
+
+---
+
+## Un MCP de Supabase conectado a la sesión no es necesariamente LA base de este proyecto (2026-09-11) — MÁXIMA PRIORIDAD
+
+Al pedir una auditoría completa de seguridad/RLS, la sesión tenía DOS servidores
+MCP de Supabase disponibles: uno genérico (acepta `project_id`) y uno nombrado
+`ferco-produccion` (ya "conectado", sin pedir `project_id`). Se corrió
+`get_advisors`/`list_tables` contra `ferco-produccion` primero, por ser el más
+directo de invocar.
+
+1. **Casi se audita y casi se migra la base equivocada.** `ferco-produccion`
+   resultó ser el ERP comercial de Ferco (tablas `area_comercial_*`, ninguna
+   relación con el ATS) — un proyecto Supabase totalmente distinto,
+   simplemente conectado a la misma sesión de Claude Code. Se notó porque los
+   nombres de tabla no calzaban con nada del dominio de reclutamiento, no por
+   ningún aviso del sistema. Si el mismatch hubiera sido menos obvio (dos
+   bases del mismo dominio, o nombres de tabla parecidos), una `apply_migration`
+   mal dirigida habría alterado la base de otro sistema en producción sin
+   ningún error — el MCP no rechaza queries solo porque "no es la base
+   correcta para esta tarea", ejecuta lo que se le pida contra el proyecto que
+   tiene configurado.
+   Do instead: **antes de correr `get_advisors`, `execute_sql` o
+   `apply_migration` contra cualquier servidor MCP de Supabase — sobre todo si
+   hay más de uno conectado — comparar su `get_project_url()` (o el `id` de
+   `list_projects()`) contra `NEXT_PUBLIC_SUPABASE_URL` de `.env.local`.** El
+   nombre del servidor MCP (`ferco-produccion`, o el que sea) es una etiqueta
+   puesta por quien configuró la sesión, no una garantía — puede apuntar a
+   cualquier proyecto de la organización. El proyecto real de este ATS es
+   `cgudnnlcwcotovcslgzu`.
+
+---
+
+## RLS de `jobs`: el `WITH CHECK` no repetía el estado/rol — un `gestor` se auto-publicaba saltando RH (2026-09-11)
+
+Auditoría de seguridad completa (agente `security-auditor` + verificación manual
+contra la base real). Mismo tipo de hueco que `applications` ya había cerrado
+con un trigger — acá no se había replicado.
+
+1. **BUG REAL DE SEGURIDAD: la política `jobs_update` dejaba pasar a un
+   no-admin (`USING`: dueño + `status = 'borrador'`, correcto), pero el
+   `WITH CHECK` solo validaba `organization_id = private.auth_org_id()`.**
+   Nada impedía que ese mismo `UPDATE` trajera `status: "abierta"`,
+   `owner_id: "<su-propio-id>"`, `visibility: "publica"` en una sola llamada
+   — la máquina de estados completa (`VALID_TRANSITIONS`,
+   `adminOnly`/`ownerOrAdmin`/`cancelGuard`) vivía únicamente en
+   `src/lib/jobs/actions.ts`, nunca en la base. Cualquier `gestor` con su
+   propia sesión (anon key + JWT, ambos ya expuestos en el navegador) podía
+   saltarse la interfaz por completo con un `PATCH` directo a
+   `/rest/v1/jobs` y publicar su propia vacante sin pasar por
+   `pendiente_aprobacion`/`aceptada`, quedando además como dueño
+   (`owner_id`) — `can_decide_application` pasa a `true` para siempre sobre
+   esa vacante.
+   Do instead: **cuando una Server Action implementa una máquina de estados
+   (`VALID_TRANSITIONS` o equivalente) y la tabla tiene RLS, el `WITH CHECK`
+   de esa tabla NO puede comparar `OLD` contra `NEW` — hace falta un trigger
+   `BEFORE UPDATE`**, igual al patrón que `applications` ya usa
+   (`private.enforce_application_permission_tiers`, ver napkin 2026-09 más
+   abajo). El fix acá fue deliberadamente MÁS SIMPLE que replicar el grafo
+   completo de `VALID_TRANSITIONS` en SQL (eso sería una segunda copia para
+   mantener sincronizada, el mismo riesgo de drift que ya documenta AGENTS.md
+   para `permissions.ts`): como `USING` ya garantiza que un no-admin solo
+   toca su propia fila en `borrador`, el trigger
+   (`private.enforce_job_permission_tiers`) solo necesita acotar QUÉ puede
+   escribir ahí — `status` solo a `pendiente_aprobacion`/`cancelada`, y
+   `owner_id`/`visibility` intocables para no-admin. Cero cambios en
+   TypeScript, cero cambios de comportamiento para la UI real.
+2. **Se encontró leyendo la política real de Postgres (`pg_policies`), no
+   el código de la Server Action.** El código de `transitionJob()` se ve
+   perfectamente seguro leído solo — el hueco es invisible sin comparar
+   contra el `WITH CHECK` real de la base. Do instead: cualquier auditoría de
+   permisos donde exista una Server Action "gatekeeper" tiene que verificar
+   que el `WITH CHECK`/trigger de la tabla imponga la MISMA restricción, no
+   asumir que la única puerta de entrada es la función de TypeScript.
+3. **Revisado el 2026-09-11: `job_templates`/`pipeline_templates` y sus 4 tablas satélite NO tienen este hueco.** Las 6 tablas exigen `private.is_admin_or_above()` en el `USING` **y** el `WITH CHECK` de INSERT/UPDATE/DELETE por igual — a diferencia de `jobs`, ningún no-admin pasa siquiera el `USING`, así que no hay fila que puedan tocar y no existe la pregunta de "qué pueden escribir una vez adentro". La diferencia real: `jobs` tiene autoservicio a propósito (un gestor solicita su propia vacante); las plantillas son 100% admin-only de punta a punta, sin ninguna ruta de escritura para otro rol que verificar.
+
+---
+
+## Espejo TS↔SQL de permisos con drift real: `permissions.ts` tenía 3 valores que el SQL ya no acepta (2026-09-11)
+
+Mismo audit. `WRITE_PERMISSIONS` en `src/lib/applications/permissions.ts` traía
+`["lectura_escritura", "interviewer", "approver", "owner"]`; `private.can_write_application`
+en Postgres solo reconoce `'lectura_escritura'` en su `IN`.
+
+1. **No explotable hoy (verificado: 0 filas de `job_collaborators` usan esos 3
+   valores), pero rompía la regla propia del proyecto de que el espejo se
+   actualiza en la misma sesión que el umbral.** Si alguna vez apareciera una
+   fila vieja sin migrar con `permission = 'owner'`,
+   `canWriteApplication()` habría devuelto `true` en TypeScript mientras la
+   base seguía rechazando el `INSERT`/`UPDATE` — un permiso fantasma que se ve
+   en la UI (el botón aparece habilitado) y falla recién al enviar, el peor
+   tipo de bug de permisos porque no se nota hasta que alguien lo intenta.
+   Do instead: el Set de TypeScript de una lista blanca de permisos se recorta
+   para que sea EXACTAMENTE lo que el `IN`/`= ANY` del lado de Postgres acepta
+   — nunca "lo que aceptaba antes más lo que acepta ahora", ni siquiera "por
+   si acaso queda una fila vieja": si una fila vieja necesita seguir
+   funcionando, se migra la fila, no se infla la lista blanca de TypeScript
+   para taparla.
+
+---
+
+## Comparación del secreto del cron no era tiempo-constante (2026-09-11)
+
+`src/app/api/cron/release-scheduled-posts/route.ts` comparaba el header
+`Authorization` contra `Bearer ${CRON_SECRET}` con `!==` de string normal.
+
+1. **Canal lateral de tiempo teórico, mismo tipo de cuidado que ya se aplicó
+   en `/api/postular` (ver napkin 2026-09-08) — impráctico de explotar contra
+   un endpoint remoto por el jitter de red, pero es la misma clase de bug.**
+   Fix: `crypto.timingSafeEqual` sobre dos hashes SHA-256 (`secretMatches()`),
+   nunca sobre los strings crudos — `timingSafeEqual` exige buffers del MISMO
+   largo o lanza, y hashear primero evita tener que ramificar por longitud
+   antes de comparar (esa rama sería en sí misma otro canal lateral).
+   Do instead: cualquier comparación de un secreto contra un valor que llega
+   del exterior (header, query param, body) pasa por `timingSafeEqual` sobre
+   hashes de largo fijo, nunca por `===`/`!==` de string — sin importar qué
+   tan remoto se vea el ataque de temporización, es el mismo costo escribirlo
+   bien la primera vez.
+
+---
+
+## Storage `cvs_privado_insert` sin acotar por organización — cualquier autenticado podía escribir en la carpeta de otra empresa (2026-09-11)
+
+1. **BUG REAL: la política de `INSERT` del bucket privado de CVs
+   (`cvs_privado_insert`) solo exigía `bucket_id = 'cvs-privado'`** — a
+   diferencia de `cvs_privado_select`/`cvs_privado_delete`, que sí llaman
+   `private.can_access_candidate(...)` sobre el segundo segmento de la ruta.
+   Cualquier usuario autenticado, de cualquier organización, podía subir un
+   archivo a la carpeta de candidatos de OTRA organización — no permitía leer
+   CVs ajenos (la lectura sí estaba bien acotada), pero sí abuso de
+   almacenamiento y plantar archivos sin fila en `attachments`.
+   Do instead: al agregar un bucket privado nuevo, las políticas de
+   `INSERT`/`SELECT`/`DELETE` se escriben JUNTAS y se comparan entre sí antes
+   de aplicarlas — quedan más fácil "abiertas por default" que una tabla,
+   porque no hay una fila con `organization_id` a la vista para notar el
+   hueco a simple lectura.
+2. **Fix: se ELIMINÓ la política en vez de acotarla.** Verificado por grep
+   (`cvs-privado` en `src/`) que el único escritor real es
+   `src/app/api/postular/route.ts`, con el cliente **admin** (service role,
+   que ignora RLS de todas formas) — ningún componente cliente sube CVs
+   directo. Deny-by-default sin política es más simple y más seguro que
+   acotar un `INSERT` que nadie legítimo necesita.
 
 ---
 

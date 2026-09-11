@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeIlikeTerm } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/database.types";
 import type { z } from "zod";
 import type { CandidateFiltersSchema } from "./schema";
@@ -43,11 +44,7 @@ export async function getCandidateRows(filters: CandidateFilters): Promise<Candi
 
   const term = filters.q?.trim();
   if (term) {
-    // Mismo saneo que la búsqueda anterior de esta página: neutraliza
-    // sintaxis de filtros de PostgREST (`,()`), comodines de ILIKE
-    // (`%_\`) y el alias `*` que PostgREST sustituye por `%` antes de que
-    // Postgres vea el patrón.
-    const safeTerm = term.replace(/[,()*]/g, "").replace(/[%_\\]/g, (c) => `\\${c}`);
+    const safeTerm = sanitizeIlikeTerm(term);
     query = query.or(`full_name.ilike.%${safeTerm}%,email.ilike.%${safeTerm}%`, { referencedTable: "candidates" });
   }
 

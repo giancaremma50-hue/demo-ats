@@ -269,18 +269,16 @@ efecto en sesiones NUEVAS — los servidores MCP se cargan al arrancar.
 El ATS se opera por el servidor que exige `project_id` en cada llamada, con
 `cgudnnlcwcotovcslgzu`.
 
-### 16. Avisos que no llegan: entrevistas y tareas
+### 16. ~~Avisos que no llegan: entrevistas y tareas~~ — Resuelto 2026-09-11
 
-Pedido del usuario, dejado aparte a propósito el 2026-09-09 para no mezclarlo
-con el lote de menciones/kanban/vacantes. Son dos huecos reales:
+`scheduleInterview` guardaba `interview_attendees` y solo avisaba al
+**candidato**; los colegas agregados como destinatarios no recibían ni
+campana ni correo. `addTask` no llamaba a `notify()` en absoluto. Dos
+`notification_type` nuevos (`entrevista_agendada`, `tarea_asignada`), dos
+plantillas internas sin pie de privacidad, mismo patrón que `mencion_nota`.
+Detalle en `.claude/napkin.md`.
 
-**Agendar reunión — los internos no se enteran.** `scheduleInterview` guarda
-`interview_attendees` y después solo le manda correo **al candidato**. Los
-colegas que se agregan como destinatarios no reciben ni campana ni correo.
-Hace falta un valor nuevo en `notification_type` (no existe ninguno de
-entrevista), una plantilla de correo, y la llamada a `notify()`.
-
-Y tres cosas más del mismo flujo, menores pero reales:
+Sigue sin resolver, menor, del mismo flujo:
 - No hay evento de calendario real ni sala de videollamada: es un enlace
   "agregar a Google Calendar" que cada uno pulsa. El link de Meet/Zoom se pega
   a mano en "Lugar o enlace". (OAuth de Calendar está fuera de alcance por
@@ -290,45 +288,36 @@ Y tres cosas más del mismo flujo, menores pero reales:
   lector no ve el "hora UTC". En una invitación a reunión, confunde.
 - No hay recordatorio antes de la reunión.
 
-**Asignar tarea — el asignado no se entera.** `addTask` no llama a `notify()`
-en absoluto. Mismo requisito: `notification_type` nuevo (`tarea_asignada`),
-plantilla, y la llamada. Es la misma forma que ya quedó construida para
-menciones, así que es rápido.
+### 17. ~~El kanban recorta el DOM, no la red~~ — Resuelto 2026-09-11
 
-### 17. El kanban recorta el DOM, no la red
+`getKanbanData` traía TODAS las postulaciones activas de la vacante en un
+solo payload RSC; el tope de 50 por columna era solo del cliente. Con el
+pico de 1000+ postulantes que apunta la auditoría de lanzamiento, eso eran
+1000 tarjetas viajando para pintar 50.
 
-`KanbanColumn` topa a 50 tarjetas por columna, pero `getKanbanData` sigue sin
-`limit`: el payload RSC de `/vacantes/[id]/pipeline` continúa llevando TODAS las
-postulaciones activas. Con el pico de 1000+ postulantes que apunta la auditoría
-de lanzamiento, eso son 1000 tarjetas viajando en cada carga para pintar 50.
+Ahora una consulta por etapa (50 filas + conteo real, ordenado por
+`applied_at` DESCENDENTE — las más recientes primero, decisión del usuario
+2026-09-09, ver `kanban-column.tsx`), "ver más" pagina por cursor
+(`applied_at`), y la búsqueda por nombre se movió al servidor (con debounce)
+para no dejar de encontrar a alguien fuera de lo ya cargado. `/code-review`
+a `medium` encontró y corrigió 3 bugs de concurrencia antes de tocar
+producción (rollback de drag pisando otro drag, búsqueda pisando un
+movimiento optimista, tarjeta duplicada tras buscar + "ver más") — ninguno
+visible con el volumen de datos de este entorno de demo. Detalle completo en
+`.claude/napkin.md`.
 
-El tope resolvió lo que estaba a punto de romperse (el DOM y los `<Draggable>`
-de dnd, que se arrastran mucho antes). Lo de la red necesita paginación real por
-etapa —cursor por `applied_at` y un endpoint para "ver más"— y eso cambia la
-forma de `KanbanData`, así que no entraba en este lote.
+No se pudo verificar visualmente en navegador (login real de Google, sin
+credenciales en este entorno) ni con datos reales de volumen (ninguna etapa
+de este proyecto pasa de 1 postulación activa hoy) — verificado con
+`npm run build` completo, `npm test`, `npm run typecheck`/`lint` limpios, y
+`/code-review`.
 
-Nota de orden: `getKanbanData` ahora ordena `applied_at` ASCENDENTE (más
-antiguas primero), porque con un tope hace falta un orden determinista y en un
-pipeline quien lleva más esperando es por quien hay que actuar. El
-`code-reviewer` sugirió descendente (las 50 más recientes); es defendible para
-triaje de postulaciones frescas. Si se cambia, cambiar también el comentario de
-`kanban-column.tsx`.
+### 18. ~~El proyecto no tiene runner de tests~~ — Resuelto 2026-09-11
 
-### 18. El proyecto no tiene runner de tests
-
-Lo destapó el lote de menciones. `parseMentions` / `activeMentionQuery` son
-regex con offsets y posición de cursor — la clase de código que se rompe en
-silencio. Se verificaron con 20 comprobaciones (`node --experimental-strip-types`
-sobre un script suelto: XSS, correo que no debe abrir el autocompletado,
-uuid en mayúsculas, token malformado, nombre con corchetes, cursor antes del
-`@`), todas verdes, **pero ese script no quedó en el repo**: `node` exige la
-extensión `.ts` en el import y `tsc` la prohíbe (`allowImportingTsExtensions`),
-así que dejarlo habría roto el `typecheck` del CI.
-
-El CI que agregó la otra sesión corre lint + typecheck + build. Falta un runner
-(vitest es el que menos fricción tiene con este stack) y, con él, mover esas 20
-comprobaciones al repo. Mientras no exista, la lógica pura del proyecto no
-tiene red.
+`vitest`, con `src/lib/mentions.test.ts` cubriendo las 20 comprobaciones que
+se habían verificado a mano el 2026-09-09 y nunca quedaron en el repo. `npm
+test` corre en CI junto a lint/typecheck/build. Detalle (incluido un ajuste
+de `@types/node`) en `.claude/napkin.md`.
 
 ### 19. ~~Techo de Vercel de 4.5 MB vs. el límite de 10 MB del código~~ — Resuelto 2026-09-09
 
