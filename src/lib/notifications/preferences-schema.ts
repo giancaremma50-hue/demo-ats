@@ -24,11 +24,13 @@ export const PREFERENCE_TYPES: NotificationType[] = [
 // por el nombre. La etiqueta queda neutral a propósito.
 //
 // post_nuevo/post_mencion/post_reaccion/post_comentario (AJE Conectados)
-// tienen etiqueta acá porque el tipo exige el mapeo completo, pero NO están
-// en PREFERENCE_TYPES todavía — mismo criterio que mencion_nota antes de
-// existir NoteForm: el módulo aún no tiene UI que dispare estos avisos, así
-// que ofrecer el interruptor sería prometer un control sobre algo que no
-// pasa. Agregarlos a PREFERENCE_TYPES cuando se construya la UI del muro.
+// tienen etiqueta acá porque el tipo exige el mapeo completo. Desde
+// 2026-09-11 el módulo SÍ tiene UI real que los dispara (feed, comentarios,
+// reacciones) — pero siguen sin entrar a PREFERENCE_TYPES a propósito:
+// notify() nunca les pasa un `email` (deliberado, no se construyeron
+// plantillas de correo en esta fase), y ofrecer acá el interruptor de
+// "correo" sin que ningún correo salga sería el mismo error que ya se
+// documentó una vez con mencion_nota. Agregarlos cuando exista la plantilla.
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   nueva_postulacion: "Nueva postulación en tus vacantes",
   cambio_etapa: "Cambios de etapa en tus vacantes",
