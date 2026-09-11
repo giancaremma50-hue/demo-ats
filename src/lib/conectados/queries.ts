@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { isScheduled } from "./schema";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type Post = Tables<"posts">;
@@ -23,6 +24,14 @@ export type FeedPost = Omit<Post, "attachments" | "poll" | "reactions"> & {
   attachments: (Attachment & { url: string })[];
   poll: Poll | null;
   reactions: Reactions;
+  /** Todavía NO lo ve nadie más que su autor. Se calcula acá y no en el
+   * componente por dos razones: `Date.now()` en el cuerpo de un render es
+   * error de build en este proyecto (regla de pureza), y `publish_at != null`
+   * a secas no alcanza — `posts_select` ya deja pasar el post en cuanto
+   * `publish_at <= now()`, mientras que el cron que limpia la marca corre una
+   * vez al día. Entre esos dos momentos el post ES visible para todos, así
+   * que marcarlo "Programada" sería mentir por hasta ~24h. */
+  scheduled: boolean;
 };
 export type FeedComment = Omit<PostComment, "reactions"> & { reactions: Reactions };
 
@@ -80,6 +89,7 @@ export async function getPosts(): Promise<FeedPost[]> {
     attachments: resolveAttachments(row.attachments, urlByPath),
     poll: (row.poll as Poll | null) ?? null,
     reactions: (row.reactions as Reactions) ?? {},
+    scheduled: isScheduled(row.publish_at),
   }));
 }
 

@@ -23,8 +23,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       />
       {/* pb calculado igual que el padding del propio FloatingNav (7rem +
           safe-area-inset-bottom) — con solo pb-28 el borde de la píldora en
-          un iPhone con home indicator queda más alto que el aire reservado. */}
-      <main className="mx-auto max-w-6xl px-6 pt-10 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:px-10">
+          un iPhone con home indicator queda más alto que el aire reservado.
+
+          Los gutters horizontales usan la misma escala que AppHeader
+          (`px-4 sm:px-6 lg:px-10`): antes el main arrancaba en `px-6` fijo,
+          así que en un teléfono el contenido quedaba 8px más adentro que el
+          encabezado y cada pantalla perdía 16px de ancho útil — las "franjas"
+          laterales que se ven en móvil. Ojo: la alineación exacta con el
+          encabezado solo se da mientras el viewport sea más angosto que
+          `max-w-6xl`; pasado eso el main se centra y el header sigue a lo
+          ancho completo, que es lo buscado. */}
+      <main className="mx-auto max-w-6xl px-4 pt-10 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10">
         {children}
       </main>
       <FloatingNav role={profile.role} />

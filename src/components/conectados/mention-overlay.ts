@@ -125,7 +125,9 @@ export function useMentionState(candidates: MentionableProfile[]) {
     handleChange,
     insertMention,
     reset,
+    // Sin `mentionIds`: el servidor saca las menciones del cuerpo serializado
+    // (los tokens `@[Nombre](uuid)`) y las valida contra perfiles reales —
+    // mandar además la lista de ids era la misma información dos veces.
     serialized: () => serializeMentions(body, mentions),
-    mentionIds: () => mentions.map((m) => m.profileId),
   };
 }

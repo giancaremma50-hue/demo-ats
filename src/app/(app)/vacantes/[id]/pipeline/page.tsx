@@ -32,7 +32,10 @@ export default async function PipelinePage({
     // encabezado (título + buscador) vive DENTRO de KanbanBoard, no acá:
     // así comparten una sola fila y no se pierde una fila entera de alto
     // (título arriba, buscador abajo) del poco espacio vertical fijo que hay.
-    <div className="mx-[calc(50%-50vw)] flex h-[calc(100vh-13.5rem)] flex-col px-6 lg:px-10">
+    // Los gutters replican los de <main>/AppHeader (`px-4 sm:px-6 lg:px-10`):
+    // esta página se sale del <main> a 100vw, así que no los hereda — sin el
+    // paso `sm` quedaba 8px más adentro que el encabezado en un teléfono.
+    <div className="mx-[calc(50%-50vw)] flex h-[calc(100vh-13.5rem)] flex-col px-4 sm:px-6 lg:px-10">
       <KanbanBoard
         initialData={data}
         jobTitle={job.title}

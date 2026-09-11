@@ -36,6 +36,7 @@ export function CommentThread({ postId }: { postId: string }) {
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [loading, setLoading] = useState(true);
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
   const listaId = useId();
   const mention = useMentionState(mentionable);
   const [isPending, startTransition] = useTransition();
@@ -84,7 +85,7 @@ export function CommentThread({ postId }: { postId: string }) {
     const body = mention.serialized();
     if (!body.trim()) return;
     startTransition(async () => {
-      const result = await addComment({ postId, body, mentions: mention.mentionIds() });
+      const result = await addComment({ postId, body });
       if (result.error) {
         notifyError(result.error);
         return;
@@ -142,7 +143,10 @@ export function CommentThread({ postId }: { postId: string }) {
             <div className="min-w-0 flex-1">
               <div className="rounded-md bg-muted px-3 py-2">
                 <p className="text-xs font-semibold">{comment.author_name}</p>
-                <p className="text-sm">
+                {/* whitespace-pre-wrap como en la tarjeta del post: sin esto
+                    un comentario de varias líneas se colapsa en un párrafo
+                    corrido. `MentionText` pinta trozos, no envuelve en <p>. */}
+                <p className="text-sm whitespace-pre-wrap">
                   <MentionText body={comment.body} />
                 </p>
               </div>
@@ -173,6 +177,7 @@ export function CommentThread({ postId }: { postId: string }) {
 
       <form onSubmit={handleSubmit} className="relative">
         <div
+          ref={highlightRef}
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-md border border-border bg-background px-3 py-2 text-sm whitespace-pre-wrap break-words"
         >
@@ -185,6 +190,10 @@ export function CommentThread({ postId }: { postId: string }) {
               <span key={i}>{s.texto}</span>
             ),
           )}
+          {/* Un textarea que termina en "\n" muestra una línea vacía extra
+              que el div no pinta: sin este carácter invisible el overlay
+              queda una línea más corto y el cursor cae fuera del texto. */}
+          {mention.body.endsWith("\n") && "​"}
         </div>
         <textarea
           ref={areaRef}
@@ -197,6 +206,12 @@ export function CommentThread({ postId }: { postId: string }) {
             mention.setCerrada(false);
           }}
           onKeyUp={(e) => mention.setCursor(e.currentTarget.selectionStart)}
+          onScroll={(e) => {
+            // El overlay no scrollea solo (es un <div>): sin esto, un
+            // comentario de varias líneas se sigue pintando desde la primera
+            // mientras el cursor real ya bajó. Ver .claude/napkin.md.
+            if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop;
+          }}
           onKeyDown={(e) => {
             if (mention.sugerencias.length > 0) {
               if (e.key === "ArrowDown") {

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PostComposer } from "./post-composer";
 import { PostCard } from "./post-card";
+import { isScheduled } from "@/lib/conectados/schema";
 import type { FeedPost, Poll, Reactions, AudienceDepartment } from "@/lib/conectados/queries";
 import type { Database } from "@/lib/supabase/database.types";
 import type { ConectadosViewer, MentionableProfile } from "./types";
@@ -53,7 +54,16 @@ function mergePost(current: FeedPost[], incoming: PostRow): FeedPost[] {
   // el cliente ya tenía y solo se actualizan los campos que Realtime sí
   // trae completos y al día (reacciones, poll, contenido).
   const attachments = existing?.attachments ?? [];
-  const merged: FeedPost = { ...incoming, attachments, poll: incoming.poll ?? null, reactions: incoming.reactions ?? {} };
+  const merged: FeedPost = {
+    ...incoming,
+    attachments,
+    poll: incoming.poll ?? null,
+    reactions: incoming.reactions ?? {},
+    // `Date.now()` (dentro de `isScheduled`) corre acá, en el manejador del
+    // evento de Realtime — nunca en el cuerpo de un render, donde la regla
+    // de pureza de React lo prohíbe.
+    scheduled: isScheduled(incoming.publish_at),
+  };
   if (!existing) return [merged, ...current].sort((a, b) => b.created_at.localeCompare(a.created_at));
   return current.map((p) => (p.id === incoming.id ? merged : p));
 }
@@ -103,7 +113,14 @@ export function ConectadosFeed({
 
   return (
     <ConectadosContext.Provider value={{ viewer, departments, mentionable }}>
-      <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 pb-28 pt-6">
+      {/* Sin px/pt/pb propios: `(app)/layout.tsx` ya envuelve todo en un
+          `<main>` con `px-4 sm:px-6 lg:px-10`, `pt-10` y
+          `pb-[calc(7rem+safe-area)]`. Repetirlos acá sumaba otros 16px de
+          margen por lado en el teléfono (las "franjas" laterales que se
+          veían) y doblaba el aire inferior. `max-w-2xl` sí se queda: una
+          columna de feed más angosta que el `max-w-6xl` del layout es lo
+          correcto en escritorio. */}
+      <div className="mx-auto flex max-w-2xl flex-col gap-4">
         {viewer.canPost && <PostComposer onCreated={handleCreated} />}
         {posts.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">

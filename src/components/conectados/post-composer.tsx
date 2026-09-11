@@ -15,19 +15,46 @@ const MAX_POLL_OPTIONS = 6;
 export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => void }) {
   const { viewer, departments, mentionable } = useConectados();
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
   const listaId = useId();
+  const scheduleId = useId();
   const mention = useMentionState(mentionable);
   const [isPending, startTransition] = useTransition();
 
   const [departmentId, setDepartmentId] = useState<string>("");
+  // Tope inferior del input de fecha. Se calcula al ABRIR el panel (evento),
+  // nunca en el cuerpo del render: `Date.now()` en render es impuro y acá es
+  // error de build. En hora LOCAL y con el formato que espera
+  // `datetime-local` (sin zona, sin segundos) — `toISOString()` a secas daría
+  // UTC y correría el tope varias horas.
+  const [minPublishAt, setMinPublishAt] = useState("");
   const [roles, setRoles] = useState<Array<"gestor" | "admin" | "super_admin">>([]);
   const [publishAt, setPublishAt] = useState("");
+  const [showSchedule, setShowSchedule] = useState(false);
   const [showPoll, setShowPoll] = useState(false);
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [files, setFiles] = useState<File[]>([]);
 
   function toggleRole(role: "gestor" | "admin" | "super_admin") {
     setRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+  }
+
+  function toggleSchedule() {
+    // Al cerrarlo se limpia la fecha: si quedara puesta, el post saldría
+    // programado sin que se vea ningún control de fecha en pantalla. El
+    // `setPublishAt` va acá y NO dentro del actualizador de `setShowSchedule`
+    // — un actualizador de estado tiene que ser puro (React lo re-ejecuta en
+    // StrictMode y en cada pasada de una actualización concurrente).
+    if (showSchedule) {
+      setPublishAt("");
+    } else {
+      // +60s antes de recortar a minutos: `slice(0,16)` trunca los segundos,
+      // así que el minuto en curso quedaría "permitido" por el input pero el
+      // servidor lo rechaza por pasado (compara contra el instante exacto).
+      const ahora = new Date(Date.now() + 60_000);
+      setMinPublishAt(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60_000).toISOString().slice(0, 16));
+    }
+    setShowSchedule((prev) => !prev);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -44,13 +71,29 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
       return;
     }
 
+    // "Programar" activado pero sin fecha: el botón queda encendido y el
+    // envío diría "Publicar" — se lee como programado y sale de inmediato
+    // para toda la organización. Se corta acá con un mensaje concreto.
+    if (showSchedule && !publishAt) {
+      notifyError("Elige la fecha y hora, o desactiva Programar para publicar de una vez.");
+      return;
+    }
+
+    // Un navegador sin soporte de `datetime-local` degrada el control a texto
+    // libre: `new Date("mañana").toISOString()` lanza RangeError dentro del
+    // transition y el envío moriría en silencio, sin aviso ninguno.
+    const scheduledFor = publishAt ? new Date(publishAt) : null;
+    if (scheduledFor && Number.isNaN(scheduledFor.getTime())) {
+      notifyError("La fecha para programar no es válida.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await createPost({
         content,
         departmentId: departmentId || null,
         roles: roles.length > 0 ? roles : null,
-        publishAt: publishAt ? new Date(publishAt).toISOString() : null,
-        mentions: mention.mentionIds(),
+        publishAt: scheduledFor ? scheduledFor.toISOString() : null,
         poll,
       });
       if (result.error) {
@@ -90,6 +133,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
         setDepartmentId("");
         setRoles([]);
         setPublishAt("");
+        setShowSchedule(false);
         setShowPoll(false);
         setPollOptions(["", ""]);
         setFiles([]);
@@ -98,10 +142,17 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
   }
 
   return (
-    <Card className="p-4">
+    // `overflow-visible` pisa el `overflow-hidden` que `Card` trae de fábrica
+    // (tailwind-merge deja ganar la clase del llamador): la lista de
+    // sugerencias de @menciones se posiciona `absolute` dentro de esta Card y,
+    // con el recorte puesto, quedaba cortada al borde — en un teléfono se veía
+    // apenas la primera fila. Nada acá adentro necesita el recorte: el padding
+    // de la Card evita que cualquier hijo toque la esquina redondeada.
+    <Card className="overflow-visible p-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="relative">
           <div
+            ref={highlightRef}
             aria-hidden
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-md border border-border bg-background px-3 py-2 text-sm whitespace-pre-wrap break-words"
           >
@@ -128,6 +179,13 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
             }}
             onKeyUp={(e) => mention.setCursor(e.currentTarget.selectionStart)}
             onClick={(e) => mention.setCursor(e.currentTarget.selectionStart)}
+            onScroll={(e) => {
+              // El overlay es un <div>, no scrollea solo con el textarea:
+              // pasadas las filas visibles, el texto pintado se queda quieto
+              // mientras el cursor real baja. Mismo gotcha ya documentado
+              // para NoteForm en .claude/napkin.md.
+              if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop;
+            }}
             onKeyDown={(e) => {
               if (mention.sugerencias.length === 0) return;
               if (e.key === "ArrowDown") {
@@ -229,6 +287,37 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
           </ul>
         )}
 
+        {/* El contenedor se renderiza siempre (vacío al estar cerrado) para
+            que el `aria-controls` del botón "Programar" nunca apunte a un id
+            inexistente. El input de fecha vive acá, con etiqueta visible, y
+            no suelto en la barra de abajo: un `datetime-local` vacío se pinta
+            en Android como una caja con una flecha y nada más — nadie adivina
+            para qué sirve. */}
+        <div id={scheduleId}>
+          {showSchedule && (
+            <div className="flex flex-col gap-1.5 rounded-md border border-border p-3 text-xs text-muted-foreground">
+              {/* El texto de ayuda va FUERA del <label>: dentro, se pegaría
+                  al nombre accesible del input ("Publicar a partir de Se
+                  libera en la siguiente revisión..."). */}
+              <label className="flex flex-col gap-1.5">
+                <span>Publicar a partir de</span>
+                <input
+                  type="datetime-local"
+                  value={publishAt}
+                  min={minPublishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                  className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+                />
+              </label>
+              {/* "A partir de" y no "el": el cron que libera los programados
+                  corre una vez al día (límite del plan Hobby de Vercel, ver
+                  .claude/napkin.md), así que prometer la hora exacta sería
+                  mentir hasta por ~24h. */}
+              <span className="text-[11px]">Se libera en la siguiente revisión diaria del sistema.</span>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
           <label
             className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
@@ -250,7 +339,10 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
             className={`flex size-9 items-center justify-center rounded-full ${showPoll ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
             aria-label="Agregar encuesta"
           >
-            <ListChecks className="size-[18px]" aria-hidden />
+            {/* strokeWidth 2.5 cuando está activo: AGENTS.md exige mínimo 2.5
+                para cualquier ícono sobre fondo de color sólido — con el
+                verde AJE detrás, el grosor 2 por defecto se lee borroso. */}
+            <ListChecks className="size-[18px]" strokeWidth={showPoll ? 2.5 : 2} aria-hidden />
           </button>
 
           {viewer.isAdminOrAbove && (
@@ -282,7 +374,18 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
             // Roles destinatarios DENTRO del departamento ya elegido — mismo
             // significado que `posts.roles`: vacío = todos, nunca amplía,
             // solo restringe. Reservado a admin+, calca `posts_insert`.
-            <div className="flex items-center gap-1 rounded-full border border-border px-2 py-1">
+            // Con la etiqueta "Solo para" al frente: tres píldoras sueltas no
+            // dicen por sí solas que restringen la audiencia.
+            // `w-full` + `flex-wrap`: con la etiqueta al frente el grupo mide
+            // ~270px, más de lo que queda en un teléfono angosto (320px menos
+            // los gutters y el padding de la Card) — y la Card recorta, no
+            // scrollea. En su propia fila y con wrap nunca se corta.
+            <div
+              role="group"
+              aria-label="Restringir a roles"
+              className="flex w-full flex-wrap items-center gap-1 rounded-lg border border-border px-3 py-1.5"
+            >
+              <span className="text-[11px] text-muted-foreground">Solo para</span>
               {(["gestor", "admin", "super_admin"] as const).map((role) => (
                 <button
                   key={role}
@@ -298,15 +401,16 @@ export function PostComposer({ onCreated }: { onCreated: (post: FeedPost) => voi
           )}
 
           {viewer.isAdminOrAbove && (
-            <label className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground">
-              <Calendar className="size-3.5" aria-hidden />
-              <input
-                type="datetime-local"
-                value={publishAt}
-                onChange={(e) => setPublishAt(e.target.value)}
-                className="bg-transparent outline-none"
-              />
-            </label>
+            <button
+              type="button"
+              onClick={toggleSchedule}
+              aria-expanded={showSchedule}
+              aria-controls={scheduleId}
+              className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium ${showSchedule ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
+            >
+              <Calendar className="size-3.5" strokeWidth={showSchedule ? 2.5 : 2} aria-hidden />
+              Programar
+            </button>
           )}
 
           <ActionButton type="submit" pending={isPending} className="ml-auto h-9 px-5 text-xs">
