@@ -1,51 +1,99 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useTransition } from "react";
 import { uploadAvatar, removeAvatar } from "@/lib/profile/actions";
-import { ActionButton } from "@/components/ui/action-button";
+import {
+  AVATAR_MAX_BYTES,
+  AVATAR_MIME_TYPES,
+  avatarHint,
+  avatarRejectionMessage,
+} from "@/lib/profile/avatar-fields";
 import { Avatar } from "@/components/ui/avatar";
 import { MediaPicker } from "@/components/ui/media-picker";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 
 export function AvatarField({ currentUrl, displayName }: { currentUrl: string | null; displayName: string }) {
-  const [state, formAction, subiendo] = useActionState(uploadAvatar, undefined);
-  const [archivo, setArchivo] = useState<File | null>(null);
+  const [subiendo, startTransition] = useTransition();
+  const [guardado, setGuardado] = useState(false);
   const [pickerKey, setPickerKey] = useState(0);
 
-  // Reset al guardar, calculado EN EL RENDER y no en un efecto: `setState`
-  // dentro de un efecto es error de build en este proyecto (regla de pureza
-  // de React). Cuando `state` cambia a éxito, el `key` del picker cambia y se
-  // remonta: se olvida el archivo elegido y el cuadro pasa a mostrar lo que
-  // acaba de devolver el servidor. El toast sí vive en el efecto — mostrarlo
-  // es un efecto de verdad, no un ajuste de estado.
-  const [estadoVisto, setEstadoVisto] = useState(state);
-  if (state !== estadoVisto) {
-    setEstadoVisto(state);
-    if (state?.success) {
-      setArchivo(null);
-      setPickerKey((k) => k + 1);
-    }
+  /** Vacía el cuadro: olvida el archivo elegido y borra el "Guardado" de la
+   * subida anterior. Va en TODA salida por rechazo — dejar "Guardado" al lado
+   * de un mensaje de error es la peor combinación posible. */
+  function descartar() {
+    setPickerKey((k) => k + 1);
+    setGuardado(false);
   }
 
-  useEffect(() => {
-    if (state?.success) notifySuccess(state.success);
-    else if (state?.error) notifyError(state.error);
-  }, [state]);
+  // Ver el comentario equivalente en BrandMediaField: al llegar la URL nueva
+  // del servidor, el cuadro vuelve a "idle" en vez de quedarse en "Guardado"
+  // con la vista previa local pegada.
+  const [urlVista, setUrlVista] = useState(currentUrl);
+  if (currentUrl !== urlVista) {
+    setUrlVista(currentUrl);
+    if (guardado) descartar();
+  }
+
+  // Se sube al elegir, sin un segundo botón que se pueda olvidar (regla de
+  // diseño 8). La acción se llama directo con un FormData armado acá, en vez
+  // de un `<form action>` + `requestSubmit()`: el input se limpia en cada
+  // cambio (para poder reelegir el mismo archivo) y eso dejaría el formulario
+  // sin archivo que enviar, dependiendo de un orden de eventos muy frágil.
+  //
+  // La foto de perfil sí puede viajar dentro de la Server Action: su tope
+  // propio (3 MB) está por debajo del límite de cuerpo de Vercel, y las dos
+  // guardias de abajo lo cortan en el cliente ANTES de mandar nada — que es
+  // lo que evita el fallo mudo cuando alguien elige una foto de 8 MB del
+  // carrete (ver `createBrandUploadUrl` para el caso de marca).
+  function elegir(file: File | null) {
+    if (!file) return;
+    if (!AVATAR_MIME_TYPES.includes(file.type)) {
+      notifyError(avatarRejectionMessage("formato"));
+      descartar();
+      return;
+    }
+    if (file.size <= 0) {
+      notifyError(avatarRejectionMessage("vacio"));
+      descartar();
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      notifyError(avatarRejectionMessage("tamano"));
+      descartar();
+      return;
+    }
+
+    setGuardado(false);
+    const formData = new FormData();
+    formData.set("file", file);
+    startTransition(async () => {
+      try {
+        const resultado = await uploadAvatar(undefined, formData);
+        if (resultado?.error) {
+          notifyError(resultado.error);
+          descartar();
+          return;
+        }
+        notifySuccess(resultado?.success ?? "Foto de perfil actualizada");
+        // Sin descartar(): la vista previa local se queda hasta que la
+        // revalidación traiga la URL nueva.
+        setGuardado(true);
+      } catch {
+        notifyError("No se pudo subir la foto", "Algo se rompió de nuestro lado. Puedes intentarlo de nuevo.");
+        descartar();
+      }
+    });
+  }
 
   return (
-    // El mismo cuadro que los campos de marca: se ve la foto elegida ANTES de
-    // guardarla, en redondo porque así es como se va a mostrar después. Antes
-    // acá había una miniatura decorativa a la izquierda y un input de archivo
-    // nativo aparte, que solo mostraba el nombre del archivo.
-    <form action={formAction} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <MediaPicker
         key={pickerKey}
-        inputName="file"
         label="Foto de perfil"
         labelHidden
-        hint="PNG, JPG o WebP, máx. 3 MB. Se ve en tus publicaciones, seguimientos y en el encabezado."
-        accept="image/png,image/jpeg,image/webp"
+        hint={avatarHint()}
+        accept={AVATAR_MIME_TYPES.join(",")}
         currentUrl={currentUrl}
         shape="circle"
         // Sin foto, las iniciales sobre el verde de marca — el MISMO respaldo
@@ -53,22 +101,21 @@ export function AvatarField({ currentUrl, displayName }: { currentUrl: string | 
         // en la pantalla donde se administra la foto, era la inconsistencia
         // más confusa posible (ver .claude/napkin.md, 2026-09-11).
         fallback={<Avatar name={displayName} src={null} size={64} />}
-        disabled={subiendo}
-        onSelect={setArchivo}
+        status={subiendo ? "subiendo" : guardado ? "guardado" : "idle"}
+        onSelect={elegir}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <ActionButton variant="secondary" disabled={!archivo} className="h-8 px-3 text-xs" pendingLabel="Subiendo…">
-          Subir
-        </ActionButton>
-        {currentUrl && !subiendo && (
-          <DeleteButton
-            itemLabel="foto de perfil"
-            onDelete={removeAvatar}
-            confirmDescription="Volverás a mostrar tus iniciales hasta que subas otra."
-            className="h-8 px-3 text-xs"
-          />
-        )}
-      </div>
-    </form>
+      {currentUrl && !subiendo && (
+        <DeleteButton
+          itemLabel="foto de perfil"
+          onDelete={async () => {
+            const mensaje = await removeAvatar();
+            descartar();
+            return mensaje;
+          }}
+          confirmDescription="Volverás a mostrar tus iniciales hasta que subas otra."
+          className="h-8 self-start px-3 text-xs"
+        />
+      )}
+    </div>
   );
 }

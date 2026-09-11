@@ -2,8 +2,7 @@ import Image from "next/image";
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { getOrganization } from "@/lib/organizations/get-organization";
 import { BrandingForm } from "@/components/configuracion/branding-form";
-import { BrandImageField } from "@/components/configuracion/brand-image-field";
-import { BrandVideoField } from "@/components/configuracion/brand-video-field";
+import { BrandMediaField } from "@/components/configuracion/brand-media-field";
 import { HeroBackgroundMedia } from "@/components/layout/hero-background-media";
 import { Card } from "@/components/ui/card";
 
@@ -31,9 +30,9 @@ export default async function MarcaPage() {
         </p>
 
         <div className="flex flex-col gap-5">
-          <BrandImageField field="logo_url" currentUrl={org.logo_url} />
-          <BrandImageField field="login_image_url" currentUrl={org.login_image_url} />
-          <BrandVideoField field="login_video_url" currentUrl={org.login_video_url} />
+          <BrandMediaField field="logo_url" currentUrl={org.logo_url} />
+          <BrandMediaField field="login_image_url" currentUrl={org.login_image_url} />
+          <BrandMediaField field="login_video_url" currentUrl={org.login_video_url} />
 
           <div className="border-t border-border pt-5">
             <h3 className="font-serif text-lg">Bolsa de empleo pública</h3>
@@ -41,8 +40,8 @@ export default async function MarcaPage() {
               Foto o video de portada de /empleos — si subes un video, reemplaza a la foto.
             </p>
             <div className="flex flex-col gap-5">
-              <BrandImageField field="careers_cover_image_url" currentUrl={org.careers_cover_image_url} />
-              <BrandVideoField field="careers_cover_video_url" currentUrl={org.careers_cover_video_url} />
+              <BrandMediaField field="careers_cover_image_url" currentUrl={org.careers_cover_image_url} />
+              <BrandMediaField field="careers_cover_video_url" currentUrl={org.careers_cover_video_url} />
             </div>
           </div>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
-import { FileText, ImageUp, Video } from "lucide-react";
+import { FileText, ImageUp, Loader2, Video } from "lucide-react";
 import { kindOfMime, type MediaKind } from "@/lib/media-kind";
 import { cn } from "@/lib/utils";
 
@@ -112,13 +112,18 @@ export function MediaThumb({
  *   cuadro contiene la pista y el estado ("Sin guardar: foto.jpg"), y sin el
  *   `aria-label` ese bloque entero se convertía en el nombre del control y
  *   cambiaba cada vez que se elegía un archivo.
- * - Al elegir un archivo, el cuadro muestra ESE archivo; al guardar, quien lo
- *   usa remonta el componente con un `key` nuevo y el cuadro pasa a mostrar
- *   lo que devolvió el servidor.
- * - `inputName` es para los formularios que envían el archivo por Server
- *   Action (`<form action={...}>`); `onSelect` para los flujos que necesitan
- *   el `File` en JS (el video va directo a Storage con URL firmada). Se
- *   pueden usar los dos a la vez.
+ * - Al elegir un archivo, el cuadro muestra ESE archivo y `onSelect` dispara
+ *   la subida en el acto — no hay un segundo botón que se pueda olvidar. El
+ *   estado `pending` que exige la regla de interacción 1 lo muestra el propio
+ *   cuadro (`status="subiendo"`: spinner, `aria-busy`, input deshabilitado).
+ * - Para vaciarlo (un archivo rechazado, un borrado), quien lo usa lo remonta
+ *   con un `key` nuevo. Al guardar BIEN no se remonta: la vista previa local
+ *   se queda hasta que la revalidación traiga la URL nueva, porque limpiarla
+ *   de una deja el cuadro vacío justo después de guardar.
+ * - El `value` del input se limpia en cada cambio: sin eso, volver a elegir
+ *   EL MISMO archivo (después de que lo rechazaran, o para reemplazar una
+ *   foto corregida con el mismo nombre) no dispara `change` y el cuadro se
+ *   vuelve un clic muerto.
  */
 export function MediaPicker({
   label,
@@ -129,9 +134,8 @@ export function MediaPicker({
   kind = "imagen",
   shape = "rect",
   fallback,
-  inputName,
   describedBy,
-  disabled = false,
+  status = "idle",
   onSelect,
 }: {
   /** Nombre accesible del control y, salvo `labelHidden`, texto visible. */
@@ -146,10 +150,17 @@ export function MediaPicker({
   shape?: "rect" | "circle";
   /** Respaldo del cuadro cuando no hay nada guardado ni elegido. */
   fallback?: React.ReactNode;
-  inputName?: string;
   /** Ids de textos adicionales que describen el campo (ej. la nota de licencia). */
   describedBy?: string;
-  disabled?: boolean;
+  /**
+   * El cuadro ES el control que muta: la subida arranca al elegir el archivo,
+   * así que el estado `pending` de la regla de interacción 1 se muestra acá y
+   * no en un botón aparte. `guardado` mantiene la vista previa local mientras
+   * el valor del servidor llega por revalidación — limpiarla de una dejaba el
+   * cuadro vacío justo después de guardar, que es exactamente lo que se lee
+   * como "no se guardó".
+   */
+  status?: "idle" | "subiendo" | "guardado";
   onSelect?: (file: File | null) => void;
 }) {
   const inputId = useId();
@@ -177,22 +188,29 @@ export function MediaPicker({
 
   const previewUrl = elegido?.url ?? currentUrl;
   const previewKind: MediaKind = elegido ? kindOfMime(elegido.file.type) : kind;
+  const subiendo = status === "subiendo";
 
   return (
     <label
       htmlFor={inputId}
+      aria-busy={subiendo}
       className={cn(
         "flex items-center gap-3.5 rounded-md border border-dashed border-border bg-background p-3.5",
         "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted/40",
+        subiendo ? "cursor-wait opacity-70" : "cursor-pointer hover:bg-muted/40",
       )}
     >
       <span
         className={cn(
-          "flex flex-none items-center justify-center overflow-hidden border border-border bg-muted",
+          "relative flex flex-none items-center justify-center overflow-hidden border border-border bg-muted",
           shape === "circle" ? "size-16 rounded-full" : "h-16 w-24 rounded-md",
         )}
       >
+        {subiendo && (
+          <span className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
+            <Loader2 className="size-5 animate-spin text-foreground" aria-hidden />
+          </span>
+        )}
         <MediaThumb
           url={previewUrl}
           kind={previewKind}
@@ -216,22 +234,30 @@ export function MediaPicker({
             guardar" y "ya guardado" se ven igual — la misma imagen en el
             mismo lugar. */}
         <span aria-live="polite" className="truncate text-xs font-medium text-foreground">
-          {elegido
-            ? `Sin guardar: ${elegido.file.name}`
-            : currentUrl
-              ? "Elegir otro archivo"
-              : "Elegir un archivo"}
+          {subiendo
+            ? "Subiendo…"
+            : status === "guardado"
+              ? "Guardado"
+              : elegido
+                ? `Sin guardar: ${elegido.file.name}`
+                : currentUrl
+                  ? "Elegir otro archivo"
+                  : "Elegir un archivo"}
         </span>
       </span>
       <input
         id={inputId}
-        name={inputName}
         type="file"
         accept={accept}
-        disabled={disabled}
+        disabled={subiendo}
         aria-label={label}
         aria-describedby={describedBy ? `${hintId} ${describedBy}` : hintId}
-        onChange={(e) => elegir(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          elegir(e.target.files?.[0] ?? null);
+          // Ver el comentario de arriba: sin esto, reelegir el mismo archivo
+          // no dispara `change`. El `File` ya quedó capturado por `elegir`.
+          e.target.value = "";
+        }}
         className="sr-only"
       />
     </label>

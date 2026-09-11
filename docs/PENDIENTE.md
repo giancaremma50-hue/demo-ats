@@ -248,8 +248,8 @@ Google Sign-In Branding Guidelines vigentes. Riesgo bajo.
 
 ### 14. ~~Nota de licencia en el configurador de marca~~ — Resuelto 2026-09-08
 
-`src/components/configuracion/license-note.tsx`, montado en `BrandImageField` y
-`BrandVideoField` — cubre los 6 puntos de subida de `/configuracion/marca` desde
+`src/components/configuracion/license-note.tsx`, montado en `BrandMediaField`
+— cubre los 5 puntos de subida de `/configuracion/marca` desde
 un solo componente. Es lo único que el software puede hacer: verificar la
 procedencia de un archivo subido no lo puede comprobar el código.
 

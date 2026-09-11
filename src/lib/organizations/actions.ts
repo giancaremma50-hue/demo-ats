@@ -7,12 +7,16 @@ import { createClient } from "@/lib/supabase/server";
 import { contrastRatio } from "@/lib/color-contrast";
 import { zodFieldError } from "@/lib/forms/zod-error";
 import { optionalText } from "@/lib/zod-helpers";
+import { randomUUID } from "node:crypto";
 import {
-  BRAND_IMAGE_FIELDS,
-  BRAND_VIDEO_FIELDS,
+  BRAND_MEDIA_FIELDS,
   BRAND_FIELD_COPY,
-  type BrandImageField,
-  type BrandVideoField,
+  BRAND_FIELD_SPEC,
+  BRAND_EXTENSION_BY_MIME,
+  brandMediaPrefix,
+  brandMediaExtensions,
+  brandRejectionMessage,
+  type BrandMediaField,
 } from "./brand-fields";
 
 // El fondo claro de la app (--background en globals.css). El foco de
@@ -82,34 +86,15 @@ export async function updateBranding(
   return { success: "Marca actualizada" };
 }
 
-const BrandImageFieldSchema = z.enum(BRAND_IMAGE_FIELDS);
+const BrandMediaFieldSchema = z.enum(BRAND_MEDIA_FIELDS);
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-
-// La extensión sale de esta tabla, nunca del nombre del archivo que manda
-// el cliente — un nombre como "x.png/../../otro-campo" no debe poder
-// alterar la ruta de storage.
-// Sin SVG a propósito: el bucket es público y sirve el archivo tal cual,
-// sin ningún CSP propio — un SVG con <script> se ejecutaría al abrir la
-// URL directa. PNG/WebP no tienen ese riesgo.
-const EXTENSION_BY_MIME: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
-const ALLOWED_TYPES = new Set(Object.keys(EXTENSION_BY_MIME));
-
-function brandImagePaths(organizationId: string, field: BrandImageField) {
-  return Object.values(EXTENSION_BY_MIME).map((ext) => `${organizationId}/${field}.${ext}`);
-}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Toda pantalla que pinta marca, no solo el layout raíz. `/empleos` es ISR
  * (`export const revalidate = 60` en su page) y `/login` se renderiza con la
  * organización: sin nombrarlas, cambiar la portada podía seguir sirviéndose
  * vieja — y después de un borrado, apuntando a un archivo que ya no existe.
- * Las imágenes revalidaban solo `/` y los videos las tres; la diferencia no
- * tenía razón de ser (encontrado en review el 2026-09-11).
  */
 function revalidateBrandSurfaces() {
   revalidatePath("/", "layout");
@@ -117,206 +102,186 @@ function revalidateBrandSurfaces() {
   revalidatePath("/empleos");
 }
 
-export type UploadImageState = { error?: string; success?: string } | undefined;
-
-export async function uploadBrandImage(
-  _prevState: UploadImageState,
-  formData: FormData,
-): Promise<UploadImageState> {
-  const profile = await requireSuperAdmin();
-  const parsedField = BrandImageFieldSchema.safeParse(formData.get("field"));
-  const file = formData.get("file");
-
-  if (!parsedField.success) {
-    return { error: "Campo de imagen inválido." };
-  }
-  const field = parsedField.data;
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Selecciona un archivo primero." };
-  }
-  if (file.size > MAX_IMAGE_BYTES) {
-    return { error: "El archivo pesa más de 5 MB. Prueba con una imagen más liviana." };
-  }
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return { error: "Formato no admitido. Usa PNG, JPG o WebP." };
-  }
-
-  const supabase = await createClient();
-  const extension = EXTENSION_BY_MIME[file.type];
-  const path = `${profile.organization_id}/${field}.${extension}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("marca-publico")
-    .upload(path, file, { upsert: true, contentType: file.type });
-
-  if (uploadError) {
-    return { error: "No se pudo subir el archivo. Inténtalo de nuevo." };
-  }
-
-  const { data: publicUrl } = supabase.storage.from("marca-publico").getPublicUrl(path);
-  const cacheBusted = `${publicUrl.publicUrl}?v=${Date.now()}`;
-
-  const update: Partial<Record<BrandImageField, string>> = { [field]: cacheBusted };
-  const { data: updateData, error: updateError } = await supabase
-    .from("organizations")
-    .update(update)
-    .eq("id", profile.organization_id)
-    .select("id");
-
-  if (updateError || !updateData || updateData.length === 0) {
-    return { error: "El archivo se subió pero no se pudo guardar. Inténtalo de nuevo." };
-  }
-
-  // Limpieza best-effort: si el formato cambió (ej. .png -> .webp), el
-  // archivo anterior queda huérfano en un path distinto porque `upsert`
-  // solo sobrescribe una ruta idéntica. No afecta el resultado si falla.
-  const stalePaths = brandImagePaths(profile.organization_id, field).filter((p) => p !== path);
-  await supabase.storage.from("marca-publico").remove(stalePaths);
-
-  revalidateBrandSurfaces();
-  return { success: BRAND_FIELD_COPY[field].uploaded };
-}
-
-export async function removeBrandImage(fieldInput: BrandImageField): Promise<string> {
-  const profile = await requireSuperAdmin();
-
-  // Una Server Action es un endpoint invocable por red: el tipo de
-  // BrandImageField no protege en runtime contra una llamada fabricada a
-  // mano con otro nombre de columna (ej. allowed_email_domain).
-  const parsedField = BrandImageFieldSchema.safeParse(fieldInput);
-  if (!parsedField.success) {
-    throw new Error("Campo de imagen inválido.");
-  }
-  const field = parsedField.data;
-
-  const supabase = await createClient();
-
-  // La base se actualiza primero: si esto falla, nunca se toca storage y
-  // el campo sigue apuntando a un archivo que sigue existiendo. Al revés,
-  // un storage.remove() fallido después de guardar solo deja un archivo
-  // huérfano — inofensivo, nada lo referencia ya.
-  const update: Partial<Record<BrandImageField, null>> = { [field]: null };
-  const { data, error } = await supabase
-    .from("organizations")
-    .update(update)
-    .eq("id", profile.organization_id)
-    .select("id");
-
-  if (error || !data || data.length === 0) throw new Error("No se pudo quitar la imagen.");
-
-  // Limpieza best-effort: no sabemos con qué extensión se guardó, así que
-  // se intentan todas las posibles.
-  await supabase.storage.from("marca-publico").remove(brandImagePaths(profile.organization_id, field));
-
-  revalidateBrandSurfaces();
-  return BRAND_FIELD_COPY[field].removed;
-}
-
-// Un video de fondo puede pesar más de lo que una Server Action admite
-// como body en Vercel — por eso este flujo NO sube el archivo a través de
-// una acción: genera una URL firmada de Storage y el navegador sube el
-// archivo directo desde el cliente (uploadToSignedUrl), sin pasar por el
-// servidor de Next en absoluto.
-const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
-const VIDEO_EXTENSION_BY_MIME: Record<string, string> = {
-  "video/mp4": "mp4",
-  "video/webm": "webm",
-};
-const ALLOWED_VIDEO_TYPES = new Set(Object.keys(VIDEO_EXTENSION_BY_MIME));
-
-const BrandVideoFieldSchema = z.enum(BRAND_VIDEO_FIELDS);
-
-// El nombre de archivo en Storage es distinto del nombre de columna a
-// propósito — "login_video" ya tiene videos subidos bajo ese path para
-// organizaciones existentes; cambiarlo para que coincida con la columna
-// (login_video_url) los dejaría huérfanos.
-const VIDEO_PATH_STEM: Record<BrandVideoField, string> = {
-  login_video_url: "login_video",
-  careers_cover_video_url: "careers_cover_video",
-};
-
-function brandVideoPaths(organizationId: string, field: BrandVideoField) {
-  return Object.values(VIDEO_EXTENSION_BY_MIME).map((ext) => `${organizationId}/${VIDEO_PATH_STEM[field]}.${ext}`);
-}
-
+/**
+ * NINGÚN archivo de marca viaja dentro del cuerpo de una Server Action.
+ *
+ * Los videos ya iban por URL firmada; las imágenes no, y ahí estaba el bug
+ * reportado el 2026-09-11: se elegía el logo, se tocaba "Subir" y no pasaba
+ * nada — ni imagen, ni error. Una Server Action es una función serverless, y
+ * en Vercel el cuerpo de una petición a una función tiene un tope de ~4.5 MB
+ * que `serverActions.bodySizeLimit` de Next NO puede subir (es de la
+ * plataforma, no del framework). Una foto o una captura de un teléfono de hoy
+ * lo pasa fácil, y cuando eso ocurre la petición se rechaza ANTES de que
+ * corra una sola línea de este archivo: `useActionState` nunca cambia de
+ * estado, así que no hay ni éxito ni error que mostrar. Silencio.
+ *
+ * Con URL firmada el navegador sube directo a Storage y el servidor solo
+ * autoriza la ruta y confirma. El tope real pasa a ser el del bucket (20 MB),
+ * que es el que la interfaz promete.
+ */
 export type CreateUploadUrlState =
   | { ok: true; path: string; token: string }
   | { ok: false; error: string };
 
-export async function createBrandVideoUploadUrl(
-  fieldInput: BrandVideoField,
+// Una Server Action es un endpoint invocable por red y sus parámetros son
+// entrada del cliente como cualquier otra: el tipo de TypeScript no existe en
+// runtime (AGENTS.md, Seguridad: "Validación Zod en cada Server Action").
+const CreateUploadInputSchema = z.object({
+  field: BrandMediaFieldSchema,
+  mimeType: z.string().max(120),
+  sizeBytes: z.number().int().finite(),
+});
+const ConfirmUploadInputSchema = z.object({
+  field: BrandMediaFieldSchema,
+  path: z.string().min(1).max(300),
+});
+
+export async function createBrandUploadUrl(
+  fieldInput: BrandMediaField,
   mimeType: string,
   sizeBytes: number,
 ): Promise<CreateUploadUrlState> {
   const profile = await requireSuperAdmin();
 
-  const parsedField = BrandVideoFieldSchema.safeParse(fieldInput);
-  if (!parsedField.success) return { ok: false, error: "Campo de video inválido." };
-  const field = parsedField.data;
+  const parsed = CreateUploadInputSchema.safeParse({ field: fieldInput, mimeType, sizeBytes });
+  if (!parsed.success) return { ok: false, error: "Campo de marca inválido." };
+  const { field } = parsed.data;
+  const spec = BRAND_FIELD_SPEC[field];
 
-  if (!ALLOWED_VIDEO_TYPES.has(mimeType)) {
-    return { ok: false, error: "Formato no admitido. Usa MP4 o WebM." };
+  if (!spec.mimeTypes.includes(parsed.data.mimeType)) {
+    return { ok: false, error: brandRejectionMessage(field, "formato") };
   }
-  if (sizeBytes > MAX_VIDEO_BYTES || sizeBytes <= 0) {
-    return { ok: false, error: "El video pesa más de 20 MB. Usa uno más corto o comprímelo." };
-  }
+  // Vacío y demasiado grande son dos problemas distintos y merecen dos
+  // mensajes distintos: "pesa más de 5 MB" sobre un archivo de 0 bytes dice
+  // justo lo contrario de lo que pasó (regla de interacción 5).
+  if (parsed.data.sizeBytes <= 0) return { ok: false, error: brandRejectionMessage(field, "vacio") };
+  if (parsed.data.sizeBytes > spec.maxBytes) return { ok: false, error: brandRejectionMessage(field, "tamano") };
 
-  const extension = VIDEO_EXTENSION_BY_MIME[mimeType];
-  const path = `${profile.organization_id}/${VIDEO_PATH_STEM[field]}.${extension}`;
+  // Ruta nueva en cada subida (ver `brandMediaPrefix`): lo que está publicado
+  // no se toca hasta que la columna apunte al archivo nuevo.
+  const extension = BRAND_EXTENSION_BY_MIME[parsed.data.mimeType];
+  const path = `${profile.organization_id}/${brandMediaPrefix(field)}${randomUUID()}.${extension}`;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.storage.from("marca-publico").createSignedUploadUrl(path, { upsert: true });
+  const { data, error } = await supabase.storage.from("marca-publico").createSignedUploadUrl(path);
   if (error || !data) return { ok: false, error: "No se pudo preparar la subida. Inténtalo de nuevo." };
 
   return { ok: true, path: data.path, token: data.token };
 }
 
-export type ConfirmVideoState = { error?: string; success?: string } | undefined;
+export type ConfirmUploadState = { error?: string; success?: string } | undefined;
 
-export async function confirmBrandVideoUpload(fieldInput: BrandVideoField, path: string): Promise<ConfirmVideoState> {
+export async function confirmBrandUpload(fieldInput: BrandMediaField, path: string): Promise<ConfirmUploadState> {
   const profile = await requireSuperAdmin();
 
-  const parsedField = BrandVideoFieldSchema.safeParse(fieldInput);
-  if (!parsedField.success) return { error: "Campo de video inválido." };
-  const field = parsedField.data;
+  const parsed = ConfirmUploadInputSchema.safeParse({ field: fieldInput, path });
+  if (!parsed.success) return { error: "Campo de marca inválido." };
+  const { field } = parsed.data;
+  const spec = BRAND_FIELD_SPEC[field];
 
-  // El path lo generó createBrandVideoUploadUrl() para esta misma
-  // organización y campo — si no coincide con ese patrón, no hay nada que
-  // confirmar (una llamada fabricada a mano no debería poder apuntar la URL
-  // pública a una ruta arbitraria de otra organización).
-  if (!brandVideoPaths(profile.organization_id, field).includes(path)) {
-    return { error: "Ruta de video inválida." };
+  // La ruta tiene que ser una que ESTE servidor generó para ESTA organización
+  // y ESTE campo: `{org}/{stem}-{uuid}.{ext}`. Se valida con operaciones de
+  // string y no armando un RegExp con datos de entrada adentro.
+  const carpeta = profile.organization_id;
+  const archivo = parsed.data.path.startsWith(`${carpeta}/`) ? parsed.data.path.slice(carpeta.length + 1) : null;
+  const prefijo = brandMediaPrefix(field);
+  if (!archivo || archivo.includes("/") || !archivo.startsWith(prefijo)) {
+    return { error: "Ruta de archivo inválida." };
+  }
+  const punto = archivo.lastIndexOf(".");
+  if (punto <= 0) return { error: "Ruta de archivo inválida." };
+  if (!UUID_RE.test(archivo.slice(prefijo.length, punto))) return { error: "Ruta de archivo inválida." };
+  if (!brandMediaExtensions(field).includes(archivo.slice(punto + 1))) {
+    return { error: "Ruta de archivo inválida." };
   }
 
   const supabase = await createClient();
-  const { data: publicUrl } = supabase.storage.from("marca-publico").getPublicUrl(path);
-  const cacheBusted = `${publicUrl.publicUrl}?v=${Date.now()}`;
 
-  const update: Partial<Record<BrandVideoField, string>> = { [field]: cacheBusted };
-  const { error } = await supabase.from("organizations").update(update).eq("id", profile.organization_id);
-  if (error) return { error: "El video se subió pero no se pudo guardar. Inténtalo de nuevo." };
+  // El tamaño que se validó al pedir la URL lo declaró el CLIENTE: nada impide
+  // pedir permiso para 1 MB y subir 19 MB (el bucket admite 20). Storage es la
+  // única fuente de verdad de que el archivo llegó y de cuánto pesa.
+  //
+  // Ojo con la interpretación del resultado: si la consulta FALLA (red, 5xx)
+  // NO se puede concluir que el archivo no llegó — descartarlo ahí perdería
+  // una subida buena y dejaría un huérfano. Solo una respuesta correcta y
+  // vacía prueba que no está. Y `search` es coincidencia parcial: hay que
+  // exigir el nombre exacto.
+  const { data: objetos, error: listError } = await supabase.storage
+    .from("marca-publico")
+    .list(carpeta, { search: archivo });
+  const subido = objetos?.find((o) => o.name === archivo);
+  if (!listError && !subido) return { error: "El archivo no llegó completo. Inténtalo de nuevo." };
 
-  const stalePaths = brandVideoPaths(profile.organization_id, field).filter((p) => p !== path);
-  await supabase.storage.from("marca-publico").remove(stalePaths);
+  // `metadata.size` ausente = no verificable, NO cero: tratarlo como 0 dejaba
+  // pasar cualquier tamaño con la verificación puesta y sin dejar rastro.
+  const tamanoReal = subido?.metadata?.size;
+  if (typeof tamanoReal === "number" && tamanoReal > spec.maxBytes) {
+    // Se puede borrar sin miedo porque la ruta es nueva: nada la referencia
+    // todavía, y lo que está publicado sigue en su propia ruta.
+    await supabase.storage.from("marca-publico").remove([parsed.data.path]);
+    return { error: brandRejectionMessage(field, "tamano") };
+  }
+
+  const { data: publicUrl } = supabase.storage.from("marca-publico").getPublicUrl(parsed.data.path);
+
+  const update: Partial<Record<BrandMediaField, string>> = { [field]: publicUrl.publicUrl };
+  const { data, error } = await supabase
+    .from("organizations")
+    .update(update)
+    .eq("id", profile.organization_id)
+    .select("id");
+  if (error || !data || data.length === 0) {
+    return { error: "El archivo se subió pero no se pudo guardar. Inténtalo de nuevo." };
+  }
+
+  // Recién con la columna apuntando al archivo nuevo se limpian las versiones
+  // anteriores del mismo campo. Best-effort: si falla, quedan objetos
+  // huérfanos en el bucket, que es inofensivo — nada los referencia.
+  await removeOtherVersions(supabase, carpeta, field, archivo);
 
   revalidateBrandSurfaces();
   return { success: BRAND_FIELD_COPY[field].uploaded };
 }
 
-export async function removeBrandVideo(fieldInput: BrandVideoField): Promise<string> {
+/** Borra todas las versiones de un campo salvo la que se indique. Con
+ * `conservar` en `null` las borra todas (al quitar el archivo del campo). */
+async function removeOtherVersions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  carpeta: string,
+  field: BrandMediaField,
+  conservar: string | null,
+) {
+  const prefijo = brandMediaPrefix(field);
+  const { data: objetos } = await supabase.storage.from("marca-publico").list(carpeta, { search: prefijo });
+  const sobrantes = (objetos ?? [])
+    .filter((o) => o.name.startsWith(prefijo) && o.name !== conservar)
+    .map((o) => `${carpeta}/${o.name}`);
+  if (sobrantes.length > 0) await supabase.storage.from("marca-publico").remove(sobrantes);
+}
+
+export async function removeBrandMedia(fieldInput: BrandMediaField): Promise<string> {
   const profile = await requireSuperAdmin();
 
-  const parsedField = BrandVideoFieldSchema.safeParse(fieldInput);
-  if (!parsedField.success) throw new Error("Campo de video inválido.");
+  const parsedField = BrandMediaFieldSchema.safeParse(fieldInput);
+  if (!parsedField.success) throw new Error("Campo de marca inválido.");
   const field = parsedField.data;
 
   const supabase = await createClient();
 
-  const update: Partial<Record<BrandVideoField, null>> = { [field]: null };
-  const { error } = await supabase.from("organizations").update(update).eq("id", profile.organization_id);
-  if (error) throw new Error("No se pudo quitar el video.");
+  // La base se actualiza primero: si esto falla, nunca se toca Storage y el
+  // campo sigue apuntando a un archivo que sigue existiendo. Al revés, un
+  // remove() fallido después de guardar solo deja un archivo huérfano —
+  // inofensivo, nada lo referencia ya.
+  const update: Partial<Record<BrandMediaField, null>> = { [field]: null };
+  const { data, error } = await supabase
+    .from("organizations")
+    .update(update)
+    .eq("id", profile.organization_id)
+    .select("id");
+  if (error || !data || data.length === 0) throw new Error("No se pudo quitar el archivo.");
 
-  await supabase.storage.from("marca-publico").remove(brandVideoPaths(profile.organization_id, field));
+  await removeOtherVersions(supabase, profile.organization_id, field, null);
+
   revalidateBrandSurfaces();
   return BRAND_FIELD_COPY[field].removed;
 }
