@@ -288,24 +288,29 @@ Sigue sin resolver, menor, del mismo flujo:
   lector no ve el "hora UTC". En una invitación a reunión, confunde.
 - No hay recordatorio antes de la reunión.
 
-### 17. El kanban recorta el DOM, no la red
+### 17. ~~El kanban recorta el DOM, no la red~~ — Resuelto 2026-09-11
 
-`KanbanColumn` topa a 50 tarjetas por columna, pero `getKanbanData` sigue sin
-`limit`: el payload RSC de `/vacantes/[id]/pipeline` continúa llevando TODAS las
-postulaciones activas. Con el pico de 1000+ postulantes que apunta la auditoría
-de lanzamiento, eso son 1000 tarjetas viajando en cada carga para pintar 50.
+`getKanbanData` traía TODAS las postulaciones activas de la vacante en un
+solo payload RSC; el tope de 50 por columna era solo del cliente. Con el
+pico de 1000+ postulantes que apunta la auditoría de lanzamiento, eso eran
+1000 tarjetas viajando para pintar 50.
 
-El tope resolvió lo que estaba a punto de romperse (el DOM y los `<Draggable>`
-de dnd, que se arrastran mucho antes). Lo de la red necesita paginación real por
-etapa —cursor por `applied_at` y un endpoint para "ver más"— y eso cambia la
-forma de `KanbanData`, así que no entraba en este lote.
+Ahora una consulta por etapa (50 filas + conteo real, ordenado por
+`applied_at` DESCENDENTE — las más recientes primero, decisión del usuario
+2026-09-09, ver `kanban-column.tsx`), "ver más" pagina por cursor
+(`applied_at`), y la búsqueda por nombre se movió al servidor (con debounce)
+para no dejar de encontrar a alguien fuera de lo ya cargado. `/code-review`
+a `medium` encontró y corrigió 3 bugs de concurrencia antes de tocar
+producción (rollback de drag pisando otro drag, búsqueda pisando un
+movimiento optimista, tarjeta duplicada tras buscar + "ver más") — ninguno
+visible con el volumen de datos de este entorno de demo. Detalle completo en
+`.claude/napkin.md`.
 
-Nota de orden: `getKanbanData` ahora ordena `applied_at` ASCENDENTE (más
-antiguas primero), porque con un tope hace falta un orden determinista y en un
-pipeline quien lleva más esperando es por quien hay que actuar. El
-`code-reviewer` sugirió descendente (las 50 más recientes); es defendible para
-triaje de postulaciones frescas. Si se cambia, cambiar también el comentario de
-`kanban-column.tsx`.
+No se pudo verificar visualmente en navegador (login real de Google, sin
+credenciales en este entorno) ni con datos reales de volumen (ninguna etapa
+de este proyecto pasa de 1 postulación activa hoy) — verificado con
+`npm run build` completo, `npm test`, `npm run typecheck`/`lint` limpios, y
+`/code-review`.
 
 ### 18. ~~El proyecto no tiene runner de tests~~ — Resuelto 2026-09-11
 

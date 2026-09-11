@@ -7,7 +7,69 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (primer runner de tests del proyecto — vitest, con las 20 comprobaciones de menciones que nunca habían quedado en el repo)_
+_Última actualización: 2026-09-11 (paginación real del kanban — 3 bugs de concurrencia/paginación encontrados por `/code-review` antes de tocar producción, ninguno visible con los datos de demo)_
+
+## Paginación real del kanban: 3 bugs de estado que solo salen con volumen o con dos acciones casi simultáneas (2026-09-11)
+
+Pendiente #17. `getKanbanData` traía TODAS las postulaciones activas de la
+vacante en un solo payload; el tope de 50 por columna era solo del cliente.
+Se rediseñó a una consulta por etapa (50 + conteo real), "ver más" por
+cursor (`applied_at`), y búsqueda por nombre movida al servidor (con
+debounce) para no perder resultados fuera de lo cargado. Nada de esto se
+pudo probar visualmente: la base de este proyecto no tiene ninguna etapa con
+más de 1 postulación activa hoy, y el login real (Google OAuth) no se puede
+completar desde este entorno — verificado por `npm run build` completo +
+`/code-review` a `medium` (4 ángulos en paralelo), no por navegador.
+
+1. **Los 3 hallazgos reales que salieron del review son del mismo género:
+   "funciona con una sola cosa pasando a la vez", y ni las pruebas unitarias
+   ni un build limpio lo agarran.**
+   - `moveCard` revertía con un snapshot completo (`previousCards`) en vez de
+     deshacer solo SU movimiento — dos arrastres casi seguidos donde el
+     primero falla tarde hacían que el rollback del primero borrara el éxito
+     del segundo. Fix: revertir puntualmente (volver esa tarjeta a su etapa
+     de origen), nunca restaurar una foto vieja completa.
+   - La búsqueda hidrataba tarjetas escribiendo por encima cualquier entrada
+     existente — un drag optimista corriendo al mismo tiempo que una
+     búsqueda debounced para ese candidato podía perder el cambio visual.
+     Fix: `addMissingCards()` solo AGREGA lo que falta, nunca pisa una
+     entrada que ya está en memoria.
+   - Ese mismo `addMissingCards()` cerró de paso un segundo bug: una tarjeta
+     hidratada por búsqueda podía volver a llegar sin deduplicar cuando
+     después se pedía "ver más" en esa columna — dos entradas con la misma
+     `key` de React.
+   Do instead: **cuando dos fuentes de datos (una acción optimista del
+   usuario y una respuesta de red que llega después) pueden escribir la
+   MISMA pieza de estado, la de la red nunca gana por default** — o se
+   fusiona con cuidado (agregar, no reemplazar) o se descarta si es más
+   vieja que lo que ya hay. "Restaurar el snapshot de antes" es tentador
+   como manejo de error porque es una línea, pero asume que nada más cambió
+   ese estado mientras tanto — falso en cuanto hay dos acciones en vuelo.
+2. **Un cálculo de "hay más" y un cálculo de "cuántas hay en total" tienen
+   que usar la MISMA fuente, o divergen en el borde exacto.** La carga
+   inicial marcaba `nextCursor` solo si `cards.length === PAGE_SIZE Y
+   totalCount > cards.length`; "ver más" solo miraba lo primero — con un
+   resto de exactamente una página completa (100 en total, columna con 50 +
+   50), prometía una tercera página vacía. Fix: pedir una fila de más
+   (`LIMIT PAGE_SIZE + 1`) en vez de una segunda consulta de conteo en cada
+   "ver más" — barato y sin el desfase.
+3. **Combinar dos consultas en una no es solo más rápido, evita que dos
+   números que deberían coincidir se calculen por caminos distintos.**
+   `{ count: "exact" }` en la MISMA consulta que trae las filas (PostgREST
+   cuenta sobre el total que cumple los filtros, antes del `LIMIT`) reemplazó
+   una segunda consulta `head: true` aparte — la mitad de los round-trips en
+   la carga inicial, y un solo lugar del que sale tanto `cards` como
+   `totalCount`.
+4. **Un `.select()` armado con `.replace()` en tiempo de ejecución pierde el
+   tipo que `supabase-js` infiere del string literal.** Se intentó compartir
+   la lista de columnas (`KANBAN_CARD_SELECT`) también para la consulta con
+   `candidates!inner(...)` reemplazando el texto a mano — compiló distinto:
+   la fila pasó a `any`/`GenericStringError`. El `.select()` de esa consulta
+   quedó como string literal propio, sin derivar del compartido. Do instead:
+   compartir la lista de columnas entre consultas CON EL MISMO tipo de join
+   (interno o no) es seguro; para una variante con un join distinto,
+   escribir el literal aparte es más simple y más seguro en tipos que
+   derivarlo a mano.
 
 ## El proyecto ya tiene runner de tests: vitest (2026-09-11)
 

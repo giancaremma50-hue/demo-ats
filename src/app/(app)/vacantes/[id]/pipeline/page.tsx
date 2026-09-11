@@ -37,6 +37,7 @@ export default async function PipelinePage({
     // paso `sm` quedaba 8px más adentro que el encabezado en un teléfono.
     <div className="mx-[calc(50%-50vw)] flex h-[calc(100vh-13.5rem)] flex-col px-4 sm:px-6 lg:px-10">
       <KanbanBoard
+        jobId={id}
         initialData={data}
         jobTitle={job.title}
         jobInfoModal={<JobInfoModal job={job} collaborators={collaborators} />}
