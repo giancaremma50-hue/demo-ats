@@ -62,6 +62,30 @@ Estas skills **no son opcionales**. Antes de empezar cualquier tarea, ubícala e
 
 Regla de cierre: **ningún commit entra sin haber pasado por `/code-review`.** Si el review encuentra algo, se corrige antes de commitear, no después.
 
+### Skills de movimiento y craft (de `emilkowalski/skills`, instaladas 2026-09-12)
+
+Diez skills de Emil Kowalski (Vercel, Linear; autor de Sonner y Vaul) que fijan el
+estándar de animación y de detalle fino. Se instalaron las de web; `write-swift` y
+`animate-expo` quedaron fuera a propósito — son de Swift y React Native, y este
+proyecto no es ninguna de las dos cosas.
+
+| Cuando la tarea es… | Skill |
+|---|---|
+| **Escribir CUALQUIER animación o transición** | `animate` — decide en orden: si debe animar, qué propiedades, qué curva, qué duración, cómo se interrumpe y cómo sale |
+| Revisar movimiento ya escrito | `review-animations` |
+| Auditar el movimiento de todo el repo | `improve-animations` |
+| Buscar dónde FALTA movimiento (y dónde no ponerlo) | `find-animation-opportunities` |
+| Detalle fino de UI, componentes, lo invisible que se nota | `emil-design-eng` |
+| Gestos, springs, materiales, profundidad | `apple-design` |
+| Trabajar o depurar los toast | `ask-sonner` (el proyecto usa Sonner — ver regla de interacción 2) |
+| Elegir una librería de frontend | `pick-ui-library` |
+| Explorar varias versiones de una pieza de UI | `prototype` |
+| Ponerle nombre a un efecto que no sabés cómo se llama | `animation-vocabulary` |
+
+Las tres reglas de ese estándar que este proyecto viola hoy y que **no se pueden
+volver a introducir en código nuevo**: nunca `ease-in` en UI, nunca `transition-all`
+(se nombra la propiedad), y nunca una entrada desde `scale(0)`.
+
 ---
 
 ## Reglas de interacción — no negociables
