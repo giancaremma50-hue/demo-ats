@@ -151,6 +151,17 @@ Reemplaza al esquema anterior ("editorial sobrio", incluida la unificación de t
 
 Multicolor por contexto: cada estado o marca puede tener su color (igual que AJE distingue Amayu/Cielo/Pulp), pero un mismo componente no mezcla más de dos tokens.
 
+**El verde AJE es un color de RELLENO, no de texto** (2026-09-12, tras encontrar el fallo en vivo). `#00B348` da **2.78:1 contra blanco**: sirve de fondo, no sirve ni de texto chico ni de anillo de foco sobre el fondo claro. De ahí salen dos tokens con roles distintos, y confundirlos es el error:
+
+| Token | Qué es | Dónde |
+|---|---|---|
+| `--primary` | El verde AJE **fijo**, `#00B348`. No lo configura nadie. | Relleno: botones, barra flotante, barra de acciones del candidato |
+| `--accent` | El que **sí configura** cada organización (inyectado inline sobre `<html>`) | Cosas chicas sobre fondo claro: texto, bordes, resaltados, anillo de foco |
+
+- **Todo lo que va ENCIMA del verde AJE lleva `--aje-dark`, nunca blanco.** Blanco da 2.78:1; la tinta oscura, 6.41. Esto vale para el botón primario, el avatar, la barra de acciones y la barra flotante — no solo para esta última, que fue donde se aplicó primero y donde se quedó tres días (regla de interacción 10).
+- **Un acento tiene que pasar 4.5:1 contra el fondo.** Es el anillo de foco (`--ring: var(--accent)`), pero además es texto chico (`text-accent`) y es fondo con texto blanco encima (`bg-accent`): los tres piden 4.5, y como el contraste es simétrico una sola comprobación contra el blanco cubre las tres. Por eso el acento por defecto —`DEFAULT_ACCENT` en `src/lib/color-contrast.ts`, que es la fuente para todo TS/TSX; `globals.css` y las plantillas de correo llevan su propia copia porque ninguno de los dos puede importar una constante— es `#008134`: el mismo matiz del verde AJE (144°), bajado hasta 5.01:1. **El `#00B348` crudo no se ofrece como acento** — lo rechaza la propia validación del formulario de marca.
+- Esta tabla describe el **tema claro**, que es el único que existe: el bloque `.dark` de `globals.css` es código muerto (nada agrega esa clase, y no hay una sola utilidad `dark:` en los componentes). Ahí `--accent` y `--primary` son el mismo valor, así que la separación de roles de arriba **no aplica** — el día que se encienda el tema oscuro, hay que rehacerla.
+
 **Fondo y superficies**
 - Blanco puro `#FFFFFF` de fondo (ya no blanco hueso).
 - **El borde define, la sombra levanta** (precisado 2026-09-12 tras auditoría: la regla decía "elevación con sombra, NUNCA borde de 1px" y el código usaba borde 528 veces contra 14 de sombra. No era que el código estuviera mal — era que la regla decía "nunca" sobre dos cosas que hacen trabajos distintos).

@@ -326,6 +326,13 @@ export function FloatingNav({ role }: { role: Role }) {
           }}
           className={cn(
             "pointer-events-auto flex items-center gap-0.5 rounded-full shadow-nav",
+            // El anillo de foco es el acento configurable, pensado para el
+            // fondo blanco: sobre el verde o el naranja de la barra puede
+            // bajar de 2:1 y volverse invisible. Acá manda la misma tinta
+            // oscura que ya llevan los íconos — 6.4:1 sobre el verde, 6.3
+            // sobre el naranja, y funciona con cualquier acento que alguien
+            // configure después.
+            "[--ring:var(--aje-dark)]",
             // Tope en CSS además del que calcula la medición: hasta que hidrate
             // —y para siempre si la hidratación falla— el ancho es `auto`, y en
             // un teléfono de 320 la píldora se sale por los dos lados. Centrada
@@ -382,7 +389,8 @@ export function FloatingNav({ role }: { role: Role }) {
                     decirte dónde estás, y en un teléfono al sol. `--aje-dark`
                     es el mismo valor en los dos temas, y los dos fondos
                     posibles son claros: 6.5:1 sobre `#00b348`, 9.4:1 sobre el
-                    `#2fd66f` del tema oscuro, 6.7:1 sobre el naranja. */}
+                    naranja. (El bloque `.dark` de `globals.css` da otro verde,
+                    pero ese tema hoy no se puede encender — ver el napkin.) */}
                 <button
                   type="button"
                   aria-label={
@@ -428,10 +436,9 @@ export function FloatingNav({ role }: { role: Role }) {
                         onClick={() => setSwitcherOpen(false)}
                         className="flex items-center gap-3 rounded-lg p-2 text-sm font-medium hover:bg-muted"
                       >
-                        {/* Misma tinta que la barra: el verde del tema oscuro
-                            (`#2fd66f`) deja un ícono blanco en 1.8:1, y ese
-                            ícono es lo único que distingue una fila de la
-                            otra. */}
+                        {/* Misma tinta que la barra: un ícono blanco sobre
+                            estos verdes queda en 1.8:1, y ese ícono es lo
+                            único que distingue una fila de la otra. */}
                         <span
                           className="flex h-8 w-8 items-center justify-center rounded-full text-aje-dark"
                           style={{ backgroundColor: mod.accentColor }}

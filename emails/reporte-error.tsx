@@ -16,7 +16,7 @@ export function ReporteErrorEmail({
     <EmailLayout platformName={platformName}>
       <Text style={{ fontSize: 20, fontWeight: 600 }}>Reporte {reportCode}</Text>
       <Text>{summary}</Text>
-      <Link href={reportUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={reportUrl} style={{ color: "#008134" }}>
         Ver el hilo
       </Link>
     </EmailLayout>

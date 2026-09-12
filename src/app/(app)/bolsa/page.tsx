@@ -6,6 +6,7 @@ import { BrandMediaField } from "@/components/configuracion/brand-media-field";
 import { CareersForm } from "@/components/bolsa/careers-form";
 import { CareersHero } from "@/components/empleos/careers-hero";
 import { Card } from "@/components/ui/card";
+import { DEFAULT_ACCENT } from "@/lib/color-contrast";
 
 /**
  * La bolsa de empleo pública, como pantalla propia del módulo de
@@ -22,7 +23,7 @@ export default async function BolsaPage() {
   const [, organization] = await Promise.all([requireSuperAdmin(), getOrganization()]);
 
   const org = organization ?? {
-    accent_color: "#1f4d3d",
+    accent_color: DEFAULT_ACCENT,
     careers_headline: null,
     careers_intro: null,
     careers_cover_image_url: null,

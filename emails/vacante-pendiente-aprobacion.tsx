@@ -16,7 +16,7 @@ export function VacantePendienteAprobacionEmail({
       <Text>
         <strong>{jobTitle}</strong> está esperando tu revisión.
       </Text>
-      <Link href={jobUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={jobUrl} style={{ color: "#008134" }}>
         Revisar la vacante
       </Link>
     </EmailLayout>

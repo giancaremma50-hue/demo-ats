@@ -20,7 +20,7 @@ export function CambioEtapaEmail({
       <Text>
         {candidateName} ({jobTitle}) pasó a la etapa <strong>{stageName}</strong>.
       </Text>
-      <Link href={applicationUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={applicationUrl} style={{ color: "#008134" }}>
         Ver la postulación
       </Link>
     </EmailLayout>

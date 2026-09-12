@@ -29,7 +29,7 @@ export function EntrevistaProgramadaEmail({
         Hola {candidateName}, se agendó tu entrevista para <strong>{jobTitle}</strong> el {when} (hora UTC)
         {location ? <> en {location}</> : null}.
       </Text>
-      <Link href={calendarUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={calendarUrl} style={{ color: "#008134" }}>
         Agregar a Google Calendar
       </Link>
       <Text style={{ fontSize: 12, color: "#6b6862" }}>

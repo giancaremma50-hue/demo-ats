@@ -21,7 +21,7 @@ export function MovimientoReferidoEmail({
         {candidateName}, a quien referiste para <strong>{jobTitle}</strong>, ahora está en la etapa{" "}
         <strong>{stageName}</strong>.
       </Text>
-      <Link href={applicationUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={applicationUrl} style={{ color: "#008134" }}>
         Ver el avance
       </Link>
     </EmailLayout>

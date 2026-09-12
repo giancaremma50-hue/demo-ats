@@ -5,6 +5,7 @@ import { CareersHero } from "@/components/empleos/careers-hero";
 import { WORK_MODE_LABEL } from "@/lib/jobs/schema";
 import type { WorkMode } from "@/lib/jobs/schema";
 import { Card } from "@/components/ui/card";
+import { DEFAULT_ACCENT } from "@/lib/color-contrast";
 
 // Portal público de solo lectura, sin sesión — cachear 60s evita que cada
 // visita (antes incluso de postular) le pegue en vivo a Postgres. El nonce
@@ -84,7 +85,7 @@ export default async function EmpleosPage() {
         intro={organization?.careers_intro ?? null}
         imageUrl={organization?.careers_cover_image_url ?? null}
         videoUrl={organization?.careers_cover_video_url ?? null}
-        accentColor={organization?.accent_color || "#1f4d3d"}
+        accentColor={organization?.accent_color || DEFAULT_ACCENT}
         priority
       >
         {hasCover && allJobs.length > 0 && (

@@ -30,11 +30,11 @@ export function VacanteCambioEstadoEmail({
         <strong>{jobTitle}</strong> {message}
       </Text>
       {reason ? (
-        <Text style={{ borderLeft: "3px solid #1f4d3d", paddingLeft: 12, color: "#444440" }}>
+        <Text style={{ borderLeft: "3px solid #008134", paddingLeft: 12, color: "#444440" }}>
           <strong>Motivo:</strong> {reason}
         </Text>
       ) : null}
-      <Link href={jobUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={jobUrl} style={{ color: "#008134" }}>
         Ver la vacante
       </Link>
     </EmailLayout>

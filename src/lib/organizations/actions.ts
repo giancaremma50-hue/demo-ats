@@ -24,15 +24,28 @@ import {
 // color demasiado parecido al fondo lo vuelve invisible para cualquiera
 // que navegue con teclado, violando la regla "foco visible siempre".
 const APP_BACKGROUND = "#ffffff";
-const MIN_FOCUS_CONTRAST = 3; // mínimo WCAG para indicadores de UI/foco.
+/**
+ * 4.5 y no 3. El 3 alcanzaba para el anillo de foco, pero el acento hace dos
+ * trabajos más: es TEXTO chico sobre el fondo claro (`text-accent`, 30 usos) y
+ * es FONDO con texto blanco encima (`bg-accent` + `--accent-foreground`). Los
+ * dos piden 4.5, y como el contraste es simétrico una sola comprobación contra
+ * el blanco cubre las dos direcciones a la vez.
+ *
+ * Ojo al subirlo otra vez: el formulario precarga el acento guardado, así que
+ * una fila que ya no cumple bloquea TODO el formulario —incluido el nombre de
+ * la plataforma, que no tiene nada que ver—. Al 2026-09-12 la única
+ * organización está en 5.01, así que no hizo falta normalizar nada; si algún
+ * día hay más, hay que migrarlas antes de mover este número.
+ */
+const MIN_ACCENT_CONTRAST = 4.5;
 
 const BrandingSchema = z.object({
   platform_name: z.string().trim().min(2, { error: "El nombre debe tener al menos 2 caracteres." }).max(60),
   accent_color: z
     .string()
-    .regex(/^#[0-9a-fA-F]{6}$/, { error: "El color debe ser un hexadecimal válido, ej. #1F4D3D." })
-    .refine((hex) => contrastRatio(hex, APP_BACKGROUND) >= MIN_FOCUS_CONTRAST, {
-      error: "Este color es muy parecido al fondo: el foco de teclado no se vería. Prueba uno más oscuro o más saturado.",
+    .regex(/^#[0-9a-fA-F]{6}$/, { error: "El color debe ser un hexadecimal válido, ej. #008134." })
+    .refine((hex) => contrastRatio(hex, APP_BACKGROUND) >= MIN_ACCENT_CONTRAST, {
+      error: "Este color es muy claro: el texto y el anillo de foco que lo usan no se leerían. Prueba uno más oscuro o más saturado.",
     }),
 });
 
