@@ -37,14 +37,14 @@ export function EntrevistaAgendadaInternoEmail({
         {organizerName} te agregó a la entrevista de <strong>{candidateName}</strong> ({jobTitle}) el {when} (hora UTC)
         {location ? <> en {location}</> : null}.
       </Text>
-      <Link href={calendarUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={calendarUrl} style={{ color: "#008134" }}>
         Agregar a Google Calendar
       </Link>
       <Text style={{ fontSize: 12, color: "#6b6862" }}>
         El enlace de arriba la muestra automáticamente en tu propia zona horaria.
       </Text>
       <Text>
-        <Link href={applicationUrl} style={{ color: "#1f4d3d" }}>
+        <Link href={applicationUrl} style={{ color: "#008134" }}>
           Ver la postulación
         </Link>
       </Text>

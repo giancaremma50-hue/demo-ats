@@ -66,13 +66,14 @@ export const MODULES: ModuleConfig[] = [
     label: "Reclutamiento AJE",
     shortLabel: "Reclutamiento",
     icon: Briefcase,
-    // `--primary` es el verde AJE fijo (#00b348 claro / #2fd66f oscuro), NO
+    // `--primary` es el verde AJE fijo, #00b348 (el bloque `.dark` define otro
+    // valor, pero ese tema hoy no se puede encender — ver el napkin). NO
     // el acento que configura la organización — ese es `--accent`, que
     // `src/app/layout.tsx` inyecta en <html>. La barra se queda en el verde a
     // propósito: el nombre del módulo va en tinta oscura y necesita un fondo
-    // claro conocido, y `BrandingSchema` admite acentos oscuros (solo exige
-    // 3:1 contra el fondo claro de la app). Seguir al acento configurable
-    // exigiría resolver antes ese par.
+    // claro conocido, y `BrandingSchema` exige 4.5:1 contra el fondo
+    // claro, que no dice nada sobre el contraste contra ESTA barra. Seguir al
+    // acento configurable exigiría resolver antes ese par.
     accentColor: "var(--primary)",
     basePath: "/inicio",
     itemsForRole: reclutamientoItemsForRole,

@@ -5,13 +5,14 @@ import { BrandingForm } from "@/components/configuracion/branding-form";
 import { BrandMediaField } from "@/components/configuracion/brand-media-field";
 import { HeroBackgroundMedia } from "@/components/layout/hero-background-media";
 import { Card } from "@/components/ui/card";
+import { DEFAULT_ACCENT } from "@/lib/color-contrast";
 
 export default async function MarcaPage() {
   const [, organization] = await Promise.all([requireSuperAdmin(), getOrganization()]);
 
   const org = organization ?? {
     platform_name: "Demo AJE",
-    accent_color: "#1f4d3d",
+    accent_color: DEFAULT_ACCENT,
     logo_url: null,
     login_image_url: null,
     login_video_url: null,
@@ -71,7 +72,7 @@ export default async function MarcaPage() {
             style={{ backgroundColor: org.accent_color }}
           >
             <HeroBackgroundMedia videoUrl={org.login_video_url} imageUrl={org.login_image_url} />
-            <p className="font-extrabold tracking-heading relative z-10 text-[19px] leading-snug text-white">
+            <p className="font-extrabold tracking-heading relative z-10 text-[19px] leading-snug text-accent-foreground">
               Contratar bien es la decisión más cara que toma una empresa.
             </p>
           </div>
@@ -82,11 +83,12 @@ export default async function MarcaPage() {
             Cómo se ven los componentes con este acento
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <span
-              className="inline-flex h-[38px] items-center rounded-full px-4.5 text-[13px] font-medium text-white"
-              style={{ backgroundColor: org.accent_color }}
-            >
-              Botón primario
+            {/* El botón primario NO sigue al acento: usa el verde AJE fijo con
+                tinta oscura (ver AGENTS.md). Pintarlo con el acento acá era
+                prometer algo que la app no hace — y era justo la pantalla que
+                existe para mostrar qué cambia este ajuste. */}
+            <span className="inline-flex h-[38px] items-center rounded-full bg-primary px-4.5 text-[13px] font-medium text-primary-foreground">
+              Botón primario (no cambia)
             </span>
             <span className="inline-flex h-[38px] items-center rounded-full border border-border bg-background px-4.5 text-[13px]">
               Secundario

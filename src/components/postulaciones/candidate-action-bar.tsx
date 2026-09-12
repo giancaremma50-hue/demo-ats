@@ -22,7 +22,7 @@ export function CandidateActionBar({ actions }: { actions: CandidateAction[] }) 
   const visible = actions.filter((a) => !a.hidden);
   return (
     <div className="absolute inset-x-0 bottom-5 flex justify-center px-4">
-      <div className="flex items-center gap-0.5 rounded-full bg-primary p-1.5 shadow-nav">
+      <div className="flex items-center gap-0.5 rounded-full bg-primary p-1.5 shadow-nav [--ring:var(--aje-dark)]">
         {visible.map((action) => {
           const Icon = action.icon;
           return (
@@ -31,7 +31,7 @@ export function CandidateActionBar({ actions }: { actions: CandidateAction[] }) 
               type="button"
               aria-label={action.label}
               onClick={action.onClick}
-              className="group relative flex size-11 items-center justify-center rounded-full"
+              className={`group relative flex size-11 items-center justify-center rounded-full ${action.danger ? "bg-background" : ""}`}
             >
               <Icon
                 className={`size-[17px] ${action.danger ? "text-destructive" : "text-primary-foreground/70 group-hover:text-primary-foreground"}`}

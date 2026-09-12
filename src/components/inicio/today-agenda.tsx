@@ -20,7 +20,7 @@ export function TodayAgenda({ data }: { data: AgendaData }) {
         {!isEmpty && (
           <div className="flex flex-wrap items-center gap-1.5">
             {data.interviews.length > 0 && (
-              <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] text-white">
+              <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] text-accent-foreground">
                 {data.interviews.length} {data.interviews.length === 1 ? "entrevista" : "entrevistas"}
               </span>
             )}

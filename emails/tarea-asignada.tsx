@@ -21,7 +21,7 @@ export function TareaAsignadaEmail({
       <Text>
         {assignerName} te asignó una tarea en el seguimiento de <strong>{candidateName}</strong>: {description}
       </Text>
-      <Link href={applicationUrl} style={{ color: "#1f4d3d" }}>
+      <Link href={applicationUrl} style={{ color: "#008134" }}>
         Ver la postulación
       </Link>
     </EmailLayout>

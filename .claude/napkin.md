@@ -7,7 +7,61 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-12 (auditoría de diseño: una regla que el código no cumple deja de ser una regla — tipografía migrada a peso 800-900, sistema de movimiento con tokens, y dos reglas corregidas porque el código tenía razón)_
+_Última actualización: 2026-09-12 (el botón principal y el de eliminar fallaban contraste con la regla ya escrita; y mover el acento rompió el anillo de foco sobre la barra, una dirección que el validador no mide)_
+
+## El botón principal de la app llevaba días fallando contraste, y la regla para evitarlo ya estaba escrita (2026-09-12) — MÁXIMA PRIORIDAD
+
+Salió de revisar por qué había dos verdes en pantalla. El acento configurado
+(`#1f4d3d`) pintaba 60 lugares y los botones seguían en verde AJE. Tirando de
+ese hilo apareció algo peor.
+
+1. **`ActionButton` primario = `#00B348` de fondo con texto BLANCO = 2.78:1.**
+   El texto es 14px semibold, o sea texto normal, que pide 4.5. Fallaba desde
+   la migración al "AJE look". Y la regla ya existía —AGENTS.md, regla de
+   interacción 10: *"blanco sobre el verde AJE da 2.8:1"*— pero se había
+   aplicado SOLO a la barra flotante, que fue donde se descubrió. **Una regla
+   de contraste descubierta en un componente hay que barrerla por TODOS los
+   que comparten el mismo par de colores**, no dejarla en el que la originó:
+   el avatar y la barra de acciones del candidato tenían el mismo par.
+   Arreglo: `--primary-foreground` pasa de blanco a `--aje-dark` (6.41:1), que
+   es lo que la barra ya hacía.
+2. **El verde de marca puede ser inusable como acento, y eso no es un bug del
+   color.** `#00B348` da 2.78:1 contra blanco: sirve de RELLENO (fondo de
+   botón, con tinta oscura encima) y no sirve de texto chico ni de anillo de
+   foco. Por eso los cinco presets del selector de marca eran colores oscuros
+   y ninguno era AJE — quien los eligió estaba respetando la restricción sin
+   dejarla escrita. La salida no es bajar el umbral: es un **segundo valor del
+   mismo matiz**, `#008134` (144°, 5.01:1), para los usos chicos. Relleno y
+   texto son dos trabajos y a veces piden dos valores.
+3. **Un default que nadie cambia ES la configuración.** El acento estaba en
+   `#1f4d3d` no porque alguien lo eligiera, sino porque era el primer preset y
+   el fallback en tres archivos. Un valor por defecto mal elegido no se nota
+   nunca: se nota el resultado, y se culpa a otra cosa.
+4. **Cambiar un color de acento puede romper un contraste que ni se mide.**
+   El anillo de foco es `--ring: var(--accent)` y la validación lo comprueba
+   contra el fondo BLANCO. Pero el foco también cae sobre la barra flotante,
+   que es verde o naranja: el acento viejo daba 3.45:1 ahí y el nuevo, 1.8 —
+   una regresión invisible para el validador, porque esa dirección no se mide.
+   Salida: las superficies de color se dan su propio anillo
+   (`[--ring:var(--aje-dark)]`), que además aguanta cualquier acento que
+   alguien configure después. **Un token que se usa sobre más de un fondo no
+   se puede validar contra uno solo.**
+5. **El rojo de marca tenía el mismo problema que el verde, y la salida es la
+   contraria.** Blanco sobre `#EF4444` da 3.76:1 y el texto de un botón pide
+   4.5. Para el verde la salida fue tinta oscura encima; para el rojo es
+   oscurecer el relleno (`--destructive: #c43838`, 5.29 con blanco), porque un
+   botón destructivo se lee rojo con texto blanco y tinta oscura sobre rojo se
+   ve mal. **Mismo síntoma no implica mismo arreglo: manda la luminancia del
+   color y la convención del componente.** De yapa arregla `text-destructive`,
+   que como texto de error sobre blanco fallaba igual.
+6. **El tema oscuro de este proyecto es código muerto.** `globals.css` define
+   `@custom-variant dark (&:is(.dark *))` y un bloque `.dark` con ~35 líneas
+   de tokens, pero **nada agrega jamás esa clase** y no hay una sola utilidad
+   `dark:` en los componentes. O sea que todo razonamiento sobre "el verde del
+   tema oscuro" (hay comentarios así en `floating-nav.tsx`) es sobre algo que
+   en runtime no existe. No se borró —puede ser trabajo futuro— pero **antes
+   de justificar una decisión con el tema oscuro, comprobar que el tema oscuro
+   se puede encender.**
 
 ## Una regla de diseño que el código no cumple deja de ser una regla (2026-09-12) — MÁXIMA PRIORIDAD
 

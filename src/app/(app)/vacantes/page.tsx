@@ -17,7 +17,7 @@ export default async function VacantesPage() {
         <h1 className="font-black tracking-display text-[32px]">Vacantes</h1>
         <Link
           href="/vacantes/nueva"
-          className="inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-white"
+          className="inline-flex h-10 items-center rounded-full bg-accent px-4 text-sm font-medium text-accent-foreground"
         >
           Solicitar vacante
         </Link>

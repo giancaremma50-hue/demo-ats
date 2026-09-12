@@ -45,7 +45,7 @@ export function ErrorThread({
               <div className="flex items-baseline gap-2">
                 <span className="text-[13px] font-medium">{m.author?.display_name ?? "Alguien"}</span>
                 {m.author_id === currentProfileId && (
-                  <span className="rounded-sm border border-primary px-1.5 py-0.5 text-[10px] text-primary">Tú</span>
+                  <span className="rounded-sm border border-accent px-1.5 py-0.5 text-[10px] text-accent">Tú</span>
                 )}
                 <span className="text-[11px] tabular-nums text-muted-foreground">
                   {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: es })}

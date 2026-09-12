@@ -5,10 +5,15 @@
 
 /*
   Sistema visual — "AJE look" (ref. ajegroup.com, ver AGENTS.md).
-  La elevación se hace con sombra difusa, NO con borde de 1px.
+  El borde de 1px define estructura; la sombra levanta superficie. (La regla
+  decía "elevación con sombra, NUNCA borde" hasta que la auditoría del
+  2026-09-12 contó 528 bordes contra 14 sombras y cambió la regla, no el
+  código.)
   Paleta fija de marca; el acento sigue configurable por organización en
   tiempo de ejecución (el configurador sobreescribe --accent con un style
-  inline en <html>).
+  inline en <html>). El bloque .dark de más abajo HOY ES CÓDIGO MUERTO: nada
+  agrega nunca esa clase y no hay una sola utilidad `dark:` en los
+  componentes — ver el napkin antes de razonar sobre él.
 */
 :root {
   /* Superficies */
@@ -25,18 +30,37 @@
   --secondary: #f2f0ec;
   --secondary-foreground: #14140f;
 
-  /* Acento — paleta AJE, el primario es configurable por organización */
-  --accent: #00b348;
+  /* Dos verdes con roles distintos, y conviene no confundirlos:
+     · `--primary` es el verde AJE FIJO. Rellena botones, la barra flotante y
+       la barra de acciones del candidato. No lo configura nadie.
+     · `--accent` es el que SÍ configura cada organización (se inyecta inline
+       sobre <html> en `src/app/layout.tsx`). Pinta texto, bordes, resaltados
+       y el anillo de foco — o sea, cosas CHICAS sobre el fondo claro.
+     El comentario anterior decía justo al revés ("el primario es configurable
+     por organización") y llevaba tres días mintiendo.
+
+     **Tinta oscura sobre el verde AJE, nunca blanca.** Blanco sobre #00b348 da
+     2.78:1 y el texto de un botón son 14px semibold, que pide 4.5. Con
+     `--aje-dark` sube a 6.41. La regla ya estaba escrita para la barra
+     flotante (regla de interacción 10) y no se había aplicado acá, que es
+     donde más se ve: es el botón de toda mutación del producto. */
+  --accent: #008134;
   --accent-foreground: #ffffff;
   --primary: #00b348;
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--aje-dark);
 
   /* Semánticos */
   --success: #00b348;
-  --success-foreground: #ffffff;
+  /* Mismo par que `--primary`: sobre este verde va tinta oscura, nunca blanca. */
+  --success-foreground: var(--aje-dark);
   --warning: #ffb81c;
   --warning-foreground: #14140f;
-  --destructive: #ef4444;
+  /* Oscurecido respecto del rojo de marca `--aje-red` (#EF4444): con blanco
+     encima ese daba 3.76:1 y el texto de un botón pide 4.5. Este llega a
+     5.29, y como `text-destructive` también es el color de los mensajes de
+     error sobre fondo blanco, el mismo cambio arregla las dos cosas. El rojo
+     de marca sin tocar sigue en `--aje-red`, para usos que no cargan texto. */
+  --destructive: #c43838;
   --destructive-foreground: #ffffff;
 
   /* Paleta de marca AJE — uso puntual por contexto/marca, no mezclar
