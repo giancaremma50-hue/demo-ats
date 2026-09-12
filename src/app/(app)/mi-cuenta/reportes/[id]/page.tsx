@@ -22,7 +22,7 @@ export default async function MiReportePage({ params }: { params: Promise<{ id: 
           <span className="font-mono text-xs text-muted-foreground">{report.code}</span>
           <span className="text-[11px] text-muted-foreground">{ERROR_STATUS_LABEL[report.status]}</span>
         </div>
-        <h1 className="font-serif text-[28px] leading-tight">{report.title}</h1>
+        <h1 className="font-black tracking-display text-[28px] leading-tight">{report.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">«{report.user_message}»</p>
       </div>
       <ErrorThread reportId={report.id} messages={messages} currentProfileId={profile.id} />

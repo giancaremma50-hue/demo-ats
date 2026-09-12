@@ -22,11 +22,11 @@ export function JobPublicCard({ job }: { job: PublicJob }) {
   return (
     <Link
       href={`/empleos/${job.slug}`}
-      className="group relative flex items-center justify-between gap-4 border-b border-border py-4 pl-3 pr-1 transition-colors hover:bg-muted/40"
+      className="group relative flex items-center justify-between gap-4 border-b border-border py-4 pl-3 pr-1 transition-colors ease hover:bg-muted/40"
     >
       <span className="absolute inset-y-0 left-0 w-0.5 bg-transparent group-hover:bg-accent" aria-hidden />
       <div className="min-w-0">
-        <p className="font-serif truncate text-lg group-hover:text-accent">{job.title}</p>
+        <p className="font-bold tracking-heading truncate text-lg group-hover:text-accent">{job.title}</p>
         <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>{[job.location, job.country].filter(Boolean).join(", ") || "Ubicación no especificada"}</span>
           {job.department_name && <span className="before:mr-1.5 before:content-['·']">{job.department_name}</span>}

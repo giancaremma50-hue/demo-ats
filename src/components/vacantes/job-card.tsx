@@ -14,10 +14,10 @@ export function JobCard({ job }: { job: JobListItem }) {
     <Card
       as={Link}
       href={href}
-      className="flex items-center justify-between gap-4 rounded-md border border-transparent px-5 py-4 transition-colors hover:border-foreground/30"
+      className="flex items-center justify-between gap-4 rounded-md border border-transparent px-5 py-4 transition-colors ease hover:border-foreground/30"
     >
       <div className="min-w-0">
-        <p className="font-serif truncate text-lg">{job.title}</p>
+        <p className="font-bold tracking-heading truncate text-lg">{job.title}</p>
         <p className="mt-1 text-xs tabular-nums text-muted-foreground">
           {job.code} · {job.country ?? "Sin país"} · {job.headcount} {job.headcount === 1 ? "plaza" : "plazas"}
         </p>

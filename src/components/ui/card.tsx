@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Superficie elevada del look AJE (ver AGENTS.md): esquinas redondeadas +
- * sombra difusa, nunca borde de 1px. `overflow-hidden` siempre puesto para
+ * Superficie de contenido del look AJE (ver AGENTS.md): `rounded-md` + la
+ * sombra sutil de elevación. La sombra es lo que la distingue de la
+ * estructura —campos, separadores, filas de una lista densa—, que va con
+ * borde de 1px. `overflow-hidden` siempre puesto para
  * que un `border-b` interno (encabezado de panel) no asome por la esquina
  * redondeada — ningún uso actual necesita que algo interno se desborde.
  *
@@ -22,7 +24,7 @@ export function Card<T extends React.ElementType = "div">({
 } & Omit<React.ComponentPropsWithoutRef<T>, "as" | "className" | "children">) {
   const Component = (as ?? "div") as React.ElementType;
   return (
-    <Component className={cn("overflow-hidden rounded-lg bg-card shadow-elevated", className)} {...props}>
+    <Component className={cn("overflow-hidden rounded-md bg-card shadow-elevated", className)} {...props}>
       {children}
     </Component>
   );

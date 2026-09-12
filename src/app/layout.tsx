@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
-import { Geist, Instrument_Serif } from "next/font/google";
+import { Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getPublicOrganization } from "@/lib/organizations/get-organization";
@@ -8,12 +8,6 @@ import "./globals.css";
 
 const geist = Geist({
   variable: "--font-geist",
-  subsets: ["latin"],
-});
-
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  weight: "400",
   subsets: ["latin"],
 });
 
@@ -41,7 +35,7 @@ export default async function RootLayout({
 
   return (
     <html lang="es" style={accentStyle}>
-      <body className={`${geist.variable} ${instrumentSerif.variable}`}>
+      <body className={geist.variable}>
         {children}
         <Toaster position="top-center" richColors closeButton />
         {/* Sin esto no había forma de medir si la app se siente lenta o

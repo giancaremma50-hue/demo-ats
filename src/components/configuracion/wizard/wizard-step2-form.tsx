@@ -20,7 +20,7 @@ export function WizardStep2Form({ templateId, initialFields }: { templateId: str
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <Card className="flex flex-col divide-y divide-border rounded-md" data-tour="w2-campos">
+      <Card className="flex flex-col divide-y divide-border" data-tour="w2-campos">
         <div className="flex items-center justify-between px-4 py-3">
           <span className="text-sm">Correo electrónico</span>
           <span className="text-xs text-muted-foreground">Obligatorio — no se puede cambiar</span>

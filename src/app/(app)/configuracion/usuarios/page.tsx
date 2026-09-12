@@ -25,10 +25,10 @@ export default async function UsuariosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card as="section" className="rounded-md">
+      <Card as="section" >
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
-            <h2 className="font-serif text-2xl">Usuarios y roles</h2>
+            <h2 className="font-extrabold tracking-heading text-2xl">Usuarios y roles</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
               {error ? "No se pudo cargar la lista." : `${users?.length ?? 0} personas en la organización.`}
             </p>
@@ -77,9 +77,9 @@ export default async function UsuariosPage() {
       </Card>
 
       {profile.role === "super_admin" && (
-        <Card as="section" className="rounded-md">
+        <Card as="section" >
           <div className="border-b border-border p-5">
-            <h2 className="font-serif text-2xl">Invitar por correo</h2>
+            <h2 className="font-extrabold tracking-heading text-2xl">Invitar por correo</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
               Para alguien fuera del dominio corporativo (o antes de que entre por primera vez): entra
               automáticamente con el rol que le asignes aquí.

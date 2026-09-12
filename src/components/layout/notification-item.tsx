@@ -58,7 +58,7 @@ export function NotificationItem({
       variant="ghost"
       pending={isPending}
       onClick={handleClick}
-      className="block h-auto w-full items-start justify-start rounded-none border-0 p-0 text-left font-normal disabled:opacity-100"
+      className="block h-auto w-full items-start justify-start rounded-none border-0 p-0 text-left font-normal active:scale-100 disabled:opacity-100"
     >
       {content}
     </ActionButton>

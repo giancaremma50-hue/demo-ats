@@ -44,7 +44,7 @@ export default async function CandidatosPage({
 
   return (
     <div>
-      <h1 className="font-serif text-[32px]">Candidatos</h1>
+      <h1 className="font-black tracking-display text-[32px]">Candidatos</h1>
 
       <form className="mt-6 flex flex-wrap items-end gap-2.5">
         <label className="flex flex-col gap-1">

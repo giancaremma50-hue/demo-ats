@@ -100,16 +100,16 @@ export default async function EmpleosPage() {
             <div className="mt-8 flex border-t border-background/25">
               {stats.map((s) => (
                 <div key={s.label} className="flex-1 border-r border-background/25 pt-4 pr-5 last:border-r-0" data-numeric>
-                  <span className="font-serif block text-[26px] leading-none">{s.n}</span>
+                  <span className="font-extrabold tracking-heading block text-[26px] leading-none">{s.n}</span>
                   <span className="mt-1.5 block text-[11.5px] text-background/70">{s.label}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <Card className="mt-8 flex rounded-md">
+            <Card className="mt-8 flex">
               {stats.map((s) => (
                 <div key={s.label} className="flex-1 border-r border-border p-4 last:border-r-0" data-numeric>
-                  <span className="font-serif block text-2xl leading-none">{s.n}</span>
+                  <span className="font-extrabold tracking-heading block text-2xl leading-none">{s.n}</span>
                   <span className="mt-1.5 block text-[11.5px] text-muted-foreground">{s.label}</span>
                 </div>
               ))}

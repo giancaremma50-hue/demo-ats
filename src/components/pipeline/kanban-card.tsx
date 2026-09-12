@@ -32,7 +32,7 @@ export function KanbanCard({
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onOpen(card.id)}
-          className={`w-full rounded-md border bg-card px-3 py-2.5 text-left text-sm transition-shadow ${
+          className={`w-full rounded-md border bg-card px-3 py-2.5 text-left text-sm transition-shadow ease ${
             snapshot.isDragging
               ? "border-transparent shadow-elevated"
               : "border-border hover:border-transparent hover:shadow-elevated"

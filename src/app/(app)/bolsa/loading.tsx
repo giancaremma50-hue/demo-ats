@@ -6,7 +6,7 @@ export default function Loading() {
     <div>
       <Skeleton className="h-10 w-64" />
       <div className="mt-7 grid gap-8 lg:grid-cols-[560px_1fr]">
-        <Card className="rounded-md p-6">
+        <Card className="p-6">
           <Skeleton className="h-6 w-32" />
           <div className="mt-6 flex flex-col gap-5">
             <Skeleton className="h-24 w-full" />

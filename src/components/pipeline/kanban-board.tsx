@@ -158,7 +158,7 @@ export function KanbanBoard({
         <div className="flex h-full flex-col">
           <div className="flex flex-none items-start justify-between gap-4 pb-4">
             <div>
-              <h1 className="font-serif text-[28px]">{jobTitle}</h1>
+              <h1 className="font-black tracking-display text-[28px]">{jobTitle}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{totalActivas} postulaciones activas</p>
             </div>
             <div className="flex flex-none items-center gap-3">

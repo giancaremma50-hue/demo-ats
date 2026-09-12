@@ -10,10 +10,10 @@ export default async function PlantillasMensajePage() {
   const templates = await getMessageTemplates(profile.organization_id);
 
   return (
-    <Card as="section" className="rounded-md p-5">
+    <Card as="section" className="p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-serif text-2xl">Plantillas de mensaje</h2>
+          <h2 className="font-extrabold tracking-heading text-2xl">Plantillas de mensaje</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Mensajes reutilizables para enviar a candidatos desde una postulación.
           </p>

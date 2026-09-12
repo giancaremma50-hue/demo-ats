@@ -46,7 +46,7 @@ export function JobInfoModal({ job, collaborators }: { job: JobDetail; collabora
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs tabular-nums text-muted-foreground">{job.code}</p>
-              <h2 className="font-serif mt-1 text-2xl">{job.title}</h2>
+              <h2 className="font-extrabold tracking-heading mt-1 text-2xl">{job.title}</h2>
             </div>
             <div className="flex flex-none items-center gap-2">
               <JobStatusBadge status={job.status} />

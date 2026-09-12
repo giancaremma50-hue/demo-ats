@@ -60,7 +60,7 @@ function Hilo({
   const visibles = expandido ? respuestas : respuestas.slice(-RESPUESTAS_VISIBLES);
 
   return (
-    <Card as="li" className="rounded-md p-3.5 text-sm">
+    <Card as="li" className="p-3.5 text-sm">
       <NoteBody body={raiz.body} />
       <Meta note={raiz} />
 

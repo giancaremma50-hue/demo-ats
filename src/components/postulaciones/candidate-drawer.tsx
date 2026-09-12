@@ -173,7 +173,7 @@ export function CandidateDrawer({
                 <Skeleton className="h-8 w-56" />
               ) : (
                 <>
-                  <h2 className="font-serif truncate text-[26px]">{data.application.candidateName}</h2>
+                  <h2 className="font-extrabold tracking-heading truncate text-[26px]">{data.application.candidateName}</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {data.application.stageName ?? "Etapa no disponible"} · {jobTitle}
                   </p>

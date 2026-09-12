@@ -24,7 +24,7 @@ export default async function MiCuentaPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="font-serif text-[32px]">Mi cuenta</h1>
+      <h1 className="font-black tracking-display text-[32px]">Mi cuenta</h1>
       <p className="mt-1 text-sm text-muted-foreground">{profile.display_name} · {profile.email}</p>
 
       {/* El encabezado de sección se queda (las otras dos secciones tienen el
@@ -43,7 +43,7 @@ export default async function MiCuentaPage() {
         <p className="mt-1.5 text-sm text-muted-foreground">
           Elige por qué canal quieres enterarte de cada tipo de aviso.
         </p>
-        <Card className="mt-5 rounded-md px-4">
+        <Card className="mt-5 px-4">
           {PREFERENCE_TYPES.map((type) => {
             const pref = byType.get(type);
             return (
@@ -68,7 +68,7 @@ export default async function MiCuentaPage() {
             pantalla de error y aparecerá aquí.
           </p>
         ) : (
-          <Card className="mt-5 rounded-md">
+          <Card className="mt-5">
             {myReports.map((r) => (
               <Link
                 key={r.id}

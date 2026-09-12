@@ -34,15 +34,15 @@ export default async function LoginPage({
             <Image src={organization.logo_url} alt="" width={24} height={24} className="object-contain" />
           ) : (
             <div className="flex size-7 items-center justify-center border border-foreground">
-              <span className="font-serif text-[18px] leading-none">{platformName.charAt(0)}</span>
+              <span className="font-bold tracking-heading text-[18px] leading-none">{platformName.charAt(0)}</span>
             </div>
           )}
-          <span className="font-serif text-xl">{platformName}</span>
+          <span className="font-extrabold tracking-heading text-xl">{platformName}</span>
         </div>
 
         <div className="max-w-[400px]">
           <p className="text-[11px] tracking-[0.16em] text-muted-foreground uppercase">Reclutamiento</p>
-          <h1 className="font-serif mt-4 text-[44px] leading-[1.08]">Bienvenido de vuelta</h1>
+          <h1 className="font-black tracking-display mt-4 text-[44px] leading-[1.08]">Bienvenido de vuelta</h1>
           <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
             Entra con tu cuenta corporativa. No hay contraseñas que recordar ni que perder.
           </p>
@@ -74,7 +74,7 @@ export default async function LoginPage({
           imageUrl={organization?.login_image_url ?? null}
           priority
         />
-        <blockquote className="font-serif relative z-10 max-w-[460px] text-[32px] leading-[1.3] text-accent-foreground">
+        <blockquote className="font-black tracking-display relative z-10 max-w-[460px] text-[32px] leading-[1.3] text-accent-foreground">
           Contratar bien es la decisión más cara que toma una empresa.
         </blockquote>
       </div>

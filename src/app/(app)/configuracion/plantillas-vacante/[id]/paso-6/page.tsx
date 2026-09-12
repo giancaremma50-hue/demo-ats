@@ -34,7 +34,7 @@ export default async function PlantillaPaso6Page({
       <div className="flex-1">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-serif text-[32px]">Cierre</h1>
+            <h1 className="font-black tracking-display text-[32px]">Cierre</h1>
             <p className="mt-1 text-sm text-muted-foreground">Último paso — publicá la plantilla o dejala como borrador.</p>
           </div>
           <HelpTourButton

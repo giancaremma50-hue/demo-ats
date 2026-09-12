@@ -22,7 +22,7 @@ export default async function NuevaPlantillaWizardPage() {
       <div className="flex-1">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-serif text-[32px]">Nueva plantilla de puesto</h1>
+            <h1 className="font-black tracking-display text-[32px]">Nueva plantilla de puesto</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Detalles de la vacante — la información general que trae cada vacante creada desde esta plantilla.
             </p>

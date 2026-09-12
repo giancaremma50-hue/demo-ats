@@ -59,6 +59,11 @@ export function DeleteButton({
         }}
         aria-label={iconOnly ? `Eliminar ${itemLabel}` : undefined}
         className={cn(
+          // Mismo feedback de presión que `ActionButton`: abre un diálogo de
+          // confirmación, así que el hundido es la única señal inmediata de
+          // que el toque llegó.
+          "transition-[scale,opacity] duration-150 ease-out active:scale-[0.97]",
+          "motion-reduce:active:scale-100 motion-reduce:active:opacity-80",
           iconOnly
             ? "flex size-8 items-center justify-center rounded-full border border-destructive text-destructive"
             : "inline-flex h-[38px] items-center gap-2 rounded-full bg-destructive px-4 text-sm font-semibold text-destructive-foreground shadow-elevated",
