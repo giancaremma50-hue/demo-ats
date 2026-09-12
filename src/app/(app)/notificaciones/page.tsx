@@ -11,14 +11,14 @@ export default async function NotificacionesPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="font-serif text-[32px]">Notificaciones</h1>
+        <h1 className="font-black tracking-display text-[32px]">Notificaciones</h1>
         {notifications.some((n) => !n.readAt) && <MarkAllReadButton />}
       </div>
 
       {notifications.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">Sin notificaciones todavía.</p>
       ) : (
-        <Card className="mt-8 rounded-md">
+        <Card className="mt-8">
           {notifications.map((item) => (
             <NotificationItem key={item.id} item={item} />
           ))}

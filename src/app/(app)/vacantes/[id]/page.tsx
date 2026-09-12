@@ -60,7 +60,7 @@ export default async function VacanteDetailPage({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs tabular-nums text-muted-foreground">{job.code}</p>
-          <h1 className="font-serif mt-1.5 text-[34px] leading-tight">{job.title}</h1>
+          <h1 className="font-black tracking-display mt-1.5 text-[34px] leading-tight">{job.title}</h1>
         </div>
         <div className="flex flex-col items-end gap-2">
           <JobStatusBadge status={job.status} />

@@ -44,7 +44,7 @@ export default async function EmpleoDetailPage({ params }: { params: Promise<{ s
   return (
     <div className="mx-auto grid max-w-4xl gap-12 px-6 py-16 lg:grid-cols-[1fr_360px]">
       <div>
-        <h1 className="font-serif text-[38px] leading-tight">{job.title}</h1>
+        <h1 className="font-black tracking-display text-[38px] leading-tight">{job.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {[job.location, job.country].filter(Boolean).join(", ")}
           {job.work_mode && ` · ${WORK_MODE_LABEL[job.work_mode as WorkMode] ?? job.work_mode}`}
@@ -63,8 +63,8 @@ export default async function EmpleoDetailPage({ params }: { params: Promise<{ s
         </section>
       </div>
 
-      <Card className="h-fit rounded-md p-6">
-        <h2 className="font-serif text-xl">Postula a esta vacante</h2>
+      <Card className="h-fit p-6">
+        <h2 className="font-extrabold tracking-heading text-xl">Postula a esta vacante</h2>
         <div className="mt-5">
           <ApplicationForm
             jobId={job.id}

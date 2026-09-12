@@ -7,16 +7,16 @@ import { Card } from "@/components/ui/card";
  * Bloque protagonista de Inicio: es lo único que responde "qué tengo que
  * hacer ahora" (decisión del usuario, 2026-09-03 — antes iba tercera y con
  * el mismo peso visual que las cifras). Dos columnas: entrevistas con la hora
- * en serif grande, tareas con su fecha límite.
+ * en el peso de título, tareas con su fecha límite.
  */
 export function TodayAgenda({ data }: { data: AgendaData }) {
   const overdueCount = data.tasks.filter((t) => t.dueDate && isTaskOverdue(t.dueDate)).length;
   const isEmpty = data.interviews.length === 0 && data.tasks.length === 0;
 
   return (
-    <Card className="rounded-md p-5 sm:p-6">
+    <Card className="p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-serif text-[22px]">Tu agenda de hoy</h2>
+        <h2 className="font-extrabold tracking-heading text-[22px]">Tu agenda de hoy</h2>
         {!isEmpty && (
           <div className="flex flex-wrap items-center gap-1.5">
             {data.interviews.length > 0 && (
@@ -54,7 +54,7 @@ export function TodayAgenda({ data }: { data: AgendaData }) {
                     href={`/postulaciones/${i.applicationId}`}
                     className="flex items-center gap-3 py-2.5 text-sm hover:bg-muted/30"
                   >
-                    <span className="font-serif w-14 flex-none text-[19px] tabular-nums">
+                    <span className="font-extrabold tracking-heading w-14 flex-none text-[19px] tabular-nums">
                       {new Date(i.scheduledAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{i.candidateName}</span>

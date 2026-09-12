@@ -27,7 +27,7 @@ export function AppHeader({
           <Image src={organization.logo_url} alt="" width={24} height={24} className="shrink-0 object-contain" />
         ) : (
           <div className="flex size-6 flex-none items-center justify-center border border-foreground">
-            <span className="font-serif text-[15px] leading-none">
+            <span className="font-bold tracking-heading text-[15px] leading-none">
               {organization.platform_name.charAt(0)}
             </span>
           </div>
@@ -35,7 +35,7 @@ export function AppHeader({
         {/* truncate + min-w-0: en un teléfono angosto un nombre de
             plataforma largo no debe empujar la campana/avatar fuera de
             pantalla — se corta con "…" en vez de forzar scroll horizontal. */}
-        <span className="truncate font-serif text-lg">{organization.platform_name}</span>
+        <span className="truncate font-bold tracking-heading text-lg">{organization.platform_name}</span>
         {profile.role === "super_admin" && (
           <span className="ml-2.5 hidden h-[22px] flex-none items-center rounded-sm border border-accent px-2 text-[11px] text-accent sm:inline-flex">
             Super admin

@@ -21,13 +21,13 @@ export default async function PlantillasVacantePage({
   const templates = await getJobTemplates(profile.organization_id);
 
   return (
-    <Card as="section" className="rounded-md p-5">
+    <Card as="section" className="p-5">
       {borrador && <NotifyOnMount message="Guardada como borrador" />}
       {publicada && <NotifyOnMount message="Plantilla publicada" />}
       {confidencial && <NotifyOnMount message="Guardado — como no la creaste vos, ya no te aparece" />}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-serif text-2xl">Plantillas de puesto</h2>
+          <h2 className="font-extrabold tracking-heading text-2xl">Plantillas de puesto</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Puestos recurrentes listos para prellenar al solicitar una vacante nueva.
           </p>

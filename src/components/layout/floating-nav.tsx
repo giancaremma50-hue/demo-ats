@@ -334,7 +334,7 @@ export function FloatingNav({ role }: { role: Role }) {
             "max-w-full",
             // `duration-300` y una curva que frena al final: la píldora se
             // pliega y se abre, no parpadea. `motion-reduce` la deja instantánea.
-            "transition-[height,width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            "transition-[height,width,padding] duration-300 ease-out motion-reduce:transition-none",
             // El recorte solo mientras está plegada. Desplegada tiene que ser
             // `visible`: los tooltips de los íconos viven ARRIBA de la píldora
             // (`-top-9`) y cualquier overflow distinto de `visible` los corta —

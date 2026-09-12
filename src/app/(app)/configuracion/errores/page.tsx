@@ -49,21 +49,21 @@ export default async function CentroErroresPage({
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="font-serif text-[28px] leading-tight">Centro de errores</h2>
+          <h2 className="font-black tracking-display text-[28px] leading-tight">Centro de errores</h2>
           <p className="mt-1 text-sm text-muted-foreground">Lo que se rompió, quién lo vivió, y la conversación para resolverlo.</p>
         </div>
         <div className="flex items-center gap-6 sm:text-right">
           <div>
             <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Sin abrir</p>
-            <p className="font-serif text-[26px] tabular-nums text-destructive">{sinAbrir}</p>
+            <p className="font-extrabold tracking-heading text-[26px] tabular-nums text-destructive">{sinAbrir}</p>
           </div>
           <div>
             <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">En revisión</p>
-            <p className="font-serif text-[26px] tabular-nums">{enRevision}</p>
+            <p className="font-extrabold tracking-heading text-[26px] tabular-nums">{enRevision}</p>
           </div>
           <div>
             <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Resueltos (30d)</p>
-            <p className="font-serif text-[26px] tabular-nums text-muted-foreground">{resueltos30d}</p>
+            <p className="font-extrabold tracking-heading text-[26px] tabular-nums text-muted-foreground">{resueltos30d}</p>
           </div>
         </div>
       </div>
@@ -72,7 +72,7 @@ export default async function CentroErroresPage({
           seleccionado) — el panel de 380px fijo solo tiene sentido con
           espacio de escritorio de sobra. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
-        <Card className="rounded-md">
+        <Card>
           <div className="flex gap-1.5 border-b border-border p-3">
             {[
               { key: "sin_resolver", label: "Sin resolver" },
@@ -126,7 +126,7 @@ export default async function CentroErroresPage({
           ))}
         </Card>
 
-        <Card className="rounded-md">
+        <Card>
           {!selected ? (
             <p className="p-8 text-sm text-muted-foreground">Elige un reporte de la lista.</p>
           ) : (
@@ -141,7 +141,7 @@ export default async function CentroErroresPage({
                     <ErrorStatusActions reportId={selected.id} status={selected.status} />
                   </div>
                 </div>
-                <h3 className="font-serif text-[24px] leading-tight">{selected.title}</h3>
+                <h3 className="font-extrabold tracking-heading text-[24px] leading-tight">{selected.title}</h3>
                 <p className="mt-2 text-[13px] text-muted-foreground">
                   Reportado por <strong className="font-medium text-foreground">{selected.reporter?.display_name ?? "Anónimo"}</strong> ·{" "}
                   {new Date(selected.created_at).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" })}

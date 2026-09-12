@@ -41,7 +41,23 @@ export const ActionButton = forwardRef<
       aria-busy={isPending}
       disabled={disabled || isPending}
       className={cn(
-        "inline-flex h-[42px] items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
+        "inline-flex h-[42px] items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold",
+        // Se hunde al presionar. Sin esto, entre el clic y la respuesta del
+        // servidor no pasa NADA en pantalla y el usuario no sabe si la
+        // interfaz lo escuchó — y este es el botón de toda mutación, así que
+        // es el hueco que más veces al día se vive. 150ms con la curva fuerte
+        // del proyecto; `active:` no dispara en un botón deshabilitado, así
+        // que mientras corre la acción se queda quieto, que es lo correcto.
+        // Se nombra `scale` y NO `transform`: Tailwind v4 compila `scale-*` a
+        // la propiedad independiente `scale`, así que una transición sobre
+        // `transform` no la toca y el botón saltaría de golpe.
+        "transition-[scale,opacity] duration-150 ease-out active:scale-[0.97]",
+        // Con `prefers-reduced-motion` no se encoge: la regla global deja la
+        // duración en 0.01ms, que apaga la curva pero no el `scale`, así que
+        // el botón daría un salto seco. El feedback sigue existiendo, sin
+        // desplazamiento — que es lo que pide "menos movimiento, no cero".
+        "motion-reduce:active:scale-100 motion-reduce:active:opacity-80",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
         VARIANT_CLASSES[variant],
         className,
       )}

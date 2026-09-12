@@ -14,10 +14,10 @@ export default async function DepartamentosPage() {
   ]);
 
   return (
-    <Card as="section" className="rounded-md">
+    <Card as="section" >
       <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-serif text-2xl">Departamentos</h2>
+          <h2 className="font-extrabold tracking-heading text-2xl">Departamentos</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">{departments.length} departamentos.</p>
         </div>
         <DepartmentDialog

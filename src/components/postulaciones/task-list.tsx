@@ -46,7 +46,7 @@ export function TaskRow({
   }
 
   return (
-    <Card as="li" className="flex items-center justify-between gap-3 rounded-md px-3.5 py-2.5 text-sm">
+    <Card as="li" className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
       <label className="flex min-w-0 items-center gap-2.5">
         <input
           type="checkbox"

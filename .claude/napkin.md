@@ -7,7 +7,84 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-11 (8 hallazgos de la auditoría de performance corregidos — un cursor de paginación sin desempate de `id` podía perder filas sembradas en el mismo instante para siempre)_
+_Última actualización: 2026-09-12 (auditoría de diseño: una regla que el código no cumple deja de ser una regla — tipografía migrada a peso 800-900, sistema de movimiento con tokens, y dos reglas corregidas porque el código tenía razón)_
+
+## Una regla de diseño que el código no cumple deja de ser una regla (2026-09-12) — MÁXIMA PRIORIDAD
+
+Auditoría de diseño contra el estándar de `emilkowalski/skills`. El resultado no
+fue "está mal animado": fue que **había reglas escritas en AGENTS.md que nadie
+había implementado, y reglas que el código contradecía de frente**. Lo segundo es
+peor que no tener regla: se lee el documento, se confía, y es falso.
+
+1. **La tipografía llevaba tres días escrita y sin aplicar.** La migración al
+   "AJE look" (011c47b) cambió color, sombra, radio y botones — y no tocó una
+   sola línea de tipografía. AGENTS.md decía "sin serif, peso extremo en títulos
+   (800-900)" mientras 46 archivos seguían en Instrument Serif con peso máximo
+   600. **Al migrar un sistema visual, la tipografía es lo primero que se nota y
+   lo último que se revisa: dejarla afuera del diff significa que el sistema
+   nuevo no existe todavía, por mucho que el color ya esté.**
+2. **Dos reglas las contradecía el código, y el código tenía razón.** "Elevación
+   con sombra, nunca borde de 1px": 528 usos de borde contra 14 de sombra.
+   "Radio variable 4/6/8/10/12px": un solo radio, 157 veces. En los dos casos se
+   cambió LA REGLA, no el código — cinco radios conviviendo no es riqueza, es
+   incoherencia con nombre elegante, y el borde de 1px en una interfaz densa
+   delimita sin repintar sombra en decenas de filas. Cuando la práctica y el
+   documento no coinciden, primero hay que preguntarse cuál de los dos está mal.
+3. **`scale` NO es `transform` en Tailwind v4.** `scale-[0.97]` compila a la
+   propiedad independiente `scale`. Una transición declarada sobre `transform`
+   no la toca y el elemento salta de golpe: la animación se escribe, se ve
+   correcta en el código y no existe. Se nombra `transition-[scale]`, o
+   `transition-transform`, que en v4 ya expande a `transform, translate, scale,
+   rotate`. Vale igual para `translate-*` y `rotate-*`.
+4. **Un hallazgo mío que era FALSO, y por qué.** Reporté "cero
+   `@media (hover: hover)` en el repo, el hover se queda pegado en celular".
+   Mentira: Tailwind v4 ya envuelve todo `hover:` y `group-hover:` en esa media
+   query. El grep buscaba `@media (hover: hover)` **con espacio** y el CSS sale
+   minificado como `@media (hover:hover)`. **Un grep que no encuentra nada sobre
+   CSS compilado no prueba ausencia — prueba que el patrón no coincide.**
+   Verificar contra el CSS real antes de reportar, y más antes de "arreglarlo".
+5. **Un `<dialog>` nativo se anima solo A LA ENTRADA, y la razón es
+   `overlay`.** La entrada es fácil: `@starting-style` da el estado de partida
+   y una sola regla en `globals.css` cubre los CUATRO `<dialog>` del proyecto
+   (`DialogShell`, `ConfirmDialog`, y los dos crudos de `job-info-modal` y
+   `refer-candidate-dialog`) sin tocar ningún componente. **La salida es la
+   trampa**: para que el diálogo siga visible mientras se desvanece hay que
+   retenerlo en la capa superior, y eso se pide con la propiedad `overlay`
+   dentro de una transición `allow-discrete`. **`overlay` es de Chromium.** En
+   Firefox y en Safari —que sí soportan `@starting-style` y `allow-discrete`—
+   el diálogo sale de la capa superior en el primer fotograma y se queda
+   pintado los 200ms: sin fondo oscurecido, sin el centrado de `dialog:modal`,
+   y por debajo de la barra flotante. Un glitch peor que no animar.
+   **No volver a agregar `allow-discrete` sobre `display`/`overlay` sin
+   verificar antes el soporte de `overlay`.** Como efecto colateral la salida
+   instantánea evita otro problema: un diálogo que desmonta su formulario en el
+   evento `close` (`refer-candidate-dialog`) se vería colapsar de alto completo
+   a una tira de título durante el fundido.
+   Y el bloque de `prefers-reduced-motion` tiene que listar `*::backdrop`
+   aparte: el selector universal NO lo alcanza, así que sin eso el diálogo
+   aparece de golpe sobre un fondo que sigue oscureciéndose.
+6. **El feedback de presión es la animación con mejor retorno de todas, y
+   costaba una línea.** Ningún botón tenía `:active`. Entre el clic y la
+   respuesta del servidor no pasaba nada en pantalla — en el botón obligatorio
+   de TODA mutación. `active:scale-[0.97]` en 150ms.
+7. **Un token de tema de Tailwind no es el default de Tailwind.** Pisar
+   `--ease-out` cambia la utilidad `ease-out`, pero `transition-colors` y
+   compañía resuelven su curva contra `--default-transition-timing-function`,
+   que seguía en la curva débil de fábrica. Hay que pisar ESA. Y aun con el
+   default puesto, cada transición declara su curva cuando no es la de
+   entrada: un color no "entra" (`ease`) y una rotación se mueve en pantalla
+   (`ease-in-out`).
+8. **El componente manda, no su default.** `<Card>` venía con `rounded-lg` y
+   40 de sus 50 usos lo pisaban a `rounded-md`. Documentar el default como si
+   fuera lo que se pinta es exactamente la mentira que esta entrada denuncia:
+   se cambió el default al valor real y se borraron los 40 overrides. **Antes
+   de escribir en el documento lo que un componente "hace", contar cuántos de
+   sus usos lo pisan.**
+9. **Restricción, no cobertura.** La auditoría pedía stagger en las listas. No se
+   puso: una lista de candidatos que un reclutador abre decenas de veces al día
+   está en el tramo donde la skill manda "quitar o reducir drásticamente", no
+   agregar. El presupuesto de movimiento se gastó donde había un propósito real
+   (presión, diálogos, origen del popover), no donde había un ítem pendiente.
 
 ## Una barra que se esconde tiene que dejar rastro, y el rastro tiene que ser ELLA (2026-09-11) — MÁXIMA PRIORIDAD
 

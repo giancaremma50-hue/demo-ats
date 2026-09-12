@@ -23,7 +23,7 @@ import {
 // teclado se dibuja con este mismo acento (--ring: var(--accent)) — un
 // color demasiado parecido al fondo lo vuelve invisible para cualquiera
 // que navegue con teclado, violando la regla "foco visible siempre".
-const APP_BACKGROUND = "#faf9f7";
+const APP_BACKGROUND = "#ffffff";
 const MIN_FOCUS_CONTRAST = 3; // mínimo WCAG para indicadores de UI/foco.
 
 const BrandingSchema = z.object({

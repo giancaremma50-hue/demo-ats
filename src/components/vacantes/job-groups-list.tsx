@@ -53,10 +53,10 @@ export function JobGroupsList({ jobs }: { jobs: JobListItem[] }) {
               aria-controls={regionId}
               className="group flex w-full items-baseline gap-2.5 border-b border-border pb-2.5 text-left"
             >
-              <span className="font-serif text-[19px]">{grupo.titulo}</span>
+              <span className="font-extrabold tracking-heading text-[19px]">{grupo.titulo}</span>
               <span className="text-xs tabular-nums text-muted-foreground">{grupo.jobs.length}</span>
               <ChevronDown
-                className={`ml-auto size-4 flex-none text-muted-foreground transition-transform ${abierto ? "" : "-rotate-90"}`}
+                className={`ml-auto size-4 flex-none text-muted-foreground transition-transform ease-in-out ${abierto ? "" : "-rotate-90"}`}
                 aria-hidden
               />
             </button>

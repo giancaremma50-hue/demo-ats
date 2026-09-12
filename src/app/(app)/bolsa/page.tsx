@@ -33,7 +33,7 @@ export default async function BolsaPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-[38px] leading-tight">Bolsa de empleo</h1>
+          <h1 className="font-black tracking-display text-[38px] leading-tight">Bolsa de empleo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Lo que ve quien entra a la bolsa pública, antes de postularse.
           </p>
@@ -50,8 +50,8 @@ export default async function BolsaPage() {
       </div>
 
       <div className="mt-7 grid gap-8 lg:grid-cols-[560px_1fr]">
-        <Card as="section" className="rounded-md p-6">
-          <h2 className="font-serif text-2xl">Portada</h2>
+        <Card as="section" className="p-6">
+          <h2 className="font-extrabold tracking-heading text-2xl">Portada</h2>
           <p className="mt-1 mb-6 text-[13px] leading-relaxed text-muted-foreground">
             Si subes un video, reemplaza a la foto. Los cambios se aplican de inmediato.
           </p>
@@ -62,7 +62,7 @@ export default async function BolsaPage() {
           </div>
 
           <div className="mt-7 border-t border-border pt-6">
-            <h2 className="font-serif text-2xl">Bienvenida</h2>
+            <h2 className="font-extrabold tracking-heading text-2xl">Bienvenida</h2>
             <p className="mt-1 mb-6 text-[13px] leading-relaxed text-muted-foreground">
               El título y el texto que acompañan a la portada.
             </p>

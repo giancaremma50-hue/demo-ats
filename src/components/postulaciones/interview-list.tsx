@@ -42,7 +42,7 @@ function InterviewRow({
   const calendarUrl = buildInterviewCalendarUrl(jobTitle, interview);
 
   return (
-    <Card className="rounded-md p-3.5 text-sm">
+    <Card className="p-3.5 text-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium tabular-nums">

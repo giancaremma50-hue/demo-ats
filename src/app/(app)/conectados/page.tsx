@@ -25,7 +25,7 @@ export default async function ConectadosPage() {
     // arrancaba directo en el cuadro de escribir, sin decir dónde estabas.
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
       <header>
-        <h1 className="font-serif text-[32px] leading-tight">AJE Conectados</h1>
+        <h1 className="font-black tracking-display text-[32px] leading-tight">AJE Conectados</h1>
         <p className="mt-1 text-sm text-muted-foreground">Lo que pasa en la empresa, en un solo lugar.</p>
       </header>
       <ConectadosFeed

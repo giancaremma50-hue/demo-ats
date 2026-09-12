@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 export function PendingApprovalsInbox({ requests }: { requests: PendingRequest[] }) {
   if (requests.length === 0) {
     return (
-      <Card className="rounded-md p-5">
+      <Card className="p-5">
         <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Solicitudes pendientes</p>
         <p className="mt-2 text-sm text-muted-foreground">Sin solicitudes esperando resolución.</p>
       </Card>
@@ -17,7 +17,7 @@ export function PendingApprovalsInbox({ requests }: { requests: PendingRequest[]
   const awaitingPublish = requests.filter((r) => r.status === "aceptada");
 
   return (
-    <Card className="rounded-md p-5">
+    <Card className="p-5">
       <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">
         Solicitudes pendientes <span className="tabular-nums">({requests.length})</span>
       </p>
@@ -64,7 +64,7 @@ function RequestList({ requests }: { requests: PendingRequest[] }) {
 export function MyRequestsInbox({ requests }: { requests: MyRequest[] }) {
   if (requests.length === 0) {
     return (
-      <Card className="rounded-md p-5">
+      <Card className="p-5">
         <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Mis solicitudes</p>
         <p className="mt-2 text-sm text-muted-foreground">Todavía no has solicitado ninguna vacante.</p>
         <Link href="/vacantes/nueva" className="mt-2 inline-block text-sm font-medium text-accent underline">
@@ -74,7 +74,7 @@ export function MyRequestsInbox({ requests }: { requests: MyRequest[] }) {
     );
   }
   return (
-    <Card className="rounded-md p-5">
+    <Card className="p-5">
       <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Mis solicitudes</p>
       <div className="mt-3 divide-y divide-border/60">
         {requests.map((r) => (

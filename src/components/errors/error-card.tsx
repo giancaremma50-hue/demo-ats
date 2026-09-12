@@ -24,11 +24,11 @@ export function ErrorCard({
 }) {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-6">
-      <Card className="rounded-md p-11">
+      <Card className="p-11">
         <div className="mb-5 flex size-10 items-center justify-center rounded-full border border-destructive">
           <AlertTriangle className="size-5 text-destructive" aria-hidden />
         </div>
-        <h1 className="font-serif text-[28px] leading-tight">{entry.titulo}</h1>
+        <h1 className="font-black tracking-display text-[28px] leading-tight">{entry.titulo}</h1>
         <p className="mt-3.5 text-[15px] leading-relaxed text-foreground/85">{entry.mensaje}</p>
         <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{entry.queHacer}</p>
         <div className="mt-7 flex flex-wrap gap-2.5">

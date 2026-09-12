@@ -127,12 +127,45 @@
   --color-aje-orange: var(--aje-orange);
   --color-aje-dark: var(--aje-dark);
 
+  /* Una sola familia. La escala de títulos la hace el PESO (800-900) y el
+     tracking negativo, no una segunda tipografía — ver AGENTS.md. */
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+
+  /* El tracking de los títulos. A peso 800-900 las letras se tocan: sin
+     apretar el espaciado el título se lee como un bloque. Dos valores, uno
+     por escalón — no uno por tamaño. */
+  --tracking-display: -0.035em;
+  --tracking-heading: -0.022em;
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
+
+  /* Curvas. Las de fábrica de CSS son demasiado débiles: les falta el tirón
+     que hace que una animación se lea intencional. `--ease-out` y
+     `--ease-in-out` PISAN a propósito las de Tailwind, para que todo
+     `ease-out` del proyecto —el que ya está escrito y el que venga— use la
+     curva fuerte sin tener que acordarse de un nombre nuevo.
+     Cuál usar: entra o sale → `ease-out`; se mueve o se transforma en
+     pantalla → `ease-in-out`; hover o color → `ease`; movimiento constante
+     (marquesina, barra de progreso) → `linear`. Nunca `ease-in` en interfaz:
+     arranca lento justo en el instante que el usuario está mirando.
+     Duraciones (no hay utilidad que generar, `duration-N` de Tailwind ya
+     toma el número; esto es la escala acordada):
+       presión de un botón   100-160ms
+       tooltip, popover chico 125-200ms
+       menú, select           150-250ms
+       diálogo, drawer        200-300ms
+     Ninguna animación de interfaz pasa de 300ms. Y la salida siempre es más
+     rápida que la entrada: el usuario ya decidió. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Y que sea el default de verdad: `transition-colors`, `transition-opacity`
+     y compañía resuelven la curva contra ESTA variable, no contra `--ease-out`.
+     Sin esta línea, una transición escrita sin acordarse de agregar `ease-out`
+     se quedaba con la curva débil de fábrica — que es justo el descuido que
+     los tokens existen para evitar. */
+  --default-transition-timing-function: var(--ease-out);
 
   --shadow-elevated: var(--shadow-elevated-raw);
   --shadow-nav: var(--shadow-nav-raw);
@@ -157,6 +190,71 @@
     overflow-x: hidden;
   }
 
+  /* Los diálogos aparecían de golpe. Un elemento que se materializa sin
+     transición se lee como un salto —el propósito acá es evitar ese cambio
+     brusco, no decorar—, y son pantalla completa sobre un fondo oscurecido,
+     así que el salto es de toda la vista. Vale para los dos diálogos del
+     proyecto porque los cuatro son <dialog> nativo —`DialogShell`,
+     `ConfirmDialog`, y los dos crudos de `job-info-modal` y
+     `refer-candidate-dialog`—: una regla, cero componentes tocados. Por eso
+     el selector es el elemento y no una clase: un selector por componente
+     dejaría a dos de los cuatro sin animar.
+
+     **Solo entrada, a propósito.** Animar también la SALIDA exige mantener el
+     diálogo en la capa superior mientras se desvanece, y eso se pide con la
+     propiedad `overlay`, que hoy solo entiende Chromium. En Firefox y en
+     Safari —que sí soportan `@starting-style` y `allow-discrete`— el diálogo
+     saldría de la capa superior en el primer fotograma y se quedaría pintado
+     200ms en el orden de apilamiento normal: sin fondo oscurecido, sin el
+     centrado de `dialog:modal`, y por debajo de la barra flotante. O sea un
+     glitch visible peor que la desaparición instantánea que había antes. Se
+     gana lo que importa (que no aparezca de la nada) y se deja la salida
+     instantánea, que es lo que ya hacía.
+
+     `@starting-style` da el estado del que entra — y es `scale(0.96)`, no
+     `scale(0)`: nada en el mundo real aparece de la nada.
+
+     Un modal NO escala desde su disparador: no cuelga de ninguno, aparece
+     centrado en la pantalla. La regla de "origen en el disparador" es de
+     popovers y menús (ver `popover.tsx`).
+
+     Un navegador sin `@starting-style` (Safari < 17.4) simplemente no anima,
+     que es exactamente lo que hacía antes. */
+  dialog {
+    opacity: 0;
+    scale: 0.96;
+    transition:
+      opacity 200ms var(--ease-out),
+      scale 200ms var(--ease-out);
+  }
+
+  dialog[open] {
+    opacity: 1;
+    scale: 1;
+  }
+
+  @starting-style {
+    dialog[open] {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+
+  dialog::backdrop {
+    opacity: 0;
+    transition: opacity 200ms var(--ease-out);
+  }
+
+  dialog[open]::backdrop {
+    opacity: 1;
+  }
+
+  @starting-style {
+    dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
   /* Cifras alineadas en toda métrica y tabla. */
   table,
   [data-numeric] {
@@ -170,9 +268,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* `::backdrop` va listado aparte: el selector universal NO lo alcanza, así
+     que sin esta línea el diálogo aparecía de golpe sobre un fondo que seguía
+     oscureciéndose por su cuenta. */
   *,
   *::before,
-  *::after {
+  *::after,
+  *::backdrop {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

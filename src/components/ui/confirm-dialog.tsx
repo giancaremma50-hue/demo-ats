@@ -55,7 +55,7 @@ export const ConfirmDialog = forwardRef<
     >
       <div className="p-7">
         <div className="flex items-start justify-between gap-5">
-          <h2 className="font-serif text-[23px] leading-tight">{title}</h2>
+          <h2 className="font-extrabold tracking-heading text-[23px] leading-tight">{title}</h2>
           <button
             type="button"
             aria-label="Cerrar"

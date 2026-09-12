@@ -68,7 +68,7 @@ export function CollaboratorsPanel({
           Todavía no hay miembros agregados. Agrega uno con el formulario de abajo.
         </p>
       ) : (
-        <Card as="ul" className="mt-4 divide-y divide-border/60 rounded-md">
+        <Card as="ul" className="mt-4 divide-y divide-border/60">
           {collaborators.map((c) => {
             const badge = roleBadge(c.profile_id, ownerId, requesterId);
             const isRecruiter = c.profile_id === ownerId;

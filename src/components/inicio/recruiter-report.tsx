@@ -20,7 +20,7 @@ export function RecruiterReportSection({ report }: { report: RecruiterReport }) 
       {report.rows.length === 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">Todavía no hay vacantes para reportar.</p>
       ) : (
-        <Card className="mt-3 overflow-x-auto rounded-md">
+        <Card className="mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
@@ -49,7 +49,7 @@ export function RecruiterReportSection({ report }: { report: RecruiterReport }) 
       )}
 
       {report.staleJobs.length > 0 && (
-        <Card className="mt-4 rounded-md p-4">
+        <Card className="mt-4 p-4">
           <p className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
             Vacantes estancadas <span className="tabular-nums">(14+ días sin movimiento)</span>
           </p>

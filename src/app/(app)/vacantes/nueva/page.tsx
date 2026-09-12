@@ -41,7 +41,7 @@ export default async function NuevaVacantePage() {
     <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-[32px]">Solicitar vacante</h1>
+          <h1 className="font-black tracking-display text-[32px]">Solicitar vacante</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isAdmin
               ? "Tu solicitud ya queda aceptada — revisa y publícala cuando esté lista."

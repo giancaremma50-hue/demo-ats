@@ -46,7 +46,7 @@ export function CareersHero({
   if (!hasCover) {
     return (
       <div className={compact ? "px-7 py-8" : "mx-auto max-w-4xl px-6 pt-16"}>
-        <h1 className={compact ? "font-serif text-[26px] leading-tight" : "font-serif text-[40px]"}>{titulo}</h1>
+        <h1 className={compact ? "font-black tracking-display text-[26px] leading-tight" : "font-black tracking-display text-[40px]"}>{titulo}</h1>
         {intro && (
           <p className="mt-4 max-w-2xl whitespace-pre-wrap text-[15px] leading-relaxed text-muted-foreground">
             {intro}
@@ -77,8 +77,8 @@ export function CareersHero({
         <h1
           className={
             compact
-              ? "font-serif max-w-[16ch] text-[28px] leading-[1.08]"
-              : "font-serif max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1.08]"
+              ? "font-black tracking-display max-w-[16ch] text-[28px] leading-[1.08]"
+              : "font-black tracking-display max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1.08]"
           }
         >
           {titulo}

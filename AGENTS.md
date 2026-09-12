@@ -153,24 +153,139 @@ Multicolor por contexto: cada estado o marca puede tener su color (igual que AJE
 
 **Fondo y superficies**
 - Blanco puro `#FFFFFF` de fondo (ya no blanco hueso).
-- **La elevación se hace con sombra, no con borde de 1px** — pero sutil, apenas una insinuación de profundidad, nunca la mancha difusa literal de la referencia de AJE (se probó y se veía pesada en una interfaz densa de datos, corregido 2026-09-09): `box-shadow: 0 2px 8px rgba(0,0,0,.06)` en tarjetas/modales elevados, `0 -1px 6px rgba(0,0,0,.05)` en barras fijas (la píldora del menú inferior incluida — ver regla de interacción #4). Usar `<Card>` (`src/components/ui/card.tsx`) para toda superficie elevada nueva — encapsula radio + `overflow-hidden` + sombra en un solo lugar.
+- **El borde define, la sombra levanta** (precisado 2026-09-12 tras auditoría: la regla decía "elevación con sombra, NUNCA borde de 1px" y el código usaba borde 528 veces contra 14 de sombra. No era que el código estuviera mal — era que la regla decía "nunca" sobre dos cosas que hacen trabajos distintos).
 
-**Tipografía**
-- Sans corporativo con peso extremo en títulos (equivalente a Gotham-Black: `font-weight: 800-900`), sans regular en cuerpo e interfaz. Sin serif.
+  | Recurso | Para qué |
+  |---|---|
+  | Sombra `0 2px 8px rgba(0,0,0,.06)` | **Superficie de contenido** (`<Card>`) y **lo que flota**: diálogo, popover, menú |
+  | Sombra `0 -1px 6px rgba(0,0,0,.05)` | Barras fijas (la píldora del menú inferior — ver regla de interacción #4) |
+  | Borde de 1px | **Estructura**: campos, separadores, tablas, y la fila en reposo de una lista densa |
+
+  Sutil a propósito, nunca la mancha difusa literal de la referencia de AJE: se probó y se veía pesada en una interfaz densa de datos (2026-09-09).
+- **En listas repetidas y densas (kanban, filas de tabla) la fila en reposo va con borde, no con sombra** — repintar sombra difusa en decenas de filas a la vez es caro y se ve sucio. La sombra aparece cuando el elemento se separa de su fila: arrastrando, en hover destacado.
+- Usar `<Card>` (`src/components/ui/card.tsx`) para toda superficie de contenido nueva — encapsula radio + `overflow-hidden` + sombra en un solo lugar.
+
+**Tipografía** — una sola familia, la jerarquía la hace el PESO (implementado 2026-09-12; la regla existía desde el 9 de septiembre y el código seguía en serif)
+- **Geist, y nada más. Sin serif.** Instrument Serif salió del bundle: dos familias en pantalla era el sistema anterior ("editorial sobrio"), no este.
+- **Dos escalones de título, y no se inventa un tercero:**
+
+  | Escalón | Cuándo | Clases |
+  |---|---|---|
+  | Display | 28px o más — título de pantalla, cifra protagonista, hero | `font-black tracking-display` (900 / −0.035em) |
+  | Título | 19–27px — encabezado de sección, título de diálogo, nombre de tarjeta | `font-extrabold tracking-heading` (800 / −0.022em) |
+  | Título chico | 18px o menos — nombre en una tarjeta de lista, marca en el encabezado | `font-bold tracking-heading` (700) |
+
+  El tracking negativo no es opcional: a peso 800-900 las letras se tocan y sin apretarlo el título se lee como un bloque. Los valores viven en `--tracking-display` / `--tracking-heading` (`globals.css`), nunca a mano.
+  A 15px un peso 900 se empasta y deja de leerse — por eso el escalón chico baja a 700. El peso extremo es para lo grande.
+- Cuerpo e interfaz en regular/medium. `font-semibold` queda para botones y etiquetas, no para títulos.
 - `font-variant-numeric: tabular-nums` en toda métrica y tabla (esto no cambia, es legibilidad, no estilo).
 
-**Forma**
-- `border-radius` variable según el elemento, no una escala única: `4px` / `6px` / `8px` / `10px` / `12px` en tarjetas y campos.
+**Forma** — un radio por ROL, no uno por elemento (precisado 2026-09-12)
+- La regla anterior pedía `4/6/8/10/12px` "variable según el elemento", que es una invitación a inventar un radio cada vez. Lo que el código hace —y hay que sostener— es una escala corta donde cada escalón significa algo, siempre por token, nunca en px a mano:
+
+  | Radio | Para qué | Usos |
+  |---|---|---|
+  | `rounded-md` | **El default de toda superficie y toda caja**: `<Card>`, campo, panel interno, miniatura | 157 |
+  | `rounded-lg` | Lo que flota por encima: diálogo y popover | 2 componentes |
+  | `rounded-sm` | Marcador chico en línea: badge, chip, token de código | 9 |
+  | `rounded-full` | Todo botón y toda píldora | 68 |
+  | `50%` | Ícono suelto de un solo símbolo | — |
+
+  Un radio nuevo fuera de esta tabla es un hallazgo de review, no una decisión de diseño: el ojo lee como error lo que no puede explicar.
 - **Píldora completa (`9999px`) en todo botón que pasa por `<ActionButton>`**, sea cual sea su variante (primario, secundario, destructivo, ghost) — en la referencia de AJE hasta el botón secundario de "Entrar con Google" es píldora, no solo el CTA principal.
 - **Círculo (`50%`) en todo ícono suelto de un solo símbolo**: cerrar diálogo, campana de notificaciones, reordenar/quitar una fila, el "+" flotante sobre una foto — no hace falta que "flote sobre una imagen", basta con que sea un ícono de acción aislado (así se ve en AJE: el menú hamburguesa y el selector de idioma también son círculos sobre fondo blanco, no solo los íconos sobre foto).
 - **Todo ícono sobre un fondo de color sólido (el menú flotante inferior, cualquier píldora rellena) lleva `strokeWidth={2.5}` como mínimo**, nunca el `2` por defecto de `lucide-react`. Encontrado 2026-09-09: con el verde AJE de fondo, una línea de grosor por defecto pierde contraste y el ícono se lee borroso — un fondo neutro (blanco, `bg-muted`) no tiene este problema y puede quedarse en el grosor default.
-- Excepción de densidad: en listas repetidas y densas (tarjetas de kanban, filas de tabla), la tarjeta en reposo usa borde de 1px, no sombra — la sombra difusa se reserva para cuando el elemento se separa de su fila (arrastrando, en hover destacado) para no repintar sombra en decenas de filas a la vez.
 
 **Imagen**
 - Fotografía real a pantalla completa (full-bleed) en héroes y portadas de sección, con overlay `--aje-dark` en degradado y texto blanco encima. Nunca ilustración genérica ni ícono como protagonista de una sección.
 
 **Espaciado**
 - Escala de espaciado de 4px se mantiene. Densidad alta en tablas de candidatos se mantiene: es requisito funcional, no estético.
+
+---
+
+## Reglas de movimiento (adoptado 2026-09-12)
+
+Estándar de `emilkowalski/skills`, instalado en `.claude/skills/`. **Antes de escribir
+cualquier transición o animación se carga la skill `animate`** — no es opcional, está
+en la tabla de skills obligatorias.
+
+La auditoría del 2026-09-12 encontró nueve transiciones en 101 componentes y cero
+tokens. El problema no era animar mal: era que no había sistema, y sin sistema cada
+animación nueva se inventa sus valores.
+
+**Curvas — viven en `globals.css`, nunca se escriben a mano.** `--ease-out` y
+`--ease-in-out` pisan a propósito las de Tailwind, para que todo `ease-out` del
+proyecto use la curva fuerte sin tener que acordarse de un nombre nuevo.
+
+| Token | Valor | Cuándo |
+|---|---|---|
+| `--ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` | Algo entra o sale. **El default.** |
+| `--ease-in-out` | `cubic-bezier(0.77, 0, 0.175, 1)` | Algo se mueve o se transforma en pantalla |
+
+Para un drawer o una hoja, cuando se anime alguno: `cubic-bezier(0.32, 0.72, 0, 1)` (la curva de Ionic, tipo iOS). **No hay token todavía** — se agrega el día que se use. Hoy ni `MeetingScheduler` ni `CandidateDrawer` animan, y un token que nadie usa hace creer que ya está resuelto.
+
+Hover y cambios de color: `ease`. Movimiento constante (marquesina, progreso): `linear`.
+
+**Duraciones** — no hay utilidad que generar, `duration-N` de Tailwind ya toma el
+número. Esto es la escala acordada:
+
+| Qué | Duración |
+|---|---|
+| Presión de un botón | 100–160 ms |
+| Tooltip, popover chico | 125–200 ms |
+| Menú, select | 150–250 ms |
+| Diálogo, drawer | 200–300 ms |
+
+**Ninguna animación de interfaz pasa de 300 ms**, y **la salida siempre es más rápida
+que la entrada**: al abrir el usuario todavía está ubicando lo que apareció; al cerrar
+ya decidió.
+
+**Lo que nunca entra en código nuevo:**
+
+| Nunca | En su lugar |
+|---|---|
+| `transition-all` | Nombrar las propiedades exactas |
+| Entrada desde `scale(0)` | `scale(0.95)` + `opacity: 0` — nada en el mundo real aparece de la nada |
+| `ease-in` en interfaz | `ease-out`; arranca lento justo cuando el usuario está mirando |
+| Animar una acción de teclado o algo que se ve 100+ veces al día | Sin animación. Punto. |
+| `transform-origin: center` en un popover anclado | `origin-[var(--radix-popover-content-transform-origin)]` (un diálogo modal sí va centrado) |
+| Keyframes en algo que se dispara rápido (toasts, toggles) | Transiciones: se retoman a mitad de camino, los keyframes reinician desde cero |
+| Animar `width`/`height`/`margin`/`top` | `transform` y `opacity` |
+| Props `x`/`y`/`scale` de framer-motion bajo carga | El string completo: `transform: "translateX(100px)"` |
+
+**Trampa de Tailwind v4 — `scale` NO es `transform`.** `scale-[0.97]` compila a la
+propiedad independiente `scale`, así que `transition-[transform]` no la toca y el
+elemento salta de golpe. Se nombra `transition-[scale]` (o `transition-transform`,
+que en v4 ya expande a `transform, translate, scale, rotate`).
+
+**Lo que NO hay que "arreglar":** Tailwind v4 ya envuelve todo `hover:` y
+`group-hover:` en `@media (hover: hover)` por su cuenta. Los hover de este proyecto
+están protegidos contra el toque en celular sin que nadie escriba nada. (Se reportó
+como hallazgo en la auditoría y era falso: el grep buscaba `@media (hover: hover)` con
+espacio y el CSS sale minificado sin él.)
+
+**Feedback de presión — obligatorio en todo botón que dispara una acción.**
+`active:scale-[0.97]` con `transition-[scale] duration-150 ease-out`, más
+`motion-reduce:active:scale-100 motion-reduce:active:opacity-80` (con movimiento
+reducido la duración global queda en 0.01ms, que apaga la curva pero no el `scale`:
+sin esto el botón daría un salto seco). Ya está en `<ActionButton>` y
+`<DeleteButton>`, que es por donde pasa toda mutación. Entre el clic y la respuesta
+del servidor no puede no pasar nada en pantalla.
+
+**Dónde NO va**, y no es pendiente sino decisión:
+- **Enlaces de navegación** (la barra flotante, filas de lista que navegan): el
+  feedback es el cambio de pantalla, que llega antes que cualquier animación.
+- **Controles con forma de fila** que usan `<ActionButton>` a lo ancho completo
+  (`notification-item`): encogerlos 3% los despega de sus vecinas y rompe la
+  retícula de separadores. Se cancela con `active:scale-100`, que gana por
+  `twMerge`.
+- Un ícono suelto de cerrar o abrir sí puede llevarlo, pero todavía no lo lleva:
+  cuando se toque uno de esos componentes, se agrega.
+
+**`prefers-reduced-motion` viaja con la animación**, no como pendiente. Significa
+menos movimiento y más suave, no cero: se conservan opacidad y color, se quita el
+desplazamiento.
 
 ---
 

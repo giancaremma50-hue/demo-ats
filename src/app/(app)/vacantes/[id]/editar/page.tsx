@@ -19,7 +19,7 @@ export default async function EditarVacantePage({ params }: { params: Promise<{ 
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="font-serif text-[32px]">Editar vacante</h1>
+      <h1 className="font-black tracking-display text-[32px]">Editar vacante</h1>
       <p className="mt-1 mb-8 text-sm text-muted-foreground">{job.code}</p>
       <JobForm
         action={updateJob.bind(null, job.id)}

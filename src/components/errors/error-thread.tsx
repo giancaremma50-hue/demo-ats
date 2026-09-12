@@ -57,7 +57,7 @@ export function ErrorThread({
         ))}
       </div>
 
-      <Card className="mt-6 rounded-md">
+      <Card className="mt-6">
         {/* Card no reenvía ref (no usa forwardRef) — el form vive adentro,
             sin estilos propios, solo para que formRef.current?.reset() siga
             apuntando a un nodo real. */}

@@ -38,7 +38,7 @@ export default async function InicioPage() {
           <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">
             <TodayLabel />
           </p>
-          <h1 className="font-serif mt-2.5 text-[38px] leading-[1.1] sm:text-[42px]">
+          <h1 className="font-black tracking-display mt-2.5 text-[38px] leading-[1.1] sm:text-[42px]">
             <Greeting name={profile.display_name.split(" ")[0]} />
           </h1>
         </div>

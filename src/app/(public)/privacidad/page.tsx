@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="font-serif mt-10 text-[22px] leading-tight">{children}</h2>;
+  return <h2 className="font-extrabold tracking-heading mt-10 text-[22px] leading-tight">{children}</h2>;
 }
 
 function P({ children }: { children: React.ReactNode }) {
@@ -45,7 +45,7 @@ export default async function PrivacidadPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-14">
       <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Documento legal</p>
-      <h1 className="font-serif mt-2.5 text-[34px] leading-[1.1]">Política de privacidad y tratamiento de datos</h1>
+      <h1 className="font-black tracking-display mt-2.5 text-[34px] leading-[1.1]">Política de privacidad y tratamiento de datos</h1>
       <p className="mt-3 text-xs tabular-nums text-muted-foreground">
         Versión {POLITICA_VERSION} · vigente desde {POLITICA_VIGENCIA}
       </p>

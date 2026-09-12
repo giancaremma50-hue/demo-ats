@@ -37,7 +37,7 @@ export default async function PlantillaPaso3Page({
       <div className="flex-1">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-serif text-[32px]">Preguntas</h1>
+            <h1 className="font-black tracking-display text-[32px]">Preguntas</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Preguntas de precalificación para quien postule a una vacante creada desde esta plantilla — las de opción
               múltiple pueden marcar una respuesta esperada.

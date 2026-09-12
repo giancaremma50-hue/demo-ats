@@ -19,8 +19,8 @@ export default async function MarcaPage() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[560px_1fr]">
-      <Card as="section" className="rounded-md p-6">
-        <h2 className="font-serif text-2xl">Identidad visual</h2>
+      <Card as="section" className="p-6">
+        <h2 className="font-extrabold tracking-heading text-2xl">Identidad visual</h2>
         <p className="mt-1 mb-6 text-[13px] leading-relaxed text-muted-foreground">
           Los cambios se aplican de inmediato para todos al guardar.
         </p>
@@ -58,26 +58,26 @@ export default async function MarcaPage() {
                 <Image src={org.logo_url} alt="" width={24} height={24} className="shrink-0 object-contain" />
               ) : (
                 <div className="flex size-6 flex-none items-center justify-center border border-foreground">
-                  <span className="font-serif text-[15px] leading-none">{org.platform_name.charAt(0)}</span>
+                  <span className="font-bold tracking-heading text-[15px] leading-none">{org.platform_name.charAt(0)}</span>
                 </div>
               )}
-              <span className="font-serif text-lg">{org.platform_name}</span>
+              <span className="font-bold tracking-heading text-lg">{org.platform_name}</span>
             </div>
             <p className="mt-6 text-[10px] tracking-[0.16em] text-muted-foreground uppercase">Reclutamiento</p>
-            <p className="font-serif mt-2 text-2xl leading-tight">Bienvenido de vuelta</p>
+            <p className="font-extrabold tracking-heading mt-2 text-2xl leading-tight">Bienvenido de vuelta</p>
           </div>
           <div
             className="relative flex items-end p-7"
             style={{ backgroundColor: org.accent_color }}
           >
             <HeroBackgroundMedia videoUrl={org.login_video_url} imageUrl={org.login_image_url} />
-            <p className="font-serif relative z-10 text-[19px] leading-snug text-white">
+            <p className="font-extrabold tracking-heading relative z-10 text-[19px] leading-snug text-white">
               Contratar bien es la decisión más cara que toma una empresa.
             </p>
           </div>
         </Card>
 
-        <Card className="rounded-md p-5">
+        <Card className="p-5">
           <p className="mb-3.5 text-[11px] tracking-[0.13em] text-muted-foreground uppercase">
             Cómo se ven los componentes con este acento
           </p>

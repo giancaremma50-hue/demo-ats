@@ -144,7 +144,7 @@ export function NotificationBell({
         )}
       </button>
       {open && (
-        <Card className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-md">
+        <Card className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)]">
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
               <p className="p-4 text-sm text-muted-foreground">Sin notificaciones todavía.</p>
