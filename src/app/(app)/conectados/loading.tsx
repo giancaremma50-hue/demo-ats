@@ -20,7 +20,10 @@ export default function Loading() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
       <header>
-        <Skeleton className="h-9 w-64" />
+        {/* `w-24` y no `w-64`: el h1 dice "Muro", que a 32px `font-black`
+            mide unos 90px. Un esqueleto de 256px salta al relevo, que es
+            justo lo que este archivo existe para evitar. */}
+        <Skeleton className="h-9 w-24" />
         <Skeleton className="mt-2 h-4 w-80 max-w-full" />
       </header>
 

@@ -23,9 +23,13 @@ export default async function ConectadosPage() {
     // encabezado también le da nombre a la pantalla — sin él, entrar a
     // Conectados desde el selector de módulos dejaba una pantalla que
     // arrancaba directo en el cuadro de escribir, sin decir dónde estabas.
+    // "Muro" y no "AJE Conectados": el h1 nombra a la PANTALLA, que es lo que
+    // dicen el mapa y la barra al traerte acá; el módulo ya lo nombra el
+    // selector, y con los dos textos distintos nada confirmaba que hubieras
+    // llegado a donde tocaste.
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
       <header>
-        <h1 className="font-black tracking-display text-[32px] leading-tight">AJE Conectados</h1>
+        <h1 className="font-black tracking-display text-[32px] leading-tight">Muro</h1>
         <p className="mt-1 text-sm text-muted-foreground">Lo que pasa en la empresa, en un solo lugar.</p>
       </header>
       <ConectadosFeed
