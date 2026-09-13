@@ -241,6 +241,21 @@ Multicolor por contexto: cada estado o marca puede tener su color (igual que AJE
 **Espaciado**
 - Escala de espaciado de 4px se mantiene. Densidad alta en tablas de candidatos se mantiene: es requisito funcional, no estético.
 
+**Responsividad — el piso es 320px, y desbordarse acá BORRA controles**
+
+`html` y `body` llevan `overflow-x: hidden` (`globals.css`): lo que se sale del ancho no produce barra de scroll, se recorta. No se ve apretado — **no se ve**. La auditoría del 2026-09-13 encontró así tres botones pintados fuera de la pantalla (quitar una pregunta, quitar una etapa, abrir la info de la vacante), inalcanzables desde un teléfono. Toda fila nueva se comprueba a 320px.
+
+| Nunca | En su lugar |
+|---|---|
+| Un hijo de flex con texto o campo, sin `min-w-0` | `min-w-0` para que encoja, **y un mínimo real** (`min-w-[10rem]`) con `flex-wrap` en el padre para que corte línea en vez de recortarse |
+| Una columna lateral de ancho fijo sin colapso | `flex-col` + `md:flex-row`, `w-full` + `md:w-48` |
+| Un grupo `flex-none` de anchos fijos en un encabezado | `w-full` + `sm:w-auto`, con `flex-wrap` en el padre |
+| `grid-cols-N` sin prefijo responsive | Prefijo — o `@container` + `@min-[Npx]:` cuando el ancho lo fija el contenedor y no la ventana |
+| `100vh` / `min-h-screen` en una pantalla de alto fijo | `100dvh` / `min-h-dvh`, **en toda la cadena**: Tailwind v4 compila `min-h-screen` a `100vh` y un ancestro así anula el `dvh` del hijo |
+| Una tabla suelta | Dentro de su propio `overflow-x-auto` |
+
+**El punto de corte se elige por el ancho que queda, no por costumbre.** Devolver una barra lateral de 192px en `sm:` (640px) deja la columna de contenido en 360px — lo mismo que el teléfono que se quería arreglar. Y cuando el ancho de un bloque lo fija su grid padre y no la ventana, la pregunta correcta la hace una consulta de contenedor: la vista previa de `/configuracion/marca` mide 352px con la ventana en 1024.
+
 ---
 
 ## Reglas de movimiento (adoptado 2026-09-12)

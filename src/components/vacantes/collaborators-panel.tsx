@@ -83,7 +83,10 @@ export function CollaboratorsPanel({
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-muted-foreground">{c.profile?.email}</p>
+                  {/* `truncate`: un correo es un token sin espacios, así que
+                      `min-w-0` solo deja encoger al contenedor — el texto se sale
+                      igual. Mismo tratamiento que `user-row.tsx`. */}
+                  <p className="truncate text-xs text-muted-foreground">{c.profile?.email}</p>
                 </div>
                 <div className="flex flex-none items-center gap-3">
                   <span className="text-xs text-muted-foreground">{PERMISSION_LABEL[c.permission]}</span>

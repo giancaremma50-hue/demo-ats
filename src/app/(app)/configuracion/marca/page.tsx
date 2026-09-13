@@ -47,7 +47,17 @@ export default async function MarcaPage() {
 
       <section className="flex flex-col gap-4">
         <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">Vista previa en vivo</p>
-        <Card className="grid grid-cols-2" style={{ height: 340 }}>
+        {/* Consulta de CONTENEDOR, no de ventana: el ancho de esta tarjeta lo
+            fija el grid padre (`lg:grid-cols-[560px_1fr]`), no el viewport. A
+            1024px la ventana es ancha pero la tarjeta mide 352px, y un
+            `sm:grid-cols-2` la habría partido en dos celdas de 176px que con
+            `p-7` dejan 120px de contenido: "Bienvenido" solo ya no entra y
+            `Card` lo recorta (`overflow-hidden`). En un teléfono pasaba lo
+            mismo con 114px por lado. Dos columnas recién a 420px de TARJETA,
+            que es donde de verdad entran, y el alto fijo va con ellas —
+            apilada, 340px recortan la mitad de abajo. */}
+        <div className="@container">
+          <Card className="grid grid-cols-1 @min-[420px]:h-[340px] @min-[420px]:grid-cols-2">
           <div className="flex flex-col justify-center bg-background p-7">
             {/* El logo también acá, no solo en su campo: la vista previa es
                 donde se confirma que lo que se acaba de subir se ve como uno
@@ -71,12 +81,21 @@ export default async function MarcaPage() {
             className="relative flex items-end p-7"
             style={{ backgroundColor: org.accent_color }}
           >
-            <HeroBackgroundMedia videoUrl={org.login_video_url} imageUrl={org.login_image_url} />
+            {/* Sin `sizes` el default es `100vw` y el navegador baja la
+                variante de 2560px para pintar una tarjeta que nunca pasa de
+                480 — la nota vive en el propio componente y `/bolsa` ya la
+                respeta. */}
+            <HeroBackgroundMedia
+              videoUrl={org.login_video_url}
+              imageUrl={org.login_image_url}
+              sizes="(min-width: 1092px) 280px, 100vw"
+            />
             <p className="font-extrabold tracking-heading relative z-10 text-[19px] leading-snug text-accent-foreground">
               Contratar bien es la decisión más cara que toma una empresa.
             </p>
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </div>
 
         <Card className="p-5">
           <p className="mb-3.5 text-[11px] tracking-[0.13em] text-muted-foreground uppercase">

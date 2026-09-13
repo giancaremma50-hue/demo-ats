@@ -27,7 +27,7 @@ export default async function LoginPage({
   const signIn = signInWithGoogle.bind(null, proximo);
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-2">
+    <main className="grid min-h-dvh lg:grid-cols-2">
       <div className="flex flex-col justify-between px-8 py-12 lg:px-20">
         <div className="flex items-center gap-2.5">
           {organization?.logo_url ? (

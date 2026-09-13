@@ -11,7 +11,66 @@
 > acá— o que sea de una sola funcionalidad. La entrada se queda entera; lo que
 > se saca es la marca.
 
-_Última actualización: 2026-09-13 (un submenú pertenece a su módulo: fuera del módulo no se muestra, y lo que lo reemplaza es un mapa en el selector — no menos navegación)_
+_Última actualización: 2026-09-13 (`overflow-x: hidden` en `html` convierte todo desborde horizontal en contenido inalcanzable y MUDO: la ronda 3 de responsividad encontró tres botones pintados fuera de la pantalla, sin barra que los alcance)_
+
+## Responsividad, ronda 3: `overflow-x: hidden` no arregla un desborde, lo esconde (2026-09-13) — MÁXIMA PRIORIDAD
+
+Captura real del usuario en `/configuracion/plantillas-vacante`: el título
+partido en una palabra por línea y los campos cortados a la derecha. La causa
+directa era una sola línea —`flex gap-10` con un `<aside className="w-48
+flex-none">`, que a 360px deja ~100px de formulario— pero lo que hay que
+recordar es lo que apareció al tirar del hilo.
+
+**`html` y `body` llevan `overflow-x: hidden` (`globals.css`).** O sea: lo que
+desborda no produce barra de scroll. No se ve mal — **no se ve**. En los pasos
+3 y 4 del asistente eso dejaba los botones de reordenar y de quitar pintados
+fuera de la pantalla, sin ninguna forma de alcanzarlos: una pregunta agregada
+por error no se podía borrar desde un teléfono. El encabezado del tablero
+escondía igual el botón de "Info de la vacante". **Un desborde horizontal en
+este proyecto no degrada la vista: borra controles.** Por eso la auditoría no
+puede quedarse en "se ve apretado".
+
+Las cuatro causas reales, en orden de cuántas veces aparecieron:
+
+| Causa | Cómo se ve | Arreglo |
+|---|---|---|
+| `min-width: auto` de un hijo de flex | Una fila de campos que no encoge y tapa lo que sigue | `min-w-0` para encoger, **más un mínimo real** (`min-w-[10rem]`) + `flex-wrap` para que corte línea en vez de recortarse |
+| Columna lateral de ancho fijo sin colapso | Formulario aplastado, página entera desbordada | `flex-col` + `md:flex-row`, `w-full` + `md:w-48` |
+| Grupo `flex-none` con anchos fijos | Un botón que existe pero no se ve | `w-full` + `sm:w-auto`, `flex-wrap` en el padre |
+| `grid-cols-N` sin prefijo | Celdas de 170px con `p-7` adentro | Prefijo responsive… o **consulta de contenedor**, ver abajo |
+
+**`sm:` no siempre es el punto de corte, y a veces el viewport no es la
+pregunta.** Dos trampas distintas, las dos encontradas en esta ronda:
+
+- **Devolver una barra lateral de 192px en `sm:` (640px) no compra nada**: deja
+  la columna de contenido en 360px, lo mismo que el teléfono que se quería
+  arreglar. El primer ancho donde de verdad entra es `md:` (768 → 488px de
+  formulario).
+- **La vista previa de marca no depende del viewport sino de su grid padre**
+  (`lg:grid-cols-[560px_1fr]`): a 1024px la ventana es ancha y la tarjeta mide
+  352px. Ahí la pregunta correcta la hace `@container` + `@min-[420px]:`, no un
+  `sm:`. Tailwind v4 lo compila de fábrica — verificado contra el CSS generado,
+  no asumido.
+
+**`min-h-screen` anula un `100dvh`.** Tailwind v4 compila `min-h-screen` a
+`100vh`. Cambiar la página del tablero a `100dvh` no servía de nada mientras su
+contenedor en `(app)/layout.tsx` seguía forzando `100vh`: el documento quedaba
+más alto que la ventana, la página seguía teniendo scroll hacia el vacío y al
+primer gesto el tablero saltaba de alto. Las dos unidades tienen que coincidir
+en toda la cadena.
+
+**Lo que NO se tocó, y por qué**: `viewport-fit=cover` sigue sin declararse, así
+que `env(safe-area-inset-*)` vale 0 (ver la entrada propia de eso). No es un bug
+vivo: sin `cover`, iOS ya reserva el área segura por su cuenta y la barra
+flotante queda por encima del indicador de inicio. Declararlo metería el
+contenido DEBAJO del notch y obligaría a auditar todos los márgenes laterales —
+es un cambio de enfoque, no un arreglo.
+
+**Y la lección de proceso, que ya estaba escrita y volvió a cobrar**: la ronda 2
+de esta auditoría anotó que "el grep por sí solo no basta, pedir una captura
+real". Esta ronda salió de una captura. Las tres rondas encontraron bugs que la
+anterior no; lo que cambió en esta es que el barrido arrancó por la causa
+(`min-width: auto`, ancho fijo, `flex-none`) y no por la pantalla.
 
 ## Un submenú pertenece a su módulo — y sacarlo de donde no va exige poner el mapa en otro lado (2026-09-13) — MÁXIMA PRIORIDAD
 

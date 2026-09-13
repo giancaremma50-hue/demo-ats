@@ -27,7 +27,10 @@ export function JobInfoModal({ job, collaborators }: { job: JobDetail; collabora
       <button
         type="button"
         onClick={() => dialogRef.current?.showModal()}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground hover:border-accent hover:text-accent"
+        // `shrink-0 whitespace-nowrap`: vive en un grupo flex que en un
+        // teléfono ya no es `flex-none`, y sin esto el reparto lo encogía
+        // hasta que su texto salía de la píldora de 36px de alto.
+        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs whitespace-nowrap text-muted-foreground hover:border-accent hover:text-accent"
       >
         <Info className="size-3.5" aria-hidden />
         Info de la vacante

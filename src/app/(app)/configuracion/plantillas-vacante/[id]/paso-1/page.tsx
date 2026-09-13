@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getJobTemplateForWizard } from "@/lib/job-templates/get-job-templates";
 import { getDepartmentsForOrg } from "@/lib/jobs/get-departments";
+import { WizardLayout } from "@/components/configuracion/wizard/wizard-layout";
 import { WizardStepsNav } from "@/components/configuracion/wizard/wizard-steps-nav";
 import { WizardStep1Form } from "@/components/configuracion/wizard/wizard-step1-form";
 import { HelpTourButton } from "@/components/ui/help-tour-button";
@@ -23,38 +24,33 @@ export default async function PlantillaPaso1Page({ params }: { params: Promise<{
   if (!template) notFound();
 
   return (
-    <div className="mx-auto flex max-w-4xl gap-10">
-      <aside className="w-48 flex-none pt-2">
-        <WizardStepsNav current={1} />
-      </aside>
-      <div className="flex-1">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-black tracking-display text-[32px]">Editar plantilla de puesto</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Lo general del puesto — país, ubicación, modalidad y tipo de contrato se eligen al solicitar cada vacante, no acá.
-            </p>
-          </div>
-          <HelpTourButton
-            intro={{
-              title: "El paso 1 de 6",
-              description: "Detalles — lo que cada vacante creada desde esta plantilla va a traer prellenado. Algunos campos los ve el candidato, otros son solo internos.",
-            }}
-            steps={HELP_STEPS}
-          />
+    <WizardLayout nav={<WizardStepsNav current={1} />}>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-black tracking-display text-[32px]">Editar plantilla de puesto</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Lo general del puesto — país, ubicación, modalidad y tipo de contrato se eligen al solicitar cada vacante, no acá.
+          </p>
         </div>
-        <WizardStep1Form
-          departments={departments}
-          templateId={template.id}
-          initialValues={{
-            name: template.name,
-            title: template.title,
-            department_id: template.department_id,
-            description: template.description,
-            requirements: template.requirements,
+        <HelpTourButton
+          intro={{
+            title: "El paso 1 de 6",
+            description: "Detalles — lo que cada vacante creada desde esta plantilla va a traer prellenado. Algunos campos los ve el candidato, otros son solo internos.",
           }}
+          steps={HELP_STEPS}
         />
       </div>
-    </div>
+      <WizardStep1Form
+        departments={departments}
+        templateId={template.id}
+        initialValues={{
+          name: template.name,
+          title: template.title,
+          department_id: template.department_id,
+          description: template.description,
+          requirements: template.requirements,
+        }}
+      />
+    </WizardLayout>
   );
 }

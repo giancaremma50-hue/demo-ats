@@ -3,6 +3,7 @@ import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getJobTemplateForWizard } from "@/lib/job-templates/get-job-templates";
 import { getTemplateStages } from "@/lib/job-templates/get-template-stages";
 import { getPipelineTemplatesWithStages } from "@/lib/pipeline-templates/get-pipeline-templates";
+import { WizardLayout } from "@/components/configuracion/wizard/wizard-layout";
 import { WizardStepsNav } from "@/components/configuracion/wizard/wizard-steps-nav";
 import { WizardStep4Form } from "@/components/configuracion/wizard/wizard-step4-form";
 import { NotifyOnMount } from "@/components/ui/notify-on-mount";
@@ -34,27 +35,22 @@ export default async function PlantillaPaso4Page({
   ]);
 
   return (
-    <div className="mx-auto flex max-w-4xl gap-10">
+    <WizardLayout nav={<WizardStepsNav current={4} />}>
       {guardado && <NotifyOnMount message="Preguntas guardadas" />}
-      <aside className="w-48 flex-none pt-2">
-        <WizardStepsNav current={4} />
-      </aside>
-      <div className="flex-1">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-black tracking-display text-[32px]">Etapas</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              El kanban de esta plantilla. Bandeja de entrada, Contratado y Descartado son fijas — agregá lo que va en
-              medio.
-            </p>
-          </div>
-          <HelpTourButton
-            intro={{ title: "El paso 4 de 6", description: "Etapas — el kanban por el que va a pasar cada candidato de una vacante creada desde esta plantilla." }}
-            steps={HELP_STEPS}
-          />
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-black tracking-display text-[32px]">Etapas</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            El kanban de esta plantilla. Bandeja de entrada, Contratado y Descartado son fijas — agregá lo que va en
+            medio.
+          </p>
         </div>
-        <WizardStep4Form templateId={template.id} initialStages={stages} savedSets={savedSets} />
+        <HelpTourButton
+          intro={{ title: "El paso 4 de 6", description: "Etapas — el kanban por el que va a pasar cada candidato de una vacante creada desde esta plantilla." }}
+          steps={HELP_STEPS}
+        />
       </div>
-    </div>
+      <WizardStep4Form templateId={template.id} initialStages={stages} savedSets={savedSets} />
+    </WizardLayout>
   );
 }

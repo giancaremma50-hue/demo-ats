@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // animaciones de framer-motion (transform/opacity vía WAAPI), que la
     // regla CSS de globals.css no puede alcanzar.
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen">
+      <div className="min-h-dvh">
         <AppHeader
           organization={organization ?? { platform_name: "Demo AJE", logo_url: null }}
           profile={profile}
