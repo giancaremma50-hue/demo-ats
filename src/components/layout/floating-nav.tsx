@@ -30,10 +30,12 @@ const RELLENO = 12;
 const MS_APARICION = 300;
 
 /**
- * Un ítem de la barra. Ícono siempre; la etiqueta solo cuando está activo y
- * hay ancho — es lo más ancho de la barra y en un teléfono se come el lugar
- * que necesitan el selector y el engranaje. En móvil el fondo blanco alcanza
- * para marcar dónde estás, y el nombre del módulo ya está en el selector.
+ * Un ítem de la barra. Ícono siempre; la etiqueta, solo el activo — pero en
+ * TODO ancho, no a partir de `sm:` como antes. Es el único texto que nombra la
+ * pantalla en la que estás, y en un teléfono es justo donde hacía falta: la
+ * píldora blanca marca cuál, pero no dice cuál. El que cede el lugar en móvil
+ * es el nombre del módulo (ver el selector), que ya lo dice el color de la
+ * barra.
  */
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
@@ -60,7 +62,9 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           sobre la píldora clara, así que ahí manda `text-foreground`. */}
       <span className={`relative flex items-center gap-2 ${active ? "text-foreground" : "text-aje-dark/80"}`}>
         <Icon className="size-[18px]" strokeWidth={2.5} aria-hidden />
-        {active && <span className="hidden sm:inline">{item.label}</span>}
+        {/* Siempre, no solo en `sm:`: es lo único que nombra la pantalla en la
+            que estás, y en un teléfono es donde más falta hace. */}
+        {active && <span>{item.label}</span>}
       </span>
       {!active && (
         <span
@@ -166,7 +170,9 @@ export function FloatingNav({ role }: { role: Role }) {
       // el nombre del módulo y cuatro submenús). Nunca por defecto: un
       // contenedor que recorta un eje recorta el otro (CSS Overflow 3), y
       // arriba de la píldora viven los tooltips, que son la única etiqueta de
-      // los íconos. Donde no cabe, tampoco hay hover que los muestre.
+      // los íconos inactivos — y los abre tanto el hover como el foco de
+      // teclado, así que recortarlos cuesta en los dos casos. Por eso el
+      // scroll se levanta apenas el contenido cabe.
       const apretada = natural > disponible;
       if ((contenido.dataset.apretada === "true") !== apretada) {
         contenido.dataset.apretada = String(apretada);
@@ -269,9 +275,10 @@ export function FloatingNav({ role }: { role: Role }) {
   // los dos coincidirían por prefijo y se montarían dos elementos con el
   // mismo `layoutId`, que framer-motion no sabe resolver.
   const candidatos = [...items, ...(settings ? [settings] : [])];
-  const hrefActivo = candidatos
+  const itemActivo = candidatos
     .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+    .sort((a, b) => b.href.length - a.href.length)[0];
+  const hrefActivo = itemActivo?.href;
 
   function desplegar() {
     if (!plegada) return;
@@ -402,7 +409,14 @@ export function FloatingNav({ role }: { role: Role }) {
                   {/* El nombre del módulo, el ancla que dice dónde estás — y
                       por eso mismo no aparece donde sería falso decirlo (ver
                       `isModulelessPath`). */}
-                  {!sinModulo && <span>{activeModule.shortLabel}</span>}
+                  {/* El nombre del módulo solo donde hay ancho. En un teléfono
+                      el lugar es para la PANTALLA en la que estás (la etiqueta
+                      del ítem activo, abajo): el módulo ya lo dice el color de
+                      la barra, y el popover lo nombra completo al abrirlo.
+                      Que la barra dijera "Reclutamiento" con el Home
+                      seleccionado se leía como que estabas en una pantalla con
+                      ese nombre — reportado el 2026-09-12. */}
+                  {!sinModulo && <span className="hidden sm:inline">{activeModule.shortLabel}</span>}
                 </button>
               </PopoverTrigger>
               <PopoverContent

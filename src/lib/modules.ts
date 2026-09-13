@@ -10,7 +10,10 @@ export type ModuleConfig = {
   id: string;
   /** Nombre largo, para el selector de módulos. */
   label: string;
-  /** Nombre corto, el que va en la barra al lado del selector. */
+  /** Nombre corto. Va en la barra al lado del selector desde `sm:` — pero ojo:
+   *  `settingsItemFor` también lo mete dentro de un label de ítem
+   *  ("Ajustes de X"), y ESO se muestra en todo ancho cuando el ítem está
+   *  activo. Un `shortLabel` largo le come el ancho a la barra en un teléfono. */
   shortLabel: string;
   icon: LucideIcon;
   accentColor: string;
@@ -26,14 +29,16 @@ export type ModuleConfig = {
  * Composición de la barra flotante (mockup aprobado por el usuario el
  * 2026-09-11, variante B):
  *
- *   `[⊞ Nombre del módulo] · [Home] [submenús…] · [⚙]`
+ *   `[⊞ Módulo] · [Home] [submenús…] · [⚙]`, y el ítem activo muestra su
+ *   etiqueta al lado de su ícono en todo ancho.
  *
  * - **Tres anclas que no se mueven nunca**: el selector de módulos, el Home y
  *   el engranaje. En toda pantalla, en la misma posición. Que Inicio
  *   desapareciera al entrar a Configuración fue el reporte que originó esto.
- * - **El nombre del módulo vive DENTRO del selector**, no en una ficha aparte:
- *   ese botón ya es el que te dice en cuál estás y el que te deja cambiar, y
- *   así ahorra el lugar que en un teléfono se agota primero.
+ * - **El nombre del módulo vive DENTRO del selector**, no en una ficha aparte,
+ *   para ahorrar el lugar que en un teléfono se agota primero — y ahí cede el
+ *   lugar del todo: por debajo de `sm:` el texto es para la PANTALLA activa,
+ *   no para el módulo (2026-09-13).
  * - **Lo que cambia son los submenús**, que son del módulo.
  * - **El engranaje sigue al módulo** cuando el módulo tiene configuración
  *   propia (`settingsHref`); si no, va a la general. Solo para admin+: un
