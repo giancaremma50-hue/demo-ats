@@ -248,6 +248,10 @@ Multicolor por contexto: cada estado o marca puede tener su color (igual que AJE
 | Nunca | En su lugar |
 |---|---|
 | Un hijo de flex con texto o campo, sin `min-w-0` | `min-w-0` para que encoja, **y un mínimo real** (`min-w-[10rem]`) con `flex-wrap` en el padre para que corte línea en vez de recortarse |
+| `break-words` solo, en un hijo de flex o de grid | **Siempre en par con `min-w-0`**: `overflow-wrap: break-word` parte la palabra al pintar pero NO baja el tamaño min-content, que es el mínimo automático de un ítem de flex o de grid — así que sin `min-w-0` el ítem no encoge y el desborde sigue igual |
+| Una fila `flex items-center justify-between` de título + acción | `flex flex-wrap items-center justify-between gap-x-4 gap-y-3`, con `shrink-0 whitespace-nowrap` en la acción: el título es una palabra que no envuelve y el botón se va fuera de la pantalla |
+| Un menú que no entra, resuelto con `overflow-x-auto` | **Se agrupa**: un desplegable con el nombre de donde estás y la lista completa adentro. Al deslizar, el ítem activo se va de la vista y el menú deja de decir dónde estás, que es su único trabajo. El scroll queda de red de seguridad, no de diseño. Y el desplegable va **en línea** (`<details>`), no en un popover: un portal saca los enlaces del `<nav>`, necesita alto máximo propio para no recortarse en apaisado, y hay que cerrarlo a mano al cruzar el punto de corte |
+| Un título de display que es UNA palabra, o que lo escribe el usuario | Escalón chico en teléfono (`text-[28px] min-[400px]:text-[38px]`) y `break-words` con su `min-w-0`. Una palabra de 13 letras a 38px mide ~289px contra los 288 de ancho útil a 320 — y el título de una vacante, el nombre en el saludo del Inicio y el titular de la bolsa los escribe el usuario, así que el largo no lo decide nadie del equipo |
 | Una columna lateral de ancho fijo sin colapso | `flex-col` + `md:flex-row`, `w-full` + `md:w-48` |
 | Un grupo `flex-none` de anchos fijos en un encabezado | `w-full` + `sm:w-auto`, con `flex-wrap` en el padre |
 | `grid-cols-N` sin prefijo responsive | Prefijo — o `@container` + `@min-[Npx]:` cuando el ancho lo fija el contenedor y no la ventana |

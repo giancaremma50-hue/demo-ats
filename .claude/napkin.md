@@ -11,7 +11,69 @@
 > acá— o que sea de una sola funcionalidad. La entrada se queda entera; lo que
 > se saca es la marca.
 
-_Última actualización: 2026-09-13 (`overflow-x: hidden` en `html` convierte todo desborde horizontal en contenido inalcanzable y MUDO: la ronda 3 de responsividad encontró tres botones pintados fuera de la pantalla, sin barra que los alcance)_
+_Última actualización: 2026-09-13 (un menú que no entra se AGRUPA, no se desliza; y `break-words` no encoge a un hijo de flex ni de grid — sin `min-w-0` al lado no hace nada)_
+
+## Responsividad, ronda 4: un menú que no entra se agrupa, y `break-words` solo no sirve (2026-09-13) — MÁXIMA PRIORIDAD
+
+Segunda captura del usuario, ya con el asistente arreglado: *"aún nos falta
+acomodar el menú... sigue con scroll, y debería agruparse para colapsar cuando
+el límite de la pantalla llegue"*. Tenía razón, y arrastró tres lecciones.
+
+**Deslizar no es adaptarse.** Las siete secciones de Ajustes se desbordaban y
+la solución anterior fue `overflow-x-auto` con un difuminado al borde. Se ve
+prolijo y está mal: al desplazarse, la sección ACTIVA se va de la vista, así
+que la tira deja de decir dónde estás, que es su único trabajo. Para elegir
+entre siete opciones que no entran, un desplegable las muestra todas de una;
+deslizar las muestra de a dos y media. **Regla: si un menú no entra, se agrupa
+en un selector con el nombre de donde estás. El scroll horizontal queda como
+red de seguridad, no como el diseño.**
+
+**Y el desplegable va en línea (`<details>`), no en un popover.** Se escribió
+primero con Popover y el review lo tumbó por tres razones que son las mismas
+para cualquier menú en portal:
+
+| Con popover | Con `<details>` |
+|---|---|
+| El contenido se porta fuera del `<nav>`: en teléfono el landmark quedaba sin un solo enlace y las secciones vivían dentro de un `role="dialog"` | Los enlaces quedan dentro del `<nav>` |
+| Flota: hay que darle `max-h` y scroll propio o en un teléfono apaisado las últimas opciones se recortan | Empuja el contenido, la página scrollea sola |
+| Si la ventana cruza el punto de corte con el menú abierto, queda anclado a un disparador `display:none` y devuelve el foco a la nada | No hay nada que cerrar |
+
+**`break-words` NO encoge a un hijo de flex ni de grid.** Esta es la trampa
+fina de la ronda: `overflow-wrap: break-word` permite partir una palabra al
+pintar, pero **no baja el tamaño min-content**, que es justo el mínimo
+automático de un ítem de flex o de grid. Así que el ítem nunca encoge, la fila
+crece, y lo que sobra se recorta. Van **siempre en par**: `min-w-0` en el
+contenedor para que pueda encoger, `break-words` en el texto para que corte.
+(`overflow-wrap: anywhere` sí baja min-content, pero parte palabras donde sea;
+para un título se ve peor.) Lo puse en un comentario "ver arriba" antes de
+agregar el `min-w-0` — y el review encontró que el comentario afirmaba un
+arreglo que no existía.
+
+**Una fila de "título + acción" es la misma trampa, cuatro veces.** `/vacantes`,
+`/notificaciones`, la ficha de vacante y el tablero: `flex items-center
+justify-between` sin `flex-wrap` ni `gap`. El título es una palabra que no
+envuelve, el botón no encoge, y el botón se va fuera de la pantalla. El patrón
+correcto ya estaba en `/bolsa`: `flex flex-wrap ... gap-x-4 gap-y-3`.
+
+**Lo que la ronda destapó de paso, y no era de responsividad:**
+
+- **Ninguna sección quedaba marcada dentro del asistente.** El match era
+  `pathname === href`, así que en `/configuracion/plantillas-vacante/nueva` no
+  se marcaba "Plantillas de puesto". El predicado ya existía bien en la barra
+  flotante; ahora es uno solo (`activeByPathname` en `modules.ts`, con
+  `cubreRuta`) y tiene tests.
+- **`aria-current="page"` en una coincidencia por prefijo es falso.** ARIA
+  reserva `page` para "este enlace ES la pantalla actual"; para "estoy dentro
+  de esta sección" es `true`. Estaba mal en la barra flotante y en el mapa.
+- **El `h1` decía "Configuración" y el menú que lleva ahí dice "Ajustes"** —
+  la regla 11 que escribimos ayer, incumplida en la pantalla más obvia. El
+  paso del tour también lo llamaba "Configuración".
+- **Dos `<h1>` en la misma pantalla**: el layout de Ajustes pone el suyo y los
+  siete pasos del asistente ponían otro. Y al bajarlos a `<h2>` quedaron **más
+  grandes** que el `h1` en teléfono — la jerarquía al revés. Terminaron en el
+  escalón "Título" (`font-extrabold tracking-heading text-2xl`), que es el que
+  ya usaban cinco de las otras seis secciones; la sexta (`/configuracion/errores`)
+  sigue en el escalón Display a 28px, y queda como la única disonante.
 
 ## Responsividad, ronda 3: `overflow-x: hidden` no arregla un desborde, lo esconde (2026-09-13) — MÁXIMA PRIORIDAD
 

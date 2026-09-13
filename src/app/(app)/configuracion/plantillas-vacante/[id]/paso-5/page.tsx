@@ -28,9 +28,9 @@ export default async function PlantillaPaso5Page({
   return (
     <WizardLayout nav={<WizardStepsNav current={5} />}>
       {guardado && <NotifyOnMount message="Etapas guardadas" />}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div>
-          <h1 className="font-black tracking-display text-[32px]">Permisos y usos</h1>
+          <h2 className="font-extrabold tracking-heading text-2xl">Permisos y usos</h2>
           <p className="mt-1 text-sm text-muted-foreground">Quién puede ver esta plantilla en el bolsón.</p>
         </div>
         <HelpTourButton

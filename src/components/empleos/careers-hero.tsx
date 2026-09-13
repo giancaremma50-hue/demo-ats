@@ -46,7 +46,18 @@ export function CareersHero({
   if (!hasCover) {
     return (
       <div className={compact ? "px-7 py-8" : "mx-auto max-w-4xl px-6 pt-16"}>
-        <h1 className={compact ? "font-black tracking-display text-[26px] leading-tight" : "font-black tracking-display text-[40px]"}>{titulo}</h1>
+        {/* `break-words` y `clamp`: el titular lo escribe la organización y una
+            sola palabra larga a 40px no entra en los 272px útiles de un teléfono
+            de 320. Es la portada pública, el recorte lo ve el candidato. */}
+        <h1
+          className={
+            compact
+              ? "font-black tracking-display text-[26px] leading-tight break-words"
+              : "font-black tracking-display text-[clamp(30px,8vw,40px)] break-words"
+          }
+        >
+          {titulo}
+        </h1>
         {intro && (
           <p className="mt-4 max-w-2xl whitespace-pre-wrap text-[15px] leading-relaxed text-muted-foreground">
             {intro}
@@ -77,8 +88,8 @@ export function CareersHero({
         <h1
           className={
             compact
-              ? "font-black tracking-display max-w-[16ch] text-[28px] leading-[1.08]"
-              : "font-black tracking-display max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1.08]"
+              ? "font-black tracking-display max-w-[16ch] text-[28px] leading-[1.08] break-words"
+              : "font-black tracking-display max-w-[16ch] text-[clamp(30px,5vw,56px)] leading-[1.08] break-words"
           }
         >
           {titulo}

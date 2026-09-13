@@ -38,7 +38,10 @@ export default async function InicioPage() {
           <p className="text-[11px] tracking-[0.13em] text-muted-foreground uppercase">
             <TodayLabel />
           </p>
-          <h1 className="font-black tracking-display mt-2.5 text-[38px] leading-[1.1] sm:text-[42px]">
+          {/* El nombre lo escribe el usuario y va al tamaño más grande de la
+              app: uno largo de una sola palabra no entra en los 288px útiles de
+              un teléfono de 320, y sin `break-words` se recorta callado. */}
+          <h1 className="font-black tracking-display mt-2.5 text-[30px] leading-[1.1] break-words min-[400px]:text-[38px] sm:text-[42px]">
             <Greeting name={profile.display_name.split(" ")[0]} />
           </h1>
         </div>

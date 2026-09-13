@@ -33,9 +33,9 @@ export default async function PlantillaPaso2Page({
   return (
     <WizardLayout nav={<WizardStepsNav current={2} />}>
       {guardado && <NotifyOnMount message="Detalles guardados" />}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div>
-          <h1 className="font-black tracking-display text-[32px]">Candidatura</h1>
+          <h2 className="font-extrabold tracking-heading text-2xl">Candidatura</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Qué le pedís al candidato al postular a una vacante creada desde esta plantilla.
           </p>

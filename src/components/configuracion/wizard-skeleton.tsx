@@ -35,7 +35,10 @@ export function WizardSkeleton() {
       }
     >
       <div className="mb-8">
-        <Skeleton className="h-9 w-80 max-w-full" />
+        {/* `h-8 w-56`: los encabezados del asistente bajaron al escalón
+            "Título" (24px), así que un bloque de 36×320 movía el formulario en
+            el relevo — que es justo lo que este archivo existe para evitar. */}
+        <Skeleton className="h-8 w-56 max-w-full" />
         <Skeleton className="mt-2 h-4 w-full max-w-[52ch]" />
       </div>
       <div className="flex flex-col gap-6">

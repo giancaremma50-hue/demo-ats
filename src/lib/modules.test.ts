@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HOME_ITEM, MODULES, activeModuleFor, routesOf, settingsItemFor } from "./modules";
+import { HOME_ITEM, MODULES, activeByPathname, activeModuleFor, routesOf, settingsItemFor } from "./modules";
 
 // Esta es la tercera vez que la barra flotante se rompe por la misma clase de
 // error: una pantalla que aparece donde no es suya, o que desaparece de donde
@@ -127,5 +127,43 @@ describe("settingsItemFor", () => {
     const item = settingsItemFor(null, "admin");
     expect(item?.href).toBe("/configuracion");
     expect(item?.label).toBe("Ajustes");
+  });
+});
+
+// `activeByPathname` decide qué ítem del menú se marca como actual, en la barra
+// flotante y en las secciones de Ajustes. Las dos hacían su propia copia de esta
+// comparación, y la de Ajustes usaba `===`: dentro del asistente de plantillas
+// no se marcaba ninguna sección y el menú dejaba de decir dónde estabas.
+describe("activeByPathname", () => {
+  const ITEMS = [
+    { href: "/configuracion/plantillas-vacante" },
+    { href: "/configuracion/plantillas-mensaje" },
+    { href: "/vacantes" },
+  ];
+
+  it("marca la sección estando en una ruta hija", () => {
+    expect(activeByPathname(ITEMS, "/configuracion/plantillas-vacante/nueva")?.href).toBe(
+      "/configuracion/plantillas-vacante",
+    );
+    expect(activeByPathname(ITEMS, "/vacantes/abc/pipeline")?.href).toBe("/vacantes");
+  });
+
+  it("marca la sección en su ruta exacta", () => {
+    expect(activeByPathname(ITEMS, "/vacantes")?.href).toBe("/vacantes");
+  });
+
+  // Un hermano que comparte prefijo NO es una ruta hija.
+  it("no confunde un prefijo con un padre", () => {
+    expect(activeByPathname(ITEMS, "/vacantes-archivadas")).toBeUndefined();
+    expect(activeByPathname(ITEMS, "/otra")).toBeUndefined();
+  });
+
+  // Con dos coincidencias, gana la más larga: quedarse con la primera marcaría
+  // el ítem equivocado (y en la barra flotante monta dos elementos con el mismo
+  // `layoutId`, que framer-motion no sabe resolver).
+  it("con rutas anidadas gana la más específica", () => {
+    const anidados = [{ href: "/conectados" }, { href: "/conectados/ajustes" }];
+    expect(activeByPathname(anidados, "/conectados/ajustes")?.href).toBe("/conectados/ajustes");
+    expect(activeByPathname(anidados, "/conectados")?.href).toBe("/conectados");
   });
 });

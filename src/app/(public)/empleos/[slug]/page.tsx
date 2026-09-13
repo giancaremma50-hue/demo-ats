@@ -43,8 +43,16 @@ export default async function EmpleoDetailPage({ params }: { params: Promise<{ s
 
   return (
     <div className="mx-auto grid max-w-4xl gap-12 px-6 py-16 lg:grid-cols-[1fr_360px]">
-      <div>
-        <h1 className="font-black tracking-display text-[38px] leading-tight">{job.title}</h1>
+      {/* `min-w-0`: un ítem de grid también trae mínimo automático de
+          contenido, y `break-words` no lo baja — sin esto la pista crece más
+          que la ventana y el recorte se lo come. */}
+      <div className="min-w-0">
+        {/* El título lo escribe quien crea la vacante: una palabra larga a
+            38px no entra en los 272px útiles de un teléfono de 320, y acá el
+            recorte lo ve el candidato. */}
+        <h1 className="font-black tracking-display text-[28px] leading-tight break-words min-[400px]:text-[38px]">
+          {job.title}
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {[job.location, job.country].filter(Boolean).join(", ")}
           {job.work_mode && ` · ${WORK_MODE_LABEL[job.work_mode as WorkMode] ?? job.work_mode}`}

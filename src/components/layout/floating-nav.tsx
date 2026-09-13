@@ -6,7 +6,14 @@ import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { LayoutGrid } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { HOME_ITEM, MODULES, activeModuleFor, settingsItemFor, type NavItem } from "@/lib/modules";
+import {
+  HOME_ITEM,
+  MODULES,
+  activeByPathname,
+  activeModuleFor,
+  settingsItemFor,
+  type NavItem,
+} from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -35,7 +42,20 @@ const MS_APARICION = 300;
  * ícono se veía pesado. En un teléfono quien nombra la pantalla es el `<span>`
  * que va al lado del selector, no esta etiqueta.
  */
-function NavLink({ item, active, tour }: { item: NavItem; active: boolean; tour?: string }) {
+/** `exacta` separa "esta ES la pantalla" de "estoy dentro de esta sección":
+ *  ARIA reserva `page` para lo primero, y en `/vacantes/<id>/pipeline` el ítem
+ *  Vacantes se anunciaba como la página actual sin serlo. */
+function NavLink({
+  item,
+  active,
+  exacta,
+  tour,
+}: {
+  item: NavItem;
+  active: boolean;
+  exacta: boolean;
+  tour?: string;
+}) {
   const Icon = item.icon;
   return (
     <Link
@@ -49,7 +69,7 @@ function NavLink({ item, active, tour }: { item: NavItem; active: boolean; tour?
       // como visto para siempre.
       data-tour={tour ?? `nav-${item.href.slice(1).replaceAll("/", "-")}`}
       aria-label={item.label}
-      aria-current={active ? "page" : undefined}
+      aria-current={active ? (exacta ? "page" : "true") : undefined}
       className="group relative flex h-11 flex-none items-center gap-2 rounded-full px-1 text-sm font-medium sm:px-4"
     >
       {active && (
@@ -302,9 +322,7 @@ export function FloatingNav({ role }: { role: Role }) {
   // los dos coincidirían por prefijo y se montarían dos elementos con el
   // mismo `layoutId`, que framer-motion no sabe resolver.
   const candidatos = [...navItems, ...(settings ? [settings] : [])];
-  const itemActivo = candidatos
-    .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
-    .sort((a, b) => b.href.length - a.href.length)[0];
+  const itemActivo = activeByPathname(candidatos, pathname);
   const hrefActivo = itemActivo?.href;
 
   function desplegar() {
@@ -531,7 +549,9 @@ export function FloatingNav({ role }: { role: Role }) {
                                 key={pantalla.href}
                                 href={pantalla.href}
                                 onClick={() => setSwitcherOpen(false)}
-                                aria-current={activa ? "page" : undefined}
+                                aria-current={
+                                  pathname === pantalla.href ? "page" : activa ? "true" : undefined
+                                }
                                 className={cn(
                                   "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted",
                                   activa && "bg-muted font-medium",
@@ -571,9 +591,9 @@ export function FloatingNav({ role }: { role: Role }) {
             {itemActivo && (
               <span
                 // `aria-hidden`: es un eco visual. El enlace activo ya lo
-                // anuncia con su `aria-label` y su `aria-current="page"`, así
-                // que sin esto un lector de pantalla lee el nombre dos veces,
-                // la primera como texto suelto sin rol.
+                // anuncia con su `aria-label` y su `aria-current` (`page` en su
+                // propia ruta, `true` dentro de su sección), así que sin esto un
+                // lector lee el nombre dos veces, la primera como texto suelto.
                 aria-hidden
                 // `font-medium` como los ítems de la barra, no `font-semibold`
                 // como el botón de al lado: el peso dice a quién pertenece el
@@ -587,13 +607,23 @@ export function FloatingNav({ role }: { role: Role }) {
             <Separador />
 
             {navItems.map((item) => (
-              <NavLink key={item.href} item={item} active={item.href === hrefActivo} />
+              <NavLink
+                key={item.href}
+                item={item}
+                active={item.href === hrefActivo}
+                exacta={pathname === item.href}
+              />
             ))}
 
             {settings && (
               <>
                 <Separador />
-                <NavLink item={settings} active={settings.href === hrefActivo} tour="nav-configuracion" />
+                <NavLink
+                  item={settings}
+                  active={settings.href === hrefActivo}
+                  exacta={pathname === settings.href}
+                  tour="nav-configuracion"
+                />
               </>
             )}
           </div>

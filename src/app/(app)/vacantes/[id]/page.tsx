@@ -57,12 +57,26 @@ export default async function VacanteDetailPage({
   return (
     <div className="mx-auto max-w-3xl">
       {creada && <NotifyOnMount message="Vacante creada" />}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      {/* `sm:flex-nowrap`: el corte de línea de flex usa el tamaño
+          max-content de cada ítem, que `min-w-0` NO baja — sin esto un título
+          largo hacía saltar el estado y el "Editar" a una segunda línea
+          también en escritorio, y ahí `justify-between` los deja pegados a la
+          izquierda. Envolver es para el teléfono. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 sm:flex-nowrap">
+        <div className="min-w-0">
           <p className="text-xs tabular-nums text-muted-foreground">{job.code}</p>
-          <h1 className="font-black tracking-display mt-1.5 text-[34px] leading-tight">{job.title}</h1>
+          {/* `break-words` NO encoge a un hijo de flex por su cuenta:
+              `overflow-wrap: break-word` no baja el tamaño min-content, que en
+              flex es el mínimo automático. Sin el `min-w-0` del contenedor (la
+              línea de arriba) la fila no encoge y el estado y el "Editar" quedan
+              fuera de la pantalla. Los dos juntos, o ninguno sirve. */}
+          <h1 className="font-black tracking-display mt-1.5 text-[28px] leading-tight break-words min-[400px]:text-[34px]">
+            {job.title}
+          </h1>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        {/* `shrink-0`: la acción no encoge; lo que se adapta es la columna
+            del título (AGENTS.md, responsividad). */}
+        <div className="flex shrink-0 flex-col items-end gap-2">
           <JobStatusBadge status={job.status} />
           {canEdit && (
             <Link href={`/vacantes/${job.id}/editar`} className="text-xs text-muted-foreground underline">
