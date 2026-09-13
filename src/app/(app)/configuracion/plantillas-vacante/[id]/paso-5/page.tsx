@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getJobTemplateForWizard } from "@/lib/job-templates/get-job-templates";
+import { WizardLayout } from "@/components/configuracion/wizard/wizard-layout";
 import { WizardStepsNav } from "@/components/configuracion/wizard/wizard-steps-nav";
 import { WizardStep5Form } from "@/components/configuracion/wizard/wizard-step5-form";
 import { NotifyOnMount } from "@/components/ui/notify-on-mount";
@@ -25,24 +26,19 @@ export default async function PlantillaPaso5Page({
   if (!template) notFound();
 
   return (
-    <div className="mx-auto flex max-w-4xl gap-10">
+    <WizardLayout nav={<WizardStepsNav current={5} />}>
       {guardado && <NotifyOnMount message="Etapas guardadas" />}
-      <aside className="w-48 flex-none pt-2">
-        <WizardStepsNav current={5} />
-      </aside>
-      <div className="flex-1">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-black tracking-display text-[32px]">Permisos y usos</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Quién puede ver esta plantilla en el bolsón.</p>
-          </div>
-          <HelpTourButton
-            intro={{ title: "El paso 5 de 6", description: "Permisos — un solo interruptor, pero cambia quién puede elegir esta plantilla al crear una vacante." }}
-            steps={HELP_STEPS}
-          />
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-black tracking-display text-[32px]">Permisos y usos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Quién puede ver esta plantilla en el bolsón.</p>
         </div>
-        <WizardStep5Form templateId={template.id} isConfidential={template.is_confidential} />
+        <HelpTourButton
+          intro={{ title: "El paso 5 de 6", description: "Permisos — un solo interruptor, pero cambia quién puede elegir esta plantilla al crear una vacante." }}
+          steps={HELP_STEPS}
+        />
       </div>
-    </div>
+      <WizardStep5Form templateId={template.id} isConfidential={template.is_confidential} />
+    </WizardLayout>
   );
 }

@@ -5,6 +5,7 @@ import { ArrowUp, ArrowDown, X, Plus } from "lucide-react";
 import { STAGE_TYPE_LABEL } from "@/lib/pipeline-templates/schema";
 import type { PipelineTemplateWithStages } from "@/lib/pipeline-templates/get-pipeline-templates";
 import type { TemplateStageDraft } from "@/lib/job-templates/wizard-schema";
+import { ROW_INPUT_CLASS, ROW_SELECT_CLASS, ROW_WRAP_BASIS } from "@/components/configuracion/wizard/row-field-classes";
 
 // Los tipos reservados para las etapas fijas (Bandeja de entrada/Contratado/
 // Descartado, ver updateTemplateStep4) no son etapas intermedias válidas —
@@ -112,18 +113,25 @@ export function TemplateStagesEditor({
         <FixedStagePill label="Bandeja de entrada" />
 
         {stages.map((stage, i) => (
-          <div key={stage.key} className="flex items-center gap-2 pl-4">
-            <span className="w-5 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+          // `flex-wrap` + un mínimo real en cada campo: sin eso la fila mide
+          // ~480px y en un teléfono se sale del ancho. Y no se sale "con
+          // scroll": `html` lleva `overflow-x: hidden` (globals.css), así que
+          // lo que sobra se recorta sin barra — los botones de reordenar y
+          // quitar quedaban pintados fuera de la pantalla, inalcanzables.
+          // `min-w-0` solo en los campos que pueden encoger; el mínimo es lo
+          // que fuerza el salto de línea en vez del recorte.
+          <div key={stage.key} className="flex flex-wrap items-center gap-2 pl-4">
+            <span className="w-5 flex-none text-xs tabular-nums text-muted-foreground">{i + 1}</span>
             <input
               value={stage.title}
               onChange={(e) => updateStage(i, { title: e.target.value })}
               placeholder="Nombre de la etapa"
-              className="h-9 flex-1 rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+              className={ROW_INPUT_CLASS}
             />
             <select
               value={stage.type}
               onChange={(e) => updateStage(i, { type: e.target.value as MiddleType })}
-              className="h-9 w-40 rounded-md border border-border bg-background px-2 text-sm"
+              className={`${ROW_SELECT_CLASS} ${ROW_WRAP_BASIS}`}
             >
               {MIDDLE_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -131,32 +139,37 @@ export function TemplateStagesEditor({
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={() => moveStage(i, -1)}
-              disabled={i === 0}
-              aria-label="Mover arriba"
-              className="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30"
-            >
-              <ArrowUp className="size-3.5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => moveStage(i, 1)}
-              disabled={i === stages.length - 1}
-              aria-label="Mover abajo"
-              className="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30"
-            >
-              <ArrowDown className="size-3.5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => removeStage(i)}
-              aria-label="Quitar etapa"
-              className="flex size-8 items-center justify-center rounded-full border border-destructive text-destructive"
-            >
-              <X className="size-3.5" aria-hidden />
-            </button>
+            {/* Los tres juntos y `flex-none`: si envuelven, envuelven como
+                grupo — un ✕ solo en su propia línea se lee como si fuera de
+                otra etapa. */}
+            <div className="ml-auto flex flex-none items-center gap-2">
+              <button
+                type="button"
+                onClick={() => moveStage(i, -1)}
+                disabled={i === 0}
+                aria-label="Mover arriba"
+                className="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30"
+              >
+                <ArrowUp className="size-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveStage(i, 1)}
+                disabled={i === stages.length - 1}
+                aria-label="Mover abajo"
+                className="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground disabled:opacity-30"
+              >
+                <ArrowDown className="size-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => removeStage(i)}
+                aria-label="Quitar etapa"
+                className="flex size-8 items-center justify-center rounded-full border border-destructive text-destructive"
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </div>
           </div>
         ))}
 

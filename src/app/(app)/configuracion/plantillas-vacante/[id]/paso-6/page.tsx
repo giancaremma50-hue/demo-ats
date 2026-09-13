@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getJobTemplateForWizard } from "@/lib/job-templates/get-job-templates";
+import { WizardLayout } from "@/components/configuracion/wizard/wizard-layout";
 import { WizardStepsNav } from "@/components/configuracion/wizard/wizard-steps-nav";
 import { WizardStep6Form } from "@/components/configuracion/wizard/wizard-step6-form";
 import { NotifyOnMount } from "@/components/ui/notify-on-mount";
@@ -26,24 +27,19 @@ export default async function PlantillaPaso6Page({
   if (!template) notFound();
 
   return (
-    <div className="mx-auto flex max-w-4xl gap-10">
+    <WizardLayout nav={<WizardStepsNav current={6} />}>
       {guardado && <NotifyOnMount message="Permisos guardados" />}
-      <aside className="w-48 flex-none pt-2">
-        <WizardStepsNav current={6} />
-      </aside>
-      <div className="flex-1">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-black tracking-display text-[32px]">Cierre</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Último paso — publicá la plantilla o dejala como borrador.</p>
-          </div>
-          <HelpTourButton
-            intro={{ title: "El paso 6 de 6", description: "Cierre — la última decisión: ¿ya está lista para usarse, o la dejás guardada para retocarla después?" }}
-            steps={HELP_STEPS}
-          />
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-black tracking-display text-[32px]">Cierre</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Último paso — publicá la plantilla o dejala como borrador.</p>
         </div>
-        <WizardStep6Form templateId={template.id} templateName={template.name} />
+        <HelpTourButton
+          intro={{ title: "El paso 6 de 6", description: "Cierre — la última decisión: ¿ya está lista para usarse, o la dejás guardada para retocarla después?" }}
+          steps={HELP_STEPS}
+        />
       </div>
-    </div>
+      <WizardStep6Form templateId={template.id} templateName={template.name} />
+    </WizardLayout>
   );
 }

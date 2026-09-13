@@ -25,17 +25,21 @@ export default async function PipelinePage({
   return (
     // Se sale del ancho centrado de <main> (max-w-6xl) a propósito — el
     // pipeline necesita todo el ancho de la ventana, no el de lectura de
-    // una página de texto. calc(100vh - 13.5rem) replica exactamente el
+    // una página de texto. calc(100dvh - 13.5rem) replica exactamente el
     // encabezado (h-16) + el padding vertical de <main> (pt-10 + pb-28) del
     // layout compartido, para que el tablero llene el alto real disponible
     // sin generar scroll de página (cada columna scrollea la suya). El
     // encabezado (título + buscador) vive DENTRO de KanbanBoard, no acá:
     // así comparten una sola fila y no se pierde una fila entera de alto
     // (título arriba, buscador abajo) del poco espacio vertical fijo que hay.
+    // `dvh` y no `vh`: en un navegador de teléfono `100vh` es el alto CON la
+    // barra de direcciones retraída, así que mientras está desplegada el
+    // tablero mide más que la ventana y su última fila queda debajo del
+    // borde — justo donde vive la barra flotante.
     // Los gutters replican los de <main>/AppHeader (`px-4 sm:px-6 lg:px-10`):
     // esta página se sale del <main> a 100vw, así que no los hereda — sin el
     // paso `sm` quedaba 8px más adentro que el encabezado en un teléfono.
-    <div className="mx-[calc(50%-50vw)] flex h-[calc(100vh-13.5rem)] flex-col px-4 sm:px-6 lg:px-10">
+    <div className="mx-[calc(50%-50vw)] flex h-[calc(100dvh-13.5rem)] flex-col px-4 sm:px-6 lg:px-10">
       <KanbanBoard
         jobId={id}
         initialData={data}

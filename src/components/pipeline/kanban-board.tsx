@@ -156,19 +156,23 @@ export function KanbanBoard({
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex h-full flex-col">
-          <div className="flex flex-none items-start justify-between gap-4 pb-4">
-            <div>
+          {/* Envuelve en un teléfono: el grupo de la derecha medía 356px
+              fijos (buscador de 224 + el botón de info) contra 328 de ancho
+              disponible, y como `html` recorta el eje X sin barra, el botón
+              quedaba pintado fuera de la pantalla. */}
+          <div className="flex flex-none flex-wrap items-start justify-between gap-x-4 gap-y-3 pb-4">
+            <div className="min-w-0">
               <h1 className="font-black tracking-display text-[28px]">{jobTitle}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{totalActivas} postulaciones activas</p>
             </div>
-            <div className="flex flex-none items-center gap-3">
+            <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-none">
               <input
                 type="search"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar candidato por nombre…"
                 aria-label="Buscar candidato por nombre"
-                className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+                className="h-9 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground sm:w-56"
               />
               {buscandoActivo && (
                 <span className="flex-none text-xs tabular-nums text-muted-foreground">

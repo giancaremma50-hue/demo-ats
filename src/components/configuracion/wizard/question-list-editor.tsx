@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { X, Plus } from "lucide-react";
 import type { QuestionDraft, QuestionOptionDraft } from "@/lib/job-templates/wizard-schema";
+import { ROW_INPUT_CLASS, ROW_SELECT_CLASS, ROW_WRAP_BASIS } from "@/components/configuracion/wizard/row-field-classes";
 
 // `key` es solo para React (identidad estable al reordenar/quitar filas en
 // dos niveles) — nunca viaja al servidor, ver el value del input oculto.
@@ -82,40 +83,52 @@ export function QuestionListEditor({ initialQuestions }: { initialQuestions: Que
         <div className="flex flex-col gap-3">
           {questions.map((question, i) => (
             <div key={question.key} className="rounded-md border border-border p-3">
-              <div className="flex items-start gap-2">
+              {/* Igual que la fila de etapas del paso 4: `flex-wrap` y un
+                  mínimo por campo. A 328px la fila medía ~426 y el ✕ de
+                  quitar la pregunta quedaba recortado por el
+                  `overflow-x: hidden` de `html`, sin barra que lo alcance:
+                  una pregunta agregada por error no se podía borrar desde un
+                  teléfono. */}
+              <div className="flex flex-wrap items-start gap-2">
                 <input
                   value={question.prompt}
                   onChange={(e) => updateQuestion(i, { prompt: e.target.value })}
                   placeholder="Escribe la pregunta"
-                  className="h-9 flex-1 rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+                  className={ROW_INPUT_CLASS}
                 />
-                <select
-                  data-tour="w3-tipo"
-                  value={question.type}
-                  onChange={(e) => {
-                    const type = e.target.value as QuestionDraft["type"];
-                    // Las opciones de una pregunta de opción múltiple no
-                    // tienen sentido (ni se muestran) si pasa a ser
-                    // abierta — se limpian acá para que no queden filas
-                    // huérfanas invisibles esperando a reinsertarse en cada
-                    // guardado (el servidor también las filtra, ver
-                    // updateTemplateStep3 — esto es solo higiene del lado
-                    // del cliente, no la barrera real).
-                    updateQuestion(i, { type, options: type === "multiple_choice" ? question.options : [] });
-                  }}
-                  className="h-9 w-40 rounded-md border border-border bg-background px-2 text-sm"
-                >
-                  <option value="open">Abierta</option>
-                  <option value="multiple_choice">Opción múltiple</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => removeQuestion(i)}
-                  aria-label="Quitar pregunta"
-                  className="flex size-9 flex-none items-center justify-center rounded-full border border-destructive text-destructive"
-                >
-                  <X className="size-3.5" aria-hidden />
-                </button>
+                {/* El tipo y el ✕ viajan JUNTOS: solo, el ✕ caía en una
+                    segunda línea pegado al campo de la pregunta y se leía
+                    como si fuera de otra fila. Misma razón que el grupo de
+                    tres botones del paso 4. */}
+                <div className={`flex min-w-0 flex-1 items-center gap-2 sm:flex-none ${ROW_WRAP_BASIS}`}>
+                  <select
+                    data-tour="w3-tipo"
+                    value={question.type}
+                    onChange={(e) => {
+                      const type = e.target.value as QuestionDraft["type"];
+                      // Las opciones de una pregunta de opción múltiple no
+                      // tienen sentido (ni se muestran) si pasa a ser
+                      // abierta — se limpian acá para que no queden filas
+                      // huérfanas invisibles esperando a reinsertarse en cada
+                      // guardado (el servidor también las filtra, ver
+                      // updateTemplateStep3 — esto es solo higiene del lado
+                      // del cliente, no la barrera real).
+                      updateQuestion(i, { type, options: type === "multiple_choice" ? question.options : [] });
+                    }}
+                    className={ROW_SELECT_CLASS}
+                  >
+                    <option value="open">Abierta</option>
+                    <option value="multiple_choice">Opción múltiple</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => removeQuestion(i)}
+                    aria-label="Quitar pregunta"
+                    className="flex size-9 flex-none items-center justify-center rounded-full border border-destructive text-destructive"
+                  >
+                    <X className="size-3.5" aria-hidden />
+                  </button>
+                </div>
               </div>
 
               {question.type === "multiple_choice" && (
@@ -126,7 +139,7 @@ export function QuestionListEditor({ initialQuestions }: { initialQuestions: Que
                         value={option.label}
                         onChange={(e) => updateOption(i, j, { label: e.target.value })}
                         placeholder="Texto de la opción"
-                        className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-foreground"
+                        className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-foreground"
                       />
                       <label className="flex flex-none items-center gap-1.5 text-xs text-muted-foreground" data-tour="w3-esperada">
                         <input

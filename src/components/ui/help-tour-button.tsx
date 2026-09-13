@@ -37,7 +37,15 @@ export function HelpTourButton({ intro, steps }: { intro?: { title: string; desc
   }
 
   return (
-    <ActionButton type="button" variant="secondary" onClick={start} className="h-8 gap-1.5 px-3 text-xs text-muted-foreground">
+    // `shrink-0 whitespace-nowrap`: siempre va al lado de un título largo en
+    // una fila flex, y sin esto el reparto lo encoge hasta que "¿Cómo
+    // funciona esto?" se parte en tres líneas dentro de una píldora de 32px.
+    <ActionButton
+      type="button"
+      variant="secondary"
+      onClick={start}
+      className="h-8 shrink-0 gap-1.5 px-3 text-xs whitespace-nowrap text-muted-foreground"
+    >
       <HelpCircle className="size-3.5" aria-hidden />
       ¿Cómo funciona esto?
     </ActionButton>

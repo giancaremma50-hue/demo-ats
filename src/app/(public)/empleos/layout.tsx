@@ -6,7 +6,7 @@ export default async function EmpleosLayout({ children }: { children: React.Reac
   const organization = await getPublicOrganization();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b border-border">
         <div className="mx-auto flex h-16 max-w-4xl items-center px-6">
           <Link href="/empleos" className="flex items-center gap-2.5">

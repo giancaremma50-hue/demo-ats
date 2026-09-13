@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getJobTemplateForWizard } from "@/lib/job-templates/get-job-templates";
+import { WizardLayout } from "@/components/configuracion/wizard/wizard-layout";
 import { WizardStepsNav } from "@/components/configuracion/wizard/wizard-steps-nav";
 import { WizardStep2Form } from "@/components/configuracion/wizard/wizard-step2-form";
 import { NotifyOnMount } from "@/components/ui/notify-on-mount";
@@ -30,26 +31,21 @@ export default async function PlantillaPaso2Page({
   if (!template) notFound();
 
   return (
-    <div className="mx-auto flex max-w-4xl gap-10">
+    <WizardLayout nav={<WizardStepsNav current={2} />}>
       {guardado && <NotifyOnMount message="Detalles guardados" />}
-      <aside className="w-48 flex-none pt-2">
-        <WizardStepsNav current={2} />
-      </aside>
-      <div className="flex-1">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-black tracking-display text-[32px]">Candidatura</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Qué le pedís al candidato al postular a una vacante creada desde esta plantilla.
-            </p>
-          </div>
-          <HelpTourButton
-            intro={{ title: "El paso 2 de 6", description: "Candidatura — decidís qué campos ve el candidato en el formulario público, y si son obligatorios." }}
-            steps={HELP_STEPS}
-          />
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-black tracking-display text-[32px]">Candidatura</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Qué le pedís al candidato al postular a una vacante creada desde esta plantilla.
+          </p>
         </div>
-        <WizardStep2Form templateId={template.id} initialFields={parseCandidacyFields(template.candidacy_fields)} />
+        <HelpTourButton
+          intro={{ title: "El paso 2 de 6", description: "Candidatura — decidís qué campos ve el candidato en el formulario público, y si son obligatorios." }}
+          steps={HELP_STEPS}
+        />
       </div>
-    </div>
+      <WizardStep2Form templateId={template.id} initialFields={parseCandidacyFields(template.candidacy_fields)} />
+    </WizardLayout>
   );
 }

@@ -1,5 +1,6 @@
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { getDepartmentsForOrg } from "@/lib/jobs/get-departments";
+import { WizardLayout } from "@/components/configuracion/wizard/wizard-layout";
 import { WizardStepsNav } from "@/components/configuracion/wizard/wizard-steps-nav";
 import { WizardStep1Form } from "@/components/configuracion/wizard/wizard-step1-form";
 import { HelpTourButton } from "@/components/ui/help-tour-button";
@@ -15,28 +16,23 @@ export default async function NuevaPlantillaWizardPage() {
   const departments = await getDepartmentsForOrg();
 
   return (
-    <div className="mx-auto flex max-w-4xl gap-10">
-      <aside className="w-48 flex-none pt-2">
-        <WizardStepsNav current={1} />
-      </aside>
-      <div className="flex-1">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-black tracking-display text-[32px]">Nueva plantilla de puesto</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Detalles de la vacante — la información general que trae cada vacante creada desde esta plantilla.
-            </p>
-          </div>
-          <HelpTourButton
-            intro={{
-              title: "El paso 1 de 6",
-              description: "Vas a armar un puesto recurrente en 6 pasos cortos — cada \"Siguiente\" guarda de una vez, así que \"Atrás\" nunca pierde nada.",
-            }}
-            steps={HELP_STEPS}
-          />
+    <WizardLayout nav={<WizardStepsNav current={1} />}>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-black tracking-display text-[32px]">Nueva plantilla de puesto</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Detalles de la vacante — la información general que trae cada vacante creada desde esta plantilla.
+          </p>
         </div>
-        <WizardStep1Form departments={departments} />
+        <HelpTourButton
+          intro={{
+            title: "El paso 1 de 6",
+            description: "Vas a armar un puesto recurrente en 6 pasos cortos — cada \"Siguiente\" guarda de una vez, así que \"Atrás\" nunca pierde nada.",
+          }}
+          steps={HELP_STEPS}
+        />
       </div>
-    </div>
+      <WizardStep1Form departments={departments} />
+    </WizardLayout>
   );
 }
