@@ -25,7 +25,7 @@ export function CopyJobLink({ url }: { url: string }) {
         readOnly
         value={url}
         onFocus={(e) => e.target.select()}
-        className="h-9 flex-1 truncate rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground outline-none"
+        className="h-9 flex-1 truncate rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground"
       />
       <ActionButton
         type="button"

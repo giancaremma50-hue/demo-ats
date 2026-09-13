@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { MessageTemplateSchema } from "./schema";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type MessageTemplateActionResult = { error?: string; success?: string };
+export type MessageTemplateActionResult = { error?: string; success?: string; field?: string };
 
 export async function createMessageTemplate(
   _prevState: MessageTemplateActionResult | undefined,
@@ -13,7 +14,7 @@ export async function createMessageTemplate(
 ): Promise<MessageTemplateActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = MessageTemplateSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa la plantilla." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   const { error } = await supabase.from("message_templates").insert({
@@ -35,7 +36,7 @@ export async function updateMessageTemplate(
 ): Promise<MessageTemplateActionResult> {
   await requireAdminOrAbove();
   const parsed = MessageTemplateSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa la plantilla." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   const { error } = await supabase

@@ -143,7 +143,7 @@ export async function createJob(
   // blanca, y el default de `profiles.role`/`handle_new_user()` es `gestor`).
   const parsed = CreateJobFromTemplateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return zodFieldError(parsed.error, "Revisa los datos del formulario.");
+    return zodFieldError(parsed.error);
   }
 
   const supabase = await createClient();
@@ -325,7 +325,7 @@ export async function updateJob(
   const profile = await requireProfile();
   const parsed = JobFormSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return zodFieldError(parsed.error, "Revisa los datos del formulario.");
+    return zodFieldError(parsed.error);
   }
 
   const supabase = await createClient();
@@ -649,7 +649,7 @@ export async function returnJobRequest(jobId: string, reason: string): Promise<J
     .min(10, { error: "Explica en al menos 10 caracteres qué hay que corregir." })
     .max(1000, { error: "Máximo 1000 caracteres." })
     .safeParse(reason);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Escribe el motivo." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const result = await transitionJob(jobId, "borrador", adminOnly("Solo RH puede devolver una solicitud al solicitante."), {
     return_reason: parsed.data,
@@ -663,7 +663,10 @@ export async function returnJobRequest(jobId: string, reason: string): Promise<J
 /** Publicar exige elegir visibilidad explícitamente — no hay valor "por defecto silencioso" para algo que decide quién ve la vacante. Revalidada con Zod, no solo confiada porque el tipo de TS diga JobVisibility — el cliente es el que arma este argumento. */
 export async function publishJob(jobId: string, visibility: JobVisibility): Promise<JobActionResult> {
   const parsedVisibility = JobVisibilitySchema.safeParse(visibility);
-  if (!parsedVisibility.success) return { error: "Elige una visibilidad válida." };
+  // El mensaje sale del schema (`zodFieldError`), no de una copia acá: con la
+  // copia, editar el texto en `JobVisibilitySchema` no cambiaba lo que esta
+  // acción muestra — y nadie lo notaría hasta verlo en pantalla.
+  if (!parsedVisibility.success) return zodFieldError(parsedVisibility.error);
   const profile = await requireProfile();
   const result = await transitionJob(jobId, "abierta", adminOnly("Solo RH puede publicar una vacante."), {
     visibility: parsedVisibility.data,
@@ -711,9 +714,9 @@ export async function cancelJob(jobId: string): Promise<JobActionResult> {
 }
 
 const ReferCandidateSchema = z.object({
-  full_name: z.string().trim().min(3, { error: "Escribe el nombre completo." }).max(120),
+  full_name: z.string().trim().min(3, { error: "Escribe el nombre completo." }).max(120, { error: "Máximo 120 caracteres." }),
   email: z.email({ error: "Correo inválido." }),
-  phone: z.string().trim().min(6, { error: "Escribe un teléfono válido." }).max(30),
+  phone: z.string().trim().min(6, { error: "Escribe un teléfono válido." }).max(30, { error: "Máximo 30 caracteres." }),
   // Referir es la única puerta por la que entran datos de alguien que nunca
   // vio la política de privacidad: los carga un empleado, no el titular. No
   // se puede registrar un consentimiento que esa persona no dio, así que lo
@@ -733,7 +736,7 @@ export async function referCandidate(
   const profile = await requireProfile();
   const parsed = ReferCandidateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return zodFieldError(parsed.error, "Revisa los datos del candidato.");
+    return zodFieldError(parsed.error);
   }
 
   const supabase = await createClient();

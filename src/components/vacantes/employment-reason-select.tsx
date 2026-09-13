@@ -7,7 +7,7 @@ import { notifyError, notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import type { EmploymentReasonOption } from "@/lib/employment-reasons/get-employment-reasons";
 
-const FIELD_CLASS = "h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground";
+const FIELD_CLASS = "h-11 rounded-md border border-border bg-background px-3 text-sm";
 
 /**
  * Lista con alta inline — "mantengamos la opción de lista con la opción de
@@ -67,7 +67,12 @@ export function EmploymentReasonSelect({ initialReasons }: { initialReasons: Emp
       </select>
 
       {adding ? (
-        <div className="flex items-center gap-2">
+        // `flex-wrap` + mínimo real en el campo: a 320px el campo, "Agregar" y
+        // "Cancelar" en una línea suman más que el ancho útil, y `html` recorta
+        // el eje X sin barra — "Cancelar" se pintaba fuera de la pantalla, que
+        // es el mismo fallo que la auditoría del 2026-09-13 ya encontró tres
+        // veces (AGENTS.md, responsividad).
+        <div className="flex flex-wrap items-center gap-2">
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
@@ -80,7 +85,7 @@ export function EmploymentReasonSelect({ initialReasons }: { initialReasons: Emp
             autoFocus
             maxLength={80}
             placeholder="Nombre del motivo nuevo"
-            className="h-9 flex-1 rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+            className="h-9 min-w-[10rem] flex-1 rounded-md border border-border bg-background px-2.5 text-sm"
           />
           <ActionButton
             type="button"
@@ -89,11 +94,11 @@ export function EmploymentReasonSelect({ initialReasons }: { initialReasons: Emp
             pendingLabel="Agregando…"
             onClick={handleAdd}
             disabled={newLabel.trim().length < 2}
-            className="h-9 px-3 text-xs"
+            className="h-9 shrink-0 px-3 text-xs"
           >
             Agregar
           </ActionButton>
-          <ActionButton type="button" variant="ghost" onClick={() => setAdding(false)} className="h-9 px-2 text-xs">
+          <ActionButton type="button" variant="ghost" onClick={() => setAdding(false)} className="h-9 shrink-0 px-2 text-xs">
             Cancelar
           </ActionButton>
         </div>

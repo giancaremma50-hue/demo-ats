@@ -172,7 +172,7 @@ export function KanbanBoard({
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar candidato por nombre…"
                 aria-label="Buscar candidato por nombre"
-                className="h-9 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground sm:w-56"
+                className="h-9 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm sm:w-56"
               />
               {buscandoActivo && (
                 <span className="flex-none text-xs tabular-nums text-muted-foreground">

@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { DepartmentSchema } from "./schema";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type DepartmentActionResult = { error?: string; success?: string };
+export type DepartmentActionResult = { error?: string; success?: string; field?: string };
 
 // Normalizado a null explícito — un .insert()/.update() con undefined
 // simplemente omite la clave (o, en update, no borra el campo viejo),
@@ -47,7 +48,7 @@ export async function createDepartment(
 ): Promise<DepartmentActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = DepartmentSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   const fields = normalizeDepartmentFields(parsed.data);
@@ -71,7 +72,7 @@ export async function updateDepartment(
 ): Promise<DepartmentActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = DepartmentSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   const fields = normalizeDepartmentFields(parsed.data);

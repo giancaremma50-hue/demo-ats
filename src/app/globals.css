@@ -62,6 +62,13 @@
      de marca sin tocar sigue en `--aje-red`, para usos que no cargan texto. */
   --destructive: #c43838;
   --destructive-foreground: #ffffff;
+  /* El fondo tenue de un campo en error. **Literal, no `bg-destructive/5`**:
+     Tailwind v4 compila la opacidad de una utilidad con `color-mix()` y deja
+     como respaldo el color ENTERO para un navegador que no lo soporte
+     (Safari < 16.2, Chrome < 111). Ahí el campo se pintaba de rojo sólido con
+     el texto oscuro encima —3.5:1— justo cuando hay que leerlo para
+     corregirlo. Con un valor literal no hay respaldo que pueda salir mal. */
+  --destructive-soft: rgb(196 56 56 / 5%);
 
   /* Paleta de marca AJE — uso puntual por contexto/marca, no mezclar
      más de dos tokens en un mismo componente. */
@@ -111,6 +118,7 @@
   --warning-foreground: #14140f;
   --destructive: #ff6b6b;
   --destructive-foreground: #14140f;
+  --destructive-soft: rgb(255 107 107 / 10%);
 
   --border: #33332c;
   --input: #33332c;
@@ -141,6 +149,7 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

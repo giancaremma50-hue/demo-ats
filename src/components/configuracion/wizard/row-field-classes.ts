@@ -15,7 +15,7 @@
 
 /** El campo de texto: es el que manda, y el que fija el ancho mínimo de la fila. */
 export const ROW_INPUT_CLASS =
-  "h-9 min-w-[10rem] flex-1 rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground";
+  "h-9 min-w-[10rem] flex-1 rounded-md border border-border bg-background px-2.5 text-sm";
 
 /** El desplegable: encoge hasta donde haga falta y recupera su ancho fijo desde `sm:`. */
 export const ROW_SELECT_CLASS =

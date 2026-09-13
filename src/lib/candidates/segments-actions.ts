@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { SegmentSchema } from "./schema";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type SegmentActionResult = { error?: string; success?: string };
+export type SegmentActionResult = { error?: string; success?: string; field?: string };
 
 export async function createSegment(
   _prevState: SegmentActionResult | undefined,
@@ -13,7 +14,7 @@ export async function createSegment(
 ): Promise<SegmentActionResult> {
   const profile = await requireProfile();
   const parsed = SegmentSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa el segmento." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const { name, ...filterFields } = parsed.data;
   const filters = Object.fromEntries(Object.entries(filterFields).filter(([, v]) => v !== undefined));

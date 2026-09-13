@@ -139,7 +139,7 @@ export function QuestionListEditor({ initialQuestions }: { initialQuestions: Que
                         value={option.label}
                         onChange={(e) => updateOption(i, j, { label: e.target.value })}
                         placeholder="Texto de la opción"
-                        className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-foreground"
+                        className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm"
                       />
                       <label className="flex flex-none items-center gap-1.5 text-xs text-muted-foreground" data-tour="w3-esperada">
                         <input

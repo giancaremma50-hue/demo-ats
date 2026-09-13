@@ -204,7 +204,7 @@ export function TemplateStagesEditor({
               required
               maxLength={120}
               placeholder="Nombre del set (ej. Ventas con dos entrevistas)"
-              className="mt-2 h-10 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+              className="mt-2 h-10 rounded-md border border-border bg-background px-3 text-sm"
             />
           )}
         </label>

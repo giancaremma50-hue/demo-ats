@@ -197,7 +197,7 @@ export async function addNote(
 ): Promise<ApplicationActionResult> {
   const profile = await requireProfile();
   const parsed = NoteSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return zodFieldError(parsed.error, "Revisa la nota.");
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -391,7 +391,7 @@ export async function rejectApplication(
   const profile = await requireProfile();
 
   const parsed = RejectSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return zodFieldError(parsed.error, "Elige un motivo.");
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -498,7 +498,7 @@ export async function addTask(
 ): Promise<ApplicationActionResult> {
   const profile = await requireProfile();
   const parsed = TaskSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa la tarea." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -595,7 +595,7 @@ export async function sendCandidateMessage(
 ): Promise<ApplicationActionResult> {
   const profile = await requireProfile();
   const parsed = SendMessageSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa el mensaje." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 

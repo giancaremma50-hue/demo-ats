@@ -40,7 +40,7 @@ export function DepartmentDialog({
                 name="name"
                 required
                 defaultValue={department?.name}
-                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -48,7 +48,7 @@ export function DepartmentDialog({
               <input
                 name="country"
                 defaultValue={department?.country ?? ""}
-                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
               />
             </label>
             <label className="flex flex-col gap-1">

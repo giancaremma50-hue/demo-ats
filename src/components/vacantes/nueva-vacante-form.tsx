@@ -13,7 +13,7 @@ import { COUNTRIES } from "@/lib/geo/countries";
 import type { EmploymentReasonOption } from "@/lib/employment-reasons/get-employment-reasons";
 import type { TeamMemberOption } from "@/lib/jobs/get-team-options";
 
-const FIELD_CLASS = "h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground";
+const FIELD_CLASS = "h-11 rounded-md border border-border bg-background px-3 text-sm";
 
 export type TemplateSummary = {
   id: string;

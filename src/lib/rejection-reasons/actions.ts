@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { RejectionReasonSchema } from "./schema";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type RejectionReasonActionResult = { error?: string; success?: string };
+export type RejectionReasonActionResult = { error?: string; success?: string; field?: string };
 
 export async function createRejectionReason(
   _prevState: RejectionReasonActionResult | undefined,
@@ -13,7 +14,7 @@ export async function createRejectionReason(
 ): Promise<RejectionReasonActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = RejectionReasonSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa el motivo." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   const { error } = await supabase
