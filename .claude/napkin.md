@@ -7,7 +7,35 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-12 (el botón principal y el de eliminar fallaban contraste con la regla ya escrita; y mover el acento rompió el anillo de foco sobre la barra, una dirección que el validador no mide)_
+_Última actualización: 2026-09-13 (la barra dice en qué pantalla estás, no en qué módulo — y el primer intento puso ese texto en el control equivocado; sigue vigente lo del 09-12: el contraste del botón principal y el anillo de foco sobre la barra)_
+
+## El texto visible de un control nombra a ESE control (2026-09-13) — MÁXIMA PRIORIDAD
+
+Con el Home seleccionado, la barra flotante decía "Reclutamiento". Se lee como
+que estás en una pantalla llamada así — y la pantalla en la que sí estás
+(Inicio) no la nombraba nada, porque en móvil la etiqueta del ítem activo va
+oculta por espacio.
+
+**El error de razonamiento fue elegir qué texto poner sin contar cuántas veces
+ya se dice cada cosa.** El módulo lo dicen el color de la barra y el popover al
+abrirlo. La pantalla actual, nada. Con espacio para una sola etiqueta la
+decisión se cae sola — pero en el mockup se eligió el módulo, porque ahí se
+estaba diseñando el selector y no la barra. **Antes de gastar el único espacio
+de texto, contar qué información ya está presente por otros medios.**
+
+**Y el primer arreglo estuvo MAL, que es la parte que vale.** Puse el nombre de
+la pantalla como texto visible del botón que abre el selector de módulos. O sea
+un control cuyo texto nombraba a otro control: en `/inicio` la barra decía
+"Inicio" dentro del botón que, al tocarlo, abre una lista de módulos. Rompía
+WCAG 2.5.3 (el nombre accesible decía "Cambiar de módulo", sin una sola palabra
+en común con lo que se veía), obligaba a un fallback que mentía en cuatro
+familias de rutas —`/postulaciones/<id>` habría dicho "Reclutamiento"— y dejaba
+al ítem activo sin nombre y sin tooltip.
+
+**La regla que sale de esto: el texto visible de un control nombra a ESE
+control.** Lo que faltaba no era mover una etiqueta, era destapar la que ya
+existía: el ítem activo tenía su `label` oculta por `hidden sm:inline`. Se le
+quita el `sm:` y se le pone al nombre del módulo, que es el que puede ceder.
 
 ## El botón principal de la app llevaba días fallando contraste, y la regla para evitarlo ya estaba escrita (2026-09-12) — MÁXIMA PRIORIDAD
 
