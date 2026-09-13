@@ -7,7 +7,7 @@
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
 
-_Última actualización: 2026-09-13 (la barra dice en qué pantalla estás, no en qué módulo — y el primer intento puso ese texto en el control equivocado; sigue vigente lo del 09-12: el contraste del botón principal y el anillo de foco sobre la barra)_
+_Última actualización: 2026-09-13 (cuando el texto no describe lo que el control hace, se saca el texto del control — no se retoca el aria-label; y un script que falla a mitad no escribe nada aunque ya haya impreso «ok»)_
 
 ## El texto visible de un control nombra a ESE control (2026-09-13) — MÁXIMA PRIORIDAD
 
@@ -32,10 +32,34 @@ en común con lo que se veía), obligaba a un fallback que mentía en cuatro
 familias de rutas —`/postulaciones/<id>` habría dicho "Reclutamiento"— y dejaba
 al ítem activo sin nombre y sin tooltip.
 
-**La regla que sale de esto: el texto visible de un control nombra a ESE
-control.** Lo que faltaba no era mover una etiqueta, era destapar la que ya
-existía: el ítem activo tenía su `label` oculta por `hidden sm:inline`. Se le
-quita el `sm:` y se le pone al nombre del módulo, que es el que puede ceder.
+**Hicieron falta tres intentos, y los dos primeros fallaron por la misma
+razón: querer que un control dijera algo que no es suyo.**
+
+1. Meter el nombre de la pantalla DENTRO del botón del selector. El botón que
+   abre la lista de módulos quedaba diciendo "Inicio".
+2. Taparlo metiendo "Inicio" también en su `aria-label`, para cumplir WCAG
+   2.5.3. Cumplía — y creaba algo peor: **dos controles de la misma barra con
+   el mismo nombre accesible**, así que "tocá Inicio" por control de voz se
+   volvía ambiguo y podía abrir el popover en vez de navegar.
+3. La que quedó: **sacar el texto del control**. Es un `<span>` al lado del
+   botón, no un control, así que no nombra nada ni compite con nada.
+
+**La regla: cuando el texto que querés mostrar no describe lo que el control
+HACE, el problema no se arregla en el `aria-label` — se arregla sacando el
+texto del control.** Retocar el nombre accesible para que "coincida" con un
+texto que no le corresponde es maquillar el síntoma.
+
+Y una corrección de dato: mover la etiqueta de un lado al otro **no ahorra un
+solo píxel** —la cadena se pinta igual—, así que el argumento de "no entraba en
+320px" era falso para justificar el cambio. Lo que sí hace entrar la barra es
+bajar el padding de los íconos inactivos a `px-1`.
+
+**Y una lección de proceso, más cara que las tres anteriores:** un script de
+edición que aplica varios reemplazos y falla en el último **no escribe
+ninguno** — pero ya imprimió el "ok" de los que sí encontró. Así se anunciaron
+en un PR dos correcciones que nunca entraron al archivo. **El `write` va
+siempre después de TODOS los asserts, y lo que se afirma en un commit se
+verifica contra el archivo, no contra lo que imprimió el script.**
 
 ## El botón principal de la app llevaba días fallando contraste, y la regla para evitarlo ya estaba escrita (2026-09-12) — MÁXIMA PRIORIDAD
 

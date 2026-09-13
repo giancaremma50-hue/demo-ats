@@ -8,12 +8,17 @@ export type NavItem = { href: string; label: string; icon: LucideIcon };
 
 export type ModuleConfig = {
   id: string;
-  /** Nombre largo, para el selector de módulos. */
+  /** Nombre largo, para el selector de módulos. **Tiene que contener a
+   *  `shortLabel`**: el botón muestra `shortLabel` y se anuncia con `label`, y
+   *  WCAG 2.5.3 pide que lo visible esté contenido en lo anunciado. Hoy se
+   *  cumple ("Reclutamiento" ⊂ "Reclutamiento AJE", "Conectados" ⊂ "AJE
+   *  Conectados"); un par como `label: "Ventas AJE"` + `shortLabel:
+   *  "Comercial"` lo rompería sin que nada avise. */
   label: string;
-  /** Nombre corto. Va en la barra al lado del selector desde `sm:` — pero ojo:
-   *  `settingsItemFor` también lo mete dentro de un label de ítem
-   *  ("Ajustes de X"), y ESO se muestra en todo ancho cuando el ítem está
-   *  activo. Un `shortLabel` largo le come el ancho a la barra en un teléfono. */
+  /** Nombre corto, el que dice el selector desde `sm:`. Ojo: `settingsItemFor`
+   *  también lo mete dentro de un label de ítem ("Ajustes de X"), y ESE se
+   *  pinta al lado del selector en un teléfono cuando el ítem está activo —
+   *  un `shortLabel` largo le come el ancho a la barra justo donde menos hay. */
   shortLabel: string;
   icon: LucideIcon;
   accentColor: string;
@@ -29,16 +34,16 @@ export type ModuleConfig = {
  * Composición de la barra flotante (mockup aprobado por el usuario el
  * 2026-09-11, variante B):
  *
- *   `[⊞ Módulo] · [Home] [submenús…] · [⚙]`, y el ítem activo muestra su
- *   etiqueta al lado de su ícono en todo ancho.
+ *   `[⊞ Módulo] · [Home] [submenús…] · [⚙]` desde `sm:`; en un teléfono el
+ *   nombre del módulo se oculta y al lado del botón va el de la pantalla.
  *
  * - **Tres anclas que no se mueven nunca**: el selector de módulos, el Home y
  *   el engranaje. En toda pantalla, en la misma posición. Que Inicio
  *   desapareciera al entrar a Configuración fue el reporte que originó esto.
  * - **El nombre del módulo vive DENTRO del selector**, no en una ficha aparte,
- *   para ahorrar el lugar que en un teléfono se agota primero — y ahí cede el
- *   lugar del todo: por debajo de `sm:` el texto es para la PANTALLA activa,
- *   no para el módulo (2026-09-13).
+ *   para ahorrar el lugar que en un teléfono se agota primero — y ahí se
+ *   oculta del todo, porque ese lugar es del nombre de la pantalla, que va
+ *   FUERA del botón para no nombrar al control equivocado (2026-09-13).
  * - **Lo que cambia son los submenús**, que son del módulo.
  * - **El engranaje sigue al módulo** cuando el módulo tiene configuración
  *   propia (`settingsHref`); si no, va a la general. Solo para admin+: un
