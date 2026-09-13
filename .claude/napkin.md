@@ -6,8 +6,88 @@
 > — son historia de la construcción, se consultan cuando se toca esa parte.
 > Curado el 2026-09-11: la marca estaba en 52 de 72 secciones, o sea en
 > ninguna. Al agregar una entrada, re-evaluar si de verdad es transversal.
+> Re-curado el 2026-09-13: bajaron nueve. El criterio para bajar una es que su
+> regla ya viva en `AGENTS.md` —que es donde se lee antes de tocar código, no
+> acá— o que sea de una sola funcionalidad. La entrada se queda entera; lo que
+> se saca es la marca.
 
-_Última actualización: 2026-09-13 (cuando el texto no describe lo que el control hace, se saca el texto del control — no se retoca el aria-label; y un script que falla a mitad no escribe nada aunque ya haya impreso «ok»)_
+_Última actualización: 2026-09-13 (un submenú pertenece a su módulo: fuera del módulo no se muestra, y lo que lo reemplaza es un mapa en el selector — no menos navegación)_
+
+## Un submenú pertenece a su módulo — y sacarlo de donde no va exige poner el mapa en otro lado (2026-09-13) — MÁXIMA PRIORIDAD
+
+Reporte del usuario, parado en `/inicio`: *"cada menú debe tener su agrupación;
+ahorita que está en Inicio no debería de verse lo de Vacantes, Candidatos y
+Bolsa, eso son submenú del ATS"*. Tenía razón y la causa estaba en una línea:
+`/inicio` era el primer ítem de `reclutamientoItemsForRole`, o sea la portada de
+la plataforma era una pantalla del ATS. Estando ahí, la barra mostraba sus
+hermanas — que son del ATS, no de la portada.
+
+**Lo que NO había que hacer: esconderlas y nada más.** Ese fue el primer
+impulso, y deja Candidatos y Bolsa alcanzables solo por tarjetas que hoy no
+existen en la pantalla de Inicio. Esconder un acceso sin abrir otro no es
+agrupar, es perder navegación. El usuario lo dijo al elegir: quería la
+agrupación **y** el clic directo a Vacantes cuando ya está adentro del ATS.
+
+La salida es una separación en tres piezas, y las tres tienen que viajar juntas:
+
+| Pieza | Qué hace |
+|---|---|
+| La pertenencia sale de las pantallas del módulo | Se deriva de `itemsForRole`; lo que nadie declara no es de nadie |
+| `HOME_ITEM` al lado de `SETTINGS_ITEM` | El ancla Inicio la pone la barra, no `itemsForRole` |
+| El selector pasa a ser el **mapa** | Cada módulo con sus pantallas colgando: dos toques a cualquier lado |
+
+Sin la tercera, la primera es una pérdida neta. **La regla general quedó escrita
+en `AGENTS.md` como la número 11**, para que todo módulo nuevo nazca con su
+submenú y sepa que fuera de su módulo no se muestra.
+
+Tres detalles que aparecieron al implementarlo y no son obvios:
+
+- **La lista de rutas "sin módulo" era el bug, no la solución.** El primer
+  intento agregó `/inicio` a `RUTAS_SIN_MODULO`, una lista negra a mano. Con
+  eso, TODA pantalla futura que no fuera de ningún módulo (`/reportes`,
+  `/ayuda`, `/buscar`) nacería heredando los submenús de Reclutamiento por el
+  fallback de `activeModuleFor`, hasta que alguien se acordara de anotarla —
+  o sea, este mismo reporte, en cola. La pertenencia se declara en positivo y
+  adentro del módulo —y **derivada de las pantallas que el módulo ya lista**,
+  no en una segunda lista de rutas que se desincroniza con la primera—,
+  `activeModuleFor` devuelve `null` cuando nada matchea, y la lista negra
+  desaparece. Regla general: **la pertenencia se afirma, no se descarta.**
+- **El nombre del módulo en el mapa es un encabezado, no un enlace.** Su destino
+  sería el de su primera pantalla, que está justo debajo — dos controles
+  contiguos al mismo lugar es la misma ambigüedad que ya costó un arreglo en
+  esta barra (ver la entrada de arriba).
+- **El nombre de la PANTALLA en teléfono estaba atado a `!sinModulo`, y no
+  correspondía.** Lo que se calla fuera de un módulo es el nombre del MÓDULO,
+  que sería falso; la pantalla existe igual. Con `/inicio` volviéndose ruta sin
+  módulo, ese acoplamiento dejaba la portada sin nada que la nombrara en un
+  teléfono — el mismo bug que la corrección del 2026-09-13 vino a arreglar,
+  reintroducido por la puerta de atrás. Una condición que mezcla dos preguntas
+  distintas falla recién cuando cambia el dato que las separaba.
+
+**Dos módulos no pueden llamar igual a su pantalla principal.** Conectados
+decía "Inicio" igual que la portada: en el mapa quedaban dos filas idénticas y
+en un teléfono la barra decía lo mismo en los dos módulos. Pasó a llamarse
+**Muro** — y el rename no termina en la etiqueta del menú: el `h1` decía "AJE
+Conectados", que es el MÓDULO, así que al tocar "Muro" llegabas a una pantalla
+que se presentaba con otro nombre. El ícono tampoco podía quedarse: era el
+mismo `MessageCircle` del módulo, y en el mapa la pantalla va justo debajo de
+él. Renombrar una pantalla es tocar su etiqueta, su `h1` y su glifo.
+
+**Y un filtro "por si el elemento existe" se come en silencio lo que se movió.**
+`OnboardingTour` arma sus pasos con `document.querySelector` y después llama a
+`markTutorialSeen()`: los de Vacantes y Candidatos apuntaban a ítems que, con
+este cambio, solo existen dentro del módulo. Se descartaban sin error y
+quedaban vistos para siempre. Dos cosas para no repetirlo:
+
+- **El tour no corre en una pantalla conocida.** Se monta en `(app)/layout.tsx`,
+  así que arranca en la primera ruta autenticada que cargue — puede ser
+  `/inicio`, o un enlace a `/postulaciones/<id>` desde una notificación. Asumir
+  `/inicio` fue el primer arreglo de esto y era falso. La regla real: **un paso
+  solo puede apuntar a algo presente en TODA ruta autenticada.**
+- **Todo filtro por presencia en el DOM es una dependencia oculta del layout.**
+  El filtro estaba pensado para variar por ROL; desde este cambio la barra varía
+  también por RUTA. Cuando el layout se vuelve condicional, el filtro no falla:
+  calla.
 
 ## El texto visible de un control nombra a ESE control (2026-09-13) — MÁXIMA PRIORIDAD
 
@@ -61,7 +141,7 @@ en un PR dos correcciones que nunca entraron al archivo. **El `write` va
 siempre después de TODOS los asserts, y lo que se afirma en un commit se
 verifica contra el archivo, no contra lo que imprimió el script.**
 
-## El botón principal de la app llevaba días fallando contraste, y la regla para evitarlo ya estaba escrita (2026-09-12) — MÁXIMA PRIORIDAD
+## El botón principal de la app llevaba días fallando contraste, y la regla para evitarlo ya estaba escrita (2026-09-12)
 
 Salió de revisar por qué había dos verdes en pantalla. El acento configurado
 (`#1f4d3d`) pintaba 60 lugares y los botones seguían en verde AJE. Tirando de
@@ -192,7 +272,7 @@ peor que no tener regla: se lee el documento, se confía, y es falso.
    agregar. El presupuesto de movimiento se gastó donde había un propósito real
    (presión, diálogos, origen del popover), no donde había un ítem pendiente.
 
-## Una barra que se esconde tiene que dejar rastro, y el rastro tiene que ser ELLA (2026-09-11) — MÁXIMA PRIORIDAD
+## Una barra que se esconde tiene que dejar rastro, y el rastro tiene que ser ELLA (2026-09-11)
 
 La barra flotante se desmontaba al bajar y no quedaba nada en pantalla: el
 usuario reportó que "desapareció". Las primeras propuestas —un asa aparte, un
@@ -529,7 +609,7 @@ la entrevista; de la tarea no se enteraba nadie.
    hubo drift de otro schema mientras tanto).
 
 
-## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11) — MÁXIMA PRIORIDAD
+## Una pantalla "compartida" no puede quedarse sin el botón de volver (2026-09-11)
 
 Al hacer que `/configuracion` dejara de fingir que pertenece a un módulo, la
 barra flotante pasó a mostrar ahí una composición "neutral" (puerta a los dos
@@ -675,7 +755,7 @@ al servidor, y la pantalla no dijo absolutamente nada.
    leía primero. Cuando parte de una operación falla, va UN mensaje que lo
    diga, no dos que se contradigan.
 
-## Un `<input type="file">` con `hidden` queda inalcanzable por teclado, y su vista previa tiene tres trampas propias (2026-09-11) — MÁXIMA PRIORIDAD
+## Un `<input type="file">` con `hidden` queda inalcanzable por teclado, y su vista previa tiene tres trampas propias (2026-09-11)
 
 Al unificar todas las subidas en un solo cuadro que es vista previa + selector
 (`<MediaPicker>`, regla de diseño 8), salieron cuatro cosas que se repiten en
@@ -730,7 +810,7 @@ Además, de este mismo cambio:
    neutral (puerta a los dos módulos + Ajustes activo) y el selector no marca
    ninguno como activo, que es la verdad.
 
-## Un campo que sube, guarda y no pinta nada es un bug de confianza, no una función incompleta (2026-09-11) — MÁXIMA PRIORIDAD
+## Un campo que sube, guarda y no pinta nada es un bug de confianza, no una función incompleta (2026-09-11)
 
 `/configuracion/marca` tenía un campo "Logo para fondo oscuro" que funcionaba
 de punta a punta —subía a `marca-publico`, guardaba `organizations.logo_dark_url`,
@@ -821,7 +901,7 @@ flotante solo lleva iconos y los correos no llevan logo. Las dos cosas falsas.
    repartida en tres archivos y ya se había desincronizado (el diálogo decía
    "foto de portada de la bolsa de empleo" y el toast "Foto de portada").
 
-## Una columna denormalizada que copia datos de `profiles` no se muestra nunca directo (2026-09-11) — MÁXIMA PRIORIDAD
+## Una columna denormalizada que copia datos de `profiles` no se muestra nunca directo (2026-09-11)
 
 Reporte real: "ya cargué mi foto de perfil pero no se ve en las
 publicaciones". La foto SÍ estaba en `profiles.avatar_url` y sí se veía en el
@@ -870,7 +950,7 @@ fácil con un respaldo de la propia app).
 
 ---
 
-## Degradar un token de mención sin sanear el nombre lo vuelve a armar — el parche de suplantación tenía su propio hueco (2026-09-11) — MÁXIMA PRIORIDAD
+## Degradar un token de mención sin sanear el nombre lo vuelve a armar — el parche de suplantación tenía su propio hueco (2026-09-11)
 
 Conectados guardaba el cuerpo del post tal cual y confiaba en el array
 `mentions` del cliente, así que escribir a mano `@[Directora de RH](uuid-de-otro)`
@@ -1130,7 +1210,7 @@ en Postgres solo reconoce `'lectura_escritura'` en su `IN`.
 
 ---
 
-## Un array de UUIDs "mentions" del cliente sin validar = notificar/emailear a cualquiera (2026-09-10) — MÁXIMA PRIORIDAD
+## Un array de UUIDs "mentions" del cliente sin validar = notificar/emailear a cualquiera (2026-09-10)
 
 Al construir AJE Conectados, `mentions: z.array(z.string().uuid())` en el
 schema de `createPost`/`addComment` solo valida FORMATO (que sea un UUID),
@@ -1261,7 +1341,7 @@ disparaba en el único caso que debía: la primera reacción de otra persona a u
 ---
 
 
-## `jsonb_set(..., true)` NO crea niveles intermedios del path — solo el último (2026-09-10) — MÁXIMA PRIORIDAD
+## `jsonb_set(..., true)` NO crea niveles intermedios del path — solo el último (2026-09-10)
 
 Al agregar `department_id` al JWT (mismo mecanismo que ya usan `app_role`/`organization_id`
 en `custom_access_token_hook`), la verificación manual daba `claims: {}` — como si la

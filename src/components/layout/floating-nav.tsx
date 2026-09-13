@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { LayoutGrid } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { MODULES, activeModuleFor, isModulelessPath, settingsItemFor, type NavItem } from "@/lib/modules";
+import { HOME_ITEM, MODULES, activeModuleFor, settingsItemFor, type NavItem } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -35,14 +35,19 @@ const MS_APARICION = 300;
  * ícono se veía pesado. En un teléfono quien nombra la pantalla es el `<span>`
  * que va al lado del selector, no esta etiqueta.
  */
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+function NavLink({ item, active, tour }: { item: NavItem; active: boolean; tour?: string }) {
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
       // Sin barras: una ruta anidada (`/conectados/ajustes`) daría
       // `nav-conectados/ajustes`, que ningún selector del tour encuentra.
-      data-tour={`nav-${item.href.slice(1).replaceAll("/", "-")}`}
+      // `tour` lo fija donde el href puede cambiar según la pantalla: el
+      // engranaje apunta a la configuración del módulo cuando el módulo tiene
+      // una, y con el gancho derivado del href el paso del tour se volvería
+      // inencontrable justo en ese módulo — descartado en silencio y marcado
+      // como visto para siempre.
+      data-tour={tour ?? `nav-${item.href.slice(1).replaceAll("/", "-")}`}
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
       className="group relative flex h-11 flex-none items-center gap-2 rounded-full px-1 text-sm font-medium sm:px-4"
@@ -107,10 +112,28 @@ function Separador() {
  */
 export function FloatingNav({ role }: { role: Role }) {
   const pathname = usePathname();
+  // `null` fuera de todo módulo: Inicio, Ajustes, Mi cuenta, Notificaciones.
   const activeModule = activeModuleFor(pathname);
-  const items = activeModule.itemsForRole(role);
+  // El mapa del selector, armado una vez por rol. Los hijos de `PopoverContent`
+  // se construyen en cada render de la barra aunque esté cerrado, y la barra
+  // re-renderiza varias veces por cada plegado: sin esto, cada scroll
+  // recalculaba las pantallas de todos los módulos para tirarlas enseguida.
+  const mapa = useMemo(() => MODULES.map((mod) => ({ mod, pantallas: mod.itemsForRole(role) })), [role]);
+  // Las pantallas del medio son del módulo activo. Sin módulo no hay ninguna
+  // que mostrar y la barra queda en sus tres anclas. Es la separación que
+  // pidió el usuario: Vacantes, Candidatos y Bolsa son del ATS, no de la
+  // portada. Salen del mapa y no de otra llamada a `itemsForRole`: es la misma
+  // lista para el mismo módulo y el mismo rol.
+  const items = mapa.find((e) => e.mod === activeModule)?.pantallas ?? [];
+  // El Inicio va SIEMPRE y primero: es un ancla de la barra, no una pantalla
+  // del módulo. Por eso sale de acá y no de `itemsForRole`.
+  const navItems = [HOME_ITEM, ...items];
   const settings = settingsItemFor(activeModule, role);
-  const sinModulo = isModulelessPath(pathname);
+  // El verde AJE cuando no hay módulo: es el color de la plataforma (el logo,
+  // el botón principal), no el de Reclutamiento. Que Reclutamiento use el
+  // mismo es un solapamiento conocido — en un teléfono el nombre de la
+  // PANTALLA, que sí se pinta, es lo que despeja la duda.
+  const colorBarra = activeModule?.accentColor ?? "var(--primary)";
   const [plegada, setPlegada] = useState(false);
   // "El contenido se ve y se puede usar", que NO es lo mismo que "no está
   // plegada": al desplegar, el contenido tarda 300 ms en aparecer (espera +
@@ -278,7 +301,7 @@ export function FloatingNav({ role }: { role: Role }) {
   // primero: con `/conectados` (Home) y un hipotético `/conectados/ajustes`
   // los dos coincidirían por prefijo y se montarían dos elementos con el
   // mismo `layoutId`, que framer-motion no sabe resolver.
-  const candidatos = [...items, ...(settings ? [settings] : [])];
+  const candidatos = [...navItems, ...(settings ? [settings] : [])];
   const itemActivo = candidatos
     .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0];
@@ -332,8 +355,15 @@ export function FloatingNav({ role }: { role: Role }) {
           aria-label={contenidoListo ? undefined : plegada ? "Mostrar el menú" : "Menú"}
           aria-expanded={contenidoListo ? undefined : !plegada}
           style={{
-            backgroundColor: activeModule.accentColor,
-            width: plegada ? `${ANCHO_PLEGADA}px` : "var(--ancho-abierto, auto)",
+            backgroundColor: colorBarra,
+            // `min()` y no el valor pelado: con la barra en sus tres anclas
+            // —un gestor en Mi cuenta, sin engranaje— la píldora abierta mide
+            // menos que el lomo, y plegarla la haría CRECER mientras se
+            // aplasta. El lomo es un resumen de la barra: nunca más ancho que
+            // ella.
+            width: plegada
+              ? `min(${ANCHO_PLEGADA}px, var(--ancho-abierto, ${ANCHO_PLEGADA}px))`
+              : "var(--ancho-abierto, auto)",
           }}
           className={cn(
             "pointer-events-auto flex items-center gap-0.5 rounded-full shadow-nav",
@@ -404,23 +434,34 @@ export function FloatingNav({ role }: { role: Role }) {
                     pero ese tema hoy no se puede encender — ver el napkin.) */}
                 <button
                   type="button"
+                  // "Ir a otra pantalla" y no "Cambiar de módulo": adentro
+                  // ya no están solo los módulos, están también sus pantallas.
+                  data-tour="nav-modulos"
                   aria-label={
-                    sinModulo ? "Cambiar de módulo" : `Módulo actual: ${activeModule.label}. Cambiar de módulo`
+                    activeModule ? `Módulo actual: ${activeModule.label}. Ir a otra pantalla` : "Ir a otra pantalla"
                   }
                   className="flex h-11 flex-none items-center gap-2 rounded-full px-2.5 text-sm font-semibold text-aje-dark hover:bg-aje-dark/10 sm:px-3"
                 >
                   <LayoutGrid className="size-[18px]" strokeWidth={2.5} aria-hidden />
                   {/* El nombre del módulo, solo desde `sm:` — en un teléfono ese
                       lugar es del nombre de la PANTALLA, que va AFUERA de este
-                      botón (abajo). Y no aparece donde sería falso decirlo (ver
-                      `isModulelessPath`). */}
-                  {!sinModulo && <span className="hidden sm:inline">{activeModule.shortLabel}</span>}
+                      botón (abajo). Y no aparece donde sería falso decirlo: fuera de
+                      todo módulo `activeModuleFor` devuelve `null`. */}
+                  {activeModule && <span className="hidden sm:inline">{activeModule.shortLabel}</span>}
                 </button>
               </PopoverTrigger>
               <PopoverContent
                 side="top"
                 align="start"
-                className="w-64"
+                // El mapa es la única puerta a Candidatos y a Bolsa desde
+                // Inicio, así que no puede quedar recortado: en un teléfono
+                // apaisado el alto disponible no le alcanza, y crece con cada
+                // módulo nuevo. Radix publica cuánto hay; acá se respeta.
+                className="max-h-[var(--radix-popover-content-available-height)] w-64 overflow-y-auto overscroll-contain"
+                // Radix lo renderiza como `role="dialog"`: sin nombre se
+                // anuncia solo como "diálogo". Dejó de ser una lista de dos
+                // módulos para ser el mapa de navegación del producto.
+                aria-label="Módulos y pantallas"
                 onCloseAutoFocus={(e) => {
                   // Radix devuelve el foco al disparador. Si la barra se plegó
                   // con el selector abierto, ese disparador quedó `inert` y el
@@ -437,29 +478,76 @@ export function FloatingNav({ role }: { role: Role }) {
                   pastillaRef.current?.focus();
                 }}
               >
-                <div className="flex flex-col gap-1">
-                  {MODULES.map((mod) => {
+                {/* El mapa entero: cada módulo y, colgando, sus pantallas. Es
+                    lo que permite que la barra no muestre submenús fuera de un
+                    módulo sin dejar nada inalcanzable — desde Inicio se llega a
+                    Candidatos en dos toques, sin pasar por Vacantes.
+                    El nombre del módulo es un ENCABEZADO, no un enlace: su
+                    destino sería el de su primera pantalla, que está justo
+                    debajo, y dos controles contiguos al mismo lugar es
+                    exactamente la ambigüedad que ya costó un arreglo en esta
+                    barra. Quien quiere entrar toca la pantalla que quiere. */}
+                <div className="flex flex-col gap-2">
+                  {mapa.map(({ mod, pantallas }) => {
                     const Icon = mod.icon;
-                    const isActive = mod.id === activeModule.id;
+                    const isActive = mod.id === activeModule?.id;
                     return (
-                      <Link
+                      // `role="group"` + `aria-labelledby`: sin esto el mapa se
+                      // recorre como una lista plana de pantallas y nada dice
+                      // de qué módulo es cada una — la sangría y la línea que
+                      // lo cuentan son puro dibujo.
+                      <div
                         key={mod.id}
-                        href={mod.basePath}
-                        onClick={() => setSwitcherOpen(false)}
-                        className="flex items-center gap-3 rounded-lg p-2 text-sm font-medium hover:bg-muted"
+                        role="group"
+                        aria-labelledby={`mapa-modulo-${mod.id}`}
+                        className="flex flex-col gap-0.5"
                       >
-                        {/* Misma tinta que la barra: un ícono blanco sobre
-                            estos verdes queda en 1.8:1, y ese ícono es lo
-                            único que distingue una fila de la otra. */}
-                        <span
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-aje-dark"
-                          style={{ backgroundColor: mod.accentColor }}
+                        <p
+                          id={`mapa-modulo-${mod.id}`}
+                          className="flex items-center gap-3 p-2 text-sm font-bold tracking-heading"
                         >
-                          <Icon className="size-4" strokeWidth={2.5} aria-hidden />
-                        </span>
-                        {mod.label}
-                        {isActive && <span className="ml-auto size-1.5 rounded-full bg-foreground" aria-hidden />}
-                      </Link>
+                          {/* Misma tinta que la barra: un ícono blanco sobre
+                              estos verdes queda en 1.8:1, y ese ícono es lo
+                              único que distingue una fila de la otra. */}
+                          <span
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-aje-dark"
+                            style={{ backgroundColor: mod.accentColor }}
+                          >
+                            <Icon className="size-4" strokeWidth={2.5} aria-hidden />
+                          </span>
+                          {/* `truncate`: el `overflow-y-auto` del popover le pone
+                              `overflow-x: auto` al mismo elemento (CSS Overflow
+                              3), así que un nombre largo no envuelve — se iría a
+                              un scroll lateral que varios motores ni dibujan. */}
+                          <span className="min-w-0 truncate">{mod.label}</span>
+                          {isActive && <span className="ml-auto size-1.5 rounded-full bg-foreground" aria-hidden />}
+                        </p>
+                        <div className="ml-4 flex flex-col border-l border-border pl-3">
+                          {pantallas.map((pantalla) => {
+                            const PantallaIcon = pantalla.icon;
+                            const activa = pantalla.href === hrefActivo;
+                            return (
+                              <Link
+                                key={pantalla.href}
+                                href={pantalla.href}
+                                onClick={() => setSwitcherOpen(false)}
+                                aria-current={activa ? "page" : undefined}
+                                className={cn(
+                                  "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted",
+                                  activa && "bg-muted font-medium",
+                                )}
+                              >
+                                <PantallaIcon
+                                  className="size-4 flex-none text-muted-foreground"
+                                  strokeWidth={2}
+                                  aria-hidden
+                                />
+                                <span className="min-w-0 truncate">{pantalla.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -475,8 +563,12 @@ export function FloatingNav({ role }: { role: Role }) {
                 del ítem activo va oculta por espacio y nada más dice en qué
                 pantalla estás. Si ninguna ruta coincide
                 (`/postulaciones/<id>`), no dice nada: mejor mudo que nombrando
-                una pantalla falsa. */}
-            {itemActivo && !sinModulo && (
+                una pantalla falsa.
+                Va aunque la ruta no sea de ningún módulo: lo que ahí se
+                calla es el nombre del MÓDULO, que sería falso. La pantalla
+                existe igual, y en Inicio o en Ajustes es lo único que puede
+                nombrarla en un teléfono. */}
+            {itemActivo && (
               <span
                 // `aria-hidden`: es un eco visual. El enlace activo ya lo
                 // anuncia con su `aria-label` y su `aria-current="page"`, así
@@ -494,14 +586,14 @@ export function FloatingNav({ role }: { role: Role }) {
 
             <Separador />
 
-            {items.map((item) => (
+            {navItems.map((item) => (
               <NavLink key={item.href} item={item} active={item.href === hrefActivo} />
             ))}
 
             {settings && (
               <>
                 <Separador />
-                <NavLink item={settings} active={settings.href === hrefActivo} />
+                <NavLink item={settings} active={settings.href === hrefActivo} tour="nav-configuracion" />
               </>
             )}
           </div>

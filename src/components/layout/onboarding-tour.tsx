@@ -5,21 +5,33 @@ import { markTutorialSeen } from "@/lib/profile/tutorial-actions";
 
 /**
  * Los pasos se filtran por si el elemento existe en el DOM, no por rol —
- * FloatingNav ya decide qué ítems renderiza según el rol (máx. 5, ver
- * itemsForRole()); duplicar esa lógica aquí solo crearía una segunda fuente
- * de verdad que se desincroniza con el tiempo.
+ * FloatingNav ya decide qué ítems renderiza según el rol; duplicar esa lógica
+ * aquí solo crearía una segunda fuente de verdad que se desincroniza con el
+ * tiempo.
+ *
+ * **Pero ese filtro se come en silencio lo que no esté en la pantalla donde el
+ * tour arranca** — y esa pantalla no está garantizada: este componente se monta
+ * en `(app)/layout.tsx`, así que corre en la primera ruta autenticada que
+ * cargue, que puede ser `/inicio`, un enlace a `/postulaciones/<id>` desde una
+ * notificación, o `/conectados`. Desde el 2026-09-13 la barra tampoco muestra
+ * lo mismo en todas: las pantallas de un módulo aparecen solo dentro de ese
+ * módulo. Apuntarle a `nav-vacantes` era pedir un elemento que en media app no
+ * existe: el paso se descartaba sin avisar y `markTutorialSeen()` lo daba por
+ * visto para siempre.
+ *
+ * **La regla que queda: un paso solo puede apuntar a algo que esté en TODA ruta
+ * autenticada** — las tres anclas de la barra, la campana y Mi cuenta. Nunca a
+ * un submenú de módulo.
  */
 const STEP_DEFS: { selector: string; title: string; description: string }[] = [
   { selector: '[data-tour="nav-inicio"]', title: "Inicio", description: "Un resumen rápido de tu actividad." },
   {
-    selector: '[data-tour="nav-vacantes"]',
-    title: "Vacantes",
-    description: "Aquí ves las vacantes y puedes referir candidatos.",
-  },
-  {
-    selector: '[data-tour="nav-candidatos"]',
-    title: "Candidatos",
-    description: "El pipeline de tus vacantes: arrastra candidatos entre etapas.",
+    selector: '[data-tour="nav-modulos"]',
+    title: "Tus módulos",
+    // Describe al BOTÓN, no a lo que guarda: driver.js lo ilumina con el
+    // popover cerrado, así que prometer "acá están las vacantes" señalaría un
+    // ícono y hablaría de algo que no está en pantalla.
+    description: "Tocá acá para moverte entre Reclutamiento y AJE Conectados, y entre sus pantallas.",
   },
   {
     selector: '[data-tour="nav-configuracion"]',
