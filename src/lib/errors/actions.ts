@@ -8,8 +8,9 @@ import { notify, notifyBestEffort } from "@/lib/notifications/notify";
 import { ERROR_CATALOG } from "./catalog";
 import { ReportErrorSchema, ReplySchema } from "./schema";
 import type { Database } from "@/lib/supabase/database.types";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type ErrorActionResult = { error?: string; success?: string; code?: string };
+export type ErrorActionResult = { error?: string; success?: string; code?: string; field?: string };
 
 type ErrorStatus = Database["public"]["Enums"]["error_status"];
 
@@ -74,13 +75,13 @@ export async function createErrorReport(
 
   const parsed = ReportErrorSchema.safeParse({
     motivo,
-    titulo: context.titulo,
+    titulo: truncate(context.titulo, 200),
     url: truncate(context.url, 500),
     user_agent: truncate(context.user_agent, 300),
     technical_detail: truncate(context.technical_detail, 2000),
     user_message: formData.get("user_message"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa el mensaje." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -120,7 +121,7 @@ export async function replyToErrorReport(
 ): Promise<ErrorActionResult> {
   const profile = await requireProfile();
   const parsed = ReplySchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa el mensaje." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   // organization_id explícito: la política de error_reports no valida

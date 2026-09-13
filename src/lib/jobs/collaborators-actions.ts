@@ -6,8 +6,9 @@ import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { assertBelongsToOrg } from "@/lib/assert-belongs-to-org";
 import { AddCollaboratorSchema } from "./collaborators-schema";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type CollaboratorActionResult = { error?: string; success?: string };
+export type CollaboratorActionResult = { error?: string; success?: string; field?: string };
 
 export async function addJobCollaborator(
   jobId: string,
@@ -16,7 +17,7 @@ export async function addJobCollaborator(
 ): Promise<CollaboratorActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = AddCollaboratorSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -95,7 +96,7 @@ export async function reassignRecruiter(
 ): Promise<CollaboratorActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = z.uuid({ error: "Elige a quién le pasa la vacante." }).safeParse(formData.get("owner_id"));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Elige una persona." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 

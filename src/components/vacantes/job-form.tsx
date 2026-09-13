@@ -3,8 +3,9 @@
 import { forwardRef, useActionState, useEffect } from "react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Field } from "@/components/ui/field";
+import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 import { LabelSelect } from "@/components/ui/label-select";
-import { notifyError, notifySuccess } from "@/lib/notifications/toast";
+import { notifySuccess } from "@/lib/notifications/toast";
 import { WORK_MODE_LABEL, EMPLOYMENT_TYPE_LABEL, VISIBILITY_LABEL } from "@/lib/jobs/schema";
 import { COUNTRIES } from "@/lib/geo/countries";
 import type { JobActionResult } from "@/lib/jobs/actions";
@@ -33,16 +34,22 @@ export const JobForm = forwardRef<
 >(function JobForm({ action, departments, defaultValues, submitLabel, children }, ref) {
   const [state, formAction] = useActionState(action, undefined);
 
+  // El `<Field>` del departamento solo existe cuando hay departamentos, así que
+  // un error de `department_id` puede no tener dónde mostrarse. Quien decide si
+  // el toast habla es el hook, mirando si el mensaje se pinta de verdad.
+  useErrorToast(state, (campo) => `vacante-${campo}-error`);
+
+  const errorDe = selectorDeError(state);
+
   useEffect(() => {
-    if (state?.error) notifyError(state.error);
-    else if (state?.success) notifySuccess(state.success);
+    if (state?.success) notifySuccess(state.success);
   }, [state]);
 
   return (
     <form ref={ref} action={formAction} className="flex flex-col gap-5">
       {children}
 
-      <Field id="title" label="Título del puesto" error={state?.field === "title" ? state.error : undefined}>
+      <Field id="vacante-title" label="Título del puesto" error={errorDe("title")}>
         <input
           name="title"
           required
@@ -53,9 +60,9 @@ export const JobForm = forwardRef<
 
       {departments.length > 0 && (
         <Field
-          id="department_id"
+          id="vacante-department_id"
           label="Departamento"
-          error={state?.field === "department_id" ? state.error : undefined}
+          error={errorDe("department_id")}
         >
           <select
             name="department_id"
@@ -73,7 +80,7 @@ export const JobForm = forwardRef<
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field id="country" label="País" error={state?.field === "country" ? state.error : undefined}>
+        <Field id="vacante-country" label="País" error={errorDe("country")}>
           <select
             name="country"
             required
@@ -103,7 +110,7 @@ export const JobForm = forwardRef<
             ))}
           </select>
         </Field>
-        <Field id="location" label="Ubicación" error={state?.field === "location" ? state.error : undefined}>
+        <Field id="vacante-location" label="Ubicación" error={errorDe("location")}>
           <input
             name="location"
             required
@@ -114,9 +121,8 @@ export const JobForm = forwardRef<
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field id="work_mode" label="Modalidad" error={state?.field === "work_mode" ? state.error : undefined}>
+        <Field id="vacante-work_mode" label="Modalidad" error={errorDe("work_mode")}>
           <LabelSelect
-            id="work_mode"
             name="work_mode"
             required
             labels={WORK_MODE_LABEL}
@@ -125,12 +131,11 @@ export const JobForm = forwardRef<
           />
         </Field>
         <Field
-          id="employment_type"
+          id="vacante-employment_type"
           label="Tipo de contrato"
-          error={state?.field === "employment_type" ? state.error : undefined}
+          error={errorDe("employment_type")}
         >
           <LabelSelect
-            id="employment_type"
             name="employment_type"
             required
             labels={EMPLOYMENT_TYPE_LABEL}
@@ -141,9 +146,9 @@ export const JobForm = forwardRef<
       </div>
 
       <Field
-        id="description"
+        id="vacante-description"
         label="Descripción del puesto"
-        error={state?.field === "description" ? state.error : undefined}
+        error={errorDe("description")}
       >
         <textarea
           name="description"
@@ -155,9 +160,9 @@ export const JobForm = forwardRef<
       </Field>
 
       <Field
-        id="requirements"
+        id="vacante-requirements"
         label="Requisitos"
-        error={state?.field === "requirements" ? state.error : undefined}
+        error={errorDe("requirements")}
       >
         <textarea
           name="requirements"
@@ -170,9 +175,9 @@ export const JobForm = forwardRef<
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field
-          id="salary_min"
+          id="vacante-salary_min"
           label="Salario mín. (opcional)"
-          error={state?.field === "salary_min" ? state.error : undefined}
+          error={errorDe("salary_min")}
         >
           <input
             name="salary_min"
@@ -183,9 +188,9 @@ export const JobForm = forwardRef<
           />
         </Field>
         <Field
-          id="salary_max"
+          id="vacante-salary_max"
           label="Salario máx. (opcional)"
-          error={state?.field === "salary_max" ? state.error : undefined}
+          error={errorDe("salary_max")}
         >
           <input
             name="salary_max"
@@ -195,7 +200,7 @@ export const JobForm = forwardRef<
             className="h-11 rounded-md border border-border bg-background px-3 text-sm tabular-nums"
           />
         </Field>
-        <Field id="headcount" label="Plazas" error={state?.field === "headcount" ? state.error : undefined}>
+        <Field id="vacante-headcount" label="Plazas" error={errorDe("headcount")}>
           <input
             name="headcount"
             type="number"
@@ -206,7 +211,7 @@ export const JobForm = forwardRef<
         </Field>
       </div>
 
-      <Field id="visibility" label="Visibilidad" error={state?.field === "visibility" ? state.error : undefined}>
+      <Field id="vacante-visibility" label="Visibilidad" error={errorDe("visibility")}>
         <select
           name="visibility"
           required

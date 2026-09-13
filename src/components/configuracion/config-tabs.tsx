@@ -70,7 +70,7 @@ export function ConfigTabs({ role }: { role: string }) {
         <summary
           // `list-none` + el pseudo de WebKit: sin eso el navegador dibuja su
           // propio triángulo al lado del que sí pertenece al diseño.
-          className="flex h-10 cursor-pointer list-none items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-[13px] font-medium text-foreground focus-visible:border-accent [&::-webkit-details-marker]:hidden"
+          className="flex h-10 cursor-pointer list-none items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-[13px] font-medium text-foreground [&::-webkit-details-marker]:hidden"
         >
           <span className="min-w-0 truncate">{actual?.label ?? "Elegir sección"}</span>
           {/* `transition-[rotate]` y no `transition-transform`: en Tailwind v4
@@ -110,7 +110,16 @@ export function ConfigTabs({ role }: { role: string }) {
                 key={tab.href}
                 href={tab.href}
                 aria-current={marca(tab.href)}
-                className={`flex-none pb-3 text-[13px] whitespace-nowrap ${activa ? "border-b-2 border-foreground font-medium text-foreground" : "text-muted-foreground"}`}
+                // `outline-offset` negativo: `overflow-x-auto` vuelve al padre un
+                // contenedor de scroll y eso recorta también el eje Y, así que un
+                // anillo por fuera queda cortado arriba y abajo. Darle aire al
+                // padre con `py-1` lo arreglaba y rompía otra cosa: despegaba el
+                // subrayado de la pestaña activa del riel de abajo, que es lo que
+                // dice cuál está elegida. El anillo hacia adentro no toca ninguno
+                // de los dos bordes. El `px-1` es lo que le da al anillo lugar
+                // a los costados: sin él, hacia adentro cae encima de la primera
+                // y la última letra del rótulo.
+                className={`flex-none px-1 pb-3 text-[13px] whitespace-nowrap focus-visible:outline-offset-[-2px] ${activa ? "border-b-2 border-foreground font-medium text-foreground" : "text-muted-foreground"}`}
               >
                 {tab.label}
               </Link>

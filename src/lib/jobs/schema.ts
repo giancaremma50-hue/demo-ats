@@ -13,7 +13,9 @@ export const JobStatusSchema = z.enum([
 ]);
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 
-export const JobVisibilitySchema = z.enum(["publica", "interna", "confidencial"]);
+export const JobVisibilitySchema = z.enum(["publica", "interna", "confidencial"], {
+  error: "Elige una visibilidad.",
+});
 export type JobVisibility = z.infer<typeof JobVisibilitySchema>;
 
 export const VISIBILITY_LABEL: Record<JobVisibility, string> = {
@@ -51,10 +53,10 @@ const optionalNumber = z.preprocess(
 // de vacante) puedan reusar estos mismos campos con `.pick()`, algo que Zod
 // v4 no permite sobre un objeto que ya tiene un refinamiento encima.
 export const JobBaseSchema = z.object({
-  title: z.string().trim().min(4, { error: "El título debe tener al menos 4 caracteres." }).max(120),
+  title: z.string().trim().min(4, { error: "El título debe tener al menos 4 caracteres." }).max(120, { error: "Máximo 120 caracteres." }),
   department_id: optionalUuid,
   country: z.enum(COUNTRIES, { error: "Elige un país." }),
-  location: z.string().trim().min(2, { error: "Indica la ubicación." }).max(120),
+  location: z.string().trim().min(2, { error: "Indica la ubicación." }).max(120, { error: "Máximo 120 caracteres." }),
   work_mode: z.enum(["presencial", "remoto", "hibrido"], { error: "Elige una modalidad." }),
   employment_type: z.enum(["indefinido", "temporal", "por_obra", "pasantia"], {
     error: "Elige un tipo de contrato.",
@@ -99,7 +101,9 @@ const idListField = (max: number, message: string) =>
         }
       }),
     )
-    .pipe(z.array(z.uuid()).max(max, { error: message }));
+    .pipe(
+      z.array(z.uuid({ error: "Selección inválida." }), { error: "Selección inválida." }).max(max, { error: message }),
+    );
 
 // Creación de vacante desde plantilla (Fase 18, revisada tras leer el manual
 // de uso) — a diferencia de JobFormSchema (edición libre, Fase 4), acá solo
@@ -119,7 +123,7 @@ export const CreateJobFromTemplateSchema = z
   .object({
     template_id: z.uuid({ error: "Elige una plantilla." }),
     country: z.enum(COUNTRIES, { error: "Elige un país." }),
-    location: z.string().trim().min(2, { error: "Indica la ubicación." }).max(120),
+    location: z.string().trim().min(2, { error: "Indica la ubicación." }).max(120, { error: "Máximo 120 caracteres." }),
     work_mode: z.enum(["presencial", "remoto", "hibrido"], { error: "Elige una modalidad." }),
     employment_type: z.enum(["indefinido", "temporal", "por_obra", "pasantia"], {
       error: "Elige un tipo de contrato.",

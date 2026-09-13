@@ -41,7 +41,7 @@ export function CareersForm({
           defaultValue={careersHeadline ?? ""}
           maxLength={120}
           placeholder="Vacantes abiertas"
-          className="h-[42px] rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-accent"
+          className="h-[42px] rounded-md border border-border bg-background px-3 text-sm"
         />
       </div>
 
@@ -56,7 +56,7 @@ export function CareersForm({
           rows={3}
           maxLength={500}
           placeholder="Cuéntale a quien visita la bolsa por qué vale la pena trabajar aquí…"
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:border-accent"
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
       </div>
 

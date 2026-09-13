@@ -10,8 +10,9 @@ import { EntrevistaAgendadaInternoEmail } from "@/emails/entrevista-agendada-int
 import { getAssignableProfiles } from "@/lib/applications/get-applications";
 import { canDecideApplication, canWriteApplication } from "@/lib/applications/permissions";
 import { InterviewSchema, InterviewStatusSchema } from "./schema";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type InterviewActionResult = { error?: string; success?: string };
+export type InterviewActionResult = { error?: string; success?: string; field?: string };
 
 /**
  * Corre con after() — el candidato recibe el correo con el enlace de
@@ -104,7 +105,7 @@ export async function scheduleInterview(
 ): Promise<InterviewActionResult> {
   const profile = await requireProfile();
   const parsed = InterviewSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 

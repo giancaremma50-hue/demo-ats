@@ -6,8 +6,8 @@ import { createTemplateDraftStep1, updateTemplateStep1 } from "@/lib/job-templat
 import { notifyError } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 
-const FIELD_CLASS = "h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground";
-const TEXTAREA_CLASS = "rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground";
+const FIELD_CLASS = "h-11 rounded-md border border-border bg-background px-3 text-sm";
+const TEXTAREA_CLASS = "rounded-md border border-border bg-background px-3 py-2 text-sm";
 
 export type Step1InitialValues = {
   name: string;

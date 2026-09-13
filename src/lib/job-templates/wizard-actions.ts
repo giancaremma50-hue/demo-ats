@@ -6,8 +6,9 @@ import { requireAdminOrAbove } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { WizardStep1Schema, WizardStep2Schema, WizardStep3Schema, WizardStep4Schema, WizardStep5Schema } from "./wizard-schema";
 import { assertBelongsToOrg } from "@/lib/assert-belongs-to-org";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type WizardActionResult = { error?: string };
+export type WizardActionResult = { error?: string; field?: string };
 
 // `job_templates.wizard_step` guarda "el próximo paso a retomar", no el
 // último completado — cada acción de guardado lo avanza a N+1 al terminar.
@@ -28,7 +29,7 @@ export async function createTemplateDraftStep1(
 ): Promise<WizardActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = WizardStep1Schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -68,7 +69,7 @@ export async function updateTemplateStep1(
 ): Promise<WizardActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = WizardStep1Schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -107,7 +108,7 @@ export async function updateTemplateStep2(
 ): Promise<WizardActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = WizardStep2Schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -145,7 +146,7 @@ export async function updateTemplateStep3(
 ): Promise<WizardActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = WizardStep3Schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa las preguntas." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -234,7 +235,7 @@ export async function updateTemplateStep4(
 ): Promise<WizardActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = WizardStep4Schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa las etapas." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 
@@ -354,7 +355,7 @@ export async function updateTemplateStep5(
 ): Promise<WizardActionResult> {
   const profile = await requireAdminOrAbove();
   const parsed = WizardStep5Schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
 

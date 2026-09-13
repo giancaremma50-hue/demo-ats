@@ -53,7 +53,7 @@ export default async function CandidatosPage({
             name="q"
             defaultValue={filters.q ?? ""}
             placeholder="Nombre o correo"
-            className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+            className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm"
           />
         </label>
         <label className="flex flex-col gap-1">

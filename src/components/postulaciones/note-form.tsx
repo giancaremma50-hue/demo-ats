@@ -2,9 +2,11 @@
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { addNote } from "@/lib/applications/actions";
-import { notifyError, notifySuccess } from "@/lib/notifications/toast";
+import { notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card } from "@/components/ui/card";
+import { ERROR_CONTROL_TINT, FieldError } from "@/components/ui/field";
+import { useErrorToast } from "@/lib/forms/use-error-toast";
 import { activeMentionQuery, buildMentionToken } from "@/lib/applications/mentions";
 import { normalizarTexto } from "@/lib/utils";
 import type { MentionableProfile } from "@/lib/applications/get-applications";
@@ -171,9 +173,20 @@ export function NoteForm({
   const sugerencias =
     activa === null ? [] : candidatos.filter((m) => normalizarTexto(m.display_name).includes(q)).slice(0, MAX_SUGERENCIAS);
 
+  // Los dos campos que `addNote` puede señalar (`body` y `mentions`) comparten
+  // el mismo mensaje, porque los dos hablan de lo que está escrito en el área
+  // de texto. El id lo arma el `useId` de este formulario: dos cajas de nota en
+  // la misma pantalla (una nota y la respuesta a otra) no lo comparten.
+  /** `body` (lo escrito) y `mentions` (a quién nombra lo escrito) señalan los
+   *  dos al área de texto: un solo predicado para las tres señales —borde y
+   *  fondo, `aria-invalid`, y el mensaje— en vez de tres ternarios que se
+   *  desincronizan. */
+  const enError = Boolean(state?.error) && (state?.field === "body" || state?.field === "mentions");
+
+  useErrorToast(state, () => `${listaId}-error`);
+
   useEffect(() => {
-    if (state?.error) notifyError(state.error);
-    else if (state?.success) {
+    if (state?.success) {
       notifySuccess(state.success);
       onSaved?.();
     }
@@ -265,6 +278,14 @@ export function NoteForm({
           armado. Sin campo aparte de menciones: `addNote` saca los ids del
           CUERPO serializado, que es la única fuente. */}
       <input type="hidden" name="body" value={serializar(body, mentions)} />
+      {/* Etiqueta VISIBLE, no el placeholder: el placeholder se va con la
+          primera letra y deja la caja sin nombre, que es justo cuando el
+          mensaje de error de abajo se queda sin nada a qué referirse
+          (AGENTS.md, regla 12). Chica y en gris para no pesar en un cajón
+          lateral, pero presente. */}
+      <label htmlFor={`${listaId}-area`} className="text-[11px] text-muted-foreground">
+        {isReply ? "Respuesta" : "Nota"}
+      </label>
       <div className="relative">
         {/*
          * Resaltado EN VIVO mientras se escribe (pedido del usuario,
@@ -285,7 +306,12 @@ export function NoteForm({
         <div
           ref={highlightRef}
           aria-hidden
-          className={`pointer-events-none absolute inset-0 overflow-hidden rounded-md border bg-background px-3 py-2 text-sm whitespace-pre-wrap break-words ${state?.field === "body" ? "border-destructive" : "border-border"}`}
+          // El error tiñe el FONDO además del borde, y el borde se queda en
+          // 1px: el overlay y el textarea tienen que medir exactamente lo
+          // mismo o el cursor real se desalinea del texto pintado (ver arriba),
+          // y `border-2` cambia la caja. El segundo canal lo dan el fondo y el
+          // mensaje de abajo, no el grosor.
+          className={`pointer-events-none absolute inset-0 overflow-hidden rounded-md border px-3 py-2 text-sm whitespace-pre-wrap break-words ${enError ? ERROR_CONTROL_TINT : "border-border bg-background"}`}
         >
           {segmentos.map((s, i) =>
             s.esMencion ? (
@@ -314,6 +340,7 @@ export function NoteForm({
         </div>
         <textarea
           ref={areaRef}
+          id={`${listaId}-area`}
           required
           rows={isReply ? 2 : 3}
           value={body}
@@ -337,7 +364,8 @@ export function NoteForm({
             sugerencias.length > 0 ? `${listaId}-${(sugerencias[elegido] ?? sugerencias[0]).id}` : undefined
           }
           placeholder={isReply ? "Escribe tu respuesta… (@ para mencionar)" : "Escribe una nota… (@ para mencionar)"}
-          aria-invalid={state?.field === "body"}
+          aria-invalid={enError}
+          aria-describedby={enError ? `${listaId}-error` : undefined}
           // Mismo rounded-md/px-3/py-2/text-sm que el overlay, a propósito
           // (ver el comentario de arriba) — border-transparent en vez de
           // quitar el borde: mantiene el mismo tamaño de caja que el
@@ -382,7 +410,7 @@ export function NoteForm({
         )}
       </div>
 
-      {state?.field === "mentions" && <p className="text-[11px] text-destructive">{state.error}</p>}
+      {enError && <FieldError id={`${listaId}-error`}>{state!.error}</FieldError>}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         {isReply || !canMarkPrivate ? (

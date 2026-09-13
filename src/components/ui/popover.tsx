@@ -23,6 +23,12 @@ function PopoverContent({
           // Look AJE (AGENTS.md): elevación con sombra, nunca borde de 1px;
           // radio de la escala del proyecto (rounded-lg = --radius-lg), no
           // un radio de Tailwind por default sin relación con esa escala.
+          // **La única excepción declarada a "ningún control lleva
+          // `outline-none`"** (AGENTS.md, regla 12): Radix enfoca este
+          // contenedor por código para meter al usuario adentro, y un anillo
+          // alrededor de todo el panel es ruido — los controles de adentro
+          // tienen el suyo. En un campo, en cambio, deja `--tw-outline-style`
+          // en `none` para siempre y el anillo no se dibuja nunca.
           "z-50 w-72 rounded-lg bg-popover p-2 text-popover-foreground shadow-elevated outline-none",
           // Crece DESDE el botón que lo abrió, no desde su propio centro:
           // Radix publica el origen en esa variable y sin ella el menú

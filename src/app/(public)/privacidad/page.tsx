@@ -51,7 +51,7 @@ export default async function PrivacidadPage() {
       </p>
 
       {POLITICA_ES_BORRADOR && (
-        <div className="mt-7 border border-destructive bg-destructive/5 p-4">
+        <div className="mt-7 border border-destructive bg-destructive-soft p-4">
           <p className="text-[11px] tracking-[0.13em] text-destructive uppercase">Borrador — no publicado</p>
           <p className="mt-2 text-sm leading-relaxed">
             Este texto es un borrador técnico. Todavía le faltan los datos marcados en rojo y no ha pasado por revisión

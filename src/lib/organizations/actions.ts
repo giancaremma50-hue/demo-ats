@@ -40,7 +40,7 @@ const APP_BACKGROUND = "#ffffff";
 const MIN_ACCENT_CONTRAST = 4.5;
 
 const BrandingSchema = z.object({
-  platform_name: z.string().trim().min(2, { error: "El nombre debe tener al menos 2 caracteres." }).max(60),
+  platform_name: z.string().trim().min(2, { error: "El nombre debe tener al menos 2 caracteres." }).max(60, { error: "Máximo 60 caracteres." }),
   accent_color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, { error: "El color debe ser un hexadecimal válido, ej. #008134." })

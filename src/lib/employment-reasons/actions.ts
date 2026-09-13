@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { EmploymentReasonSchema } from "./schema";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type EmploymentReasonActionResult = { error?: string; id?: string; label?: string };
+export type EmploymentReasonActionResult = { error?: string; id?: string; label?: string; field?: string };
 
 /**
  * Alta inline desde el selector de "Motivo de la vacante" al crear una
@@ -20,7 +21,7 @@ export async function createEmploymentReason(
 ): Promise<EmploymentReasonActionResult> {
   const profile = await requireProfile();
   const parsed = EmploymentReasonSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa el motivo." };
+  if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
   const { data, error } = await supabase

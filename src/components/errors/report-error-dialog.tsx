@@ -51,7 +51,7 @@ export function ReportErrorDialog({ motivo, titulo, technicalDetail }: { motivo:
             minLength={5}
             maxLength={2000}
             rows={4}
-            className="mt-4 w-full resize-none rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-foreground"
+            className="mt-4 w-full resize-none rounded-md border border-border bg-background p-3 text-sm"
             placeholder="Estaba subiendo el CV de una candidata y…"
           />
           <div className="mt-5 flex justify-end gap-2.5">

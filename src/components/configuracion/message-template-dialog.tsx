@@ -40,7 +40,7 @@ export function MessageTemplateDialog({
                 maxLength={80}
                 defaultValue={template?.name}
                 placeholder="Rechazo — no cumple experiencia"
-                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -50,7 +50,7 @@ export function MessageTemplateDialog({
                 required
                 maxLength={160}
                 defaultValue={template?.subject}
-                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+                className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -61,7 +61,7 @@ export function MessageTemplateDialog({
                 rows={6}
                 maxLength={4000}
                 defaultValue={template?.body}
-                className="rounded-md border border-border bg-background px-2.5 py-2 text-sm outline-none focus:border-foreground"
+                className="rounded-md border border-border bg-background px-2.5 py-2 text-sm"
               />
             </label>
           </div>

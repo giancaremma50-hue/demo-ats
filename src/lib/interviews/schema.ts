@@ -15,7 +15,11 @@ export const InterviewSchema = z.object({
         return z.NEVER;
       }
     }),
-  ).pipe(z.array(z.uuid()).min(1, { error: "Elige al menos un destinatario." })),
+  ).pipe(
+    z.array(z.uuid({ error: "Destinatario inválido." }), { error: "Destinatarios inválidos." }).min(1, {
+      error: "Elige al menos un destinatario.",
+    }),
+  ),
   scheduled_at: z.iso.datetime({ error: "Elige fecha y hora.", offset: true }),
   duration_minutes: z.preprocess(
     (v) => (v === "" || v == null ? 30 : Number(v)),

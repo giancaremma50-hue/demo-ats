@@ -41,7 +41,7 @@ export function SaveSegmentButton({ filters }: { filters: CandidateFilters }) {
               autoFocus
               maxLength={80}
               placeholder="Candidatos en entrevista — Ventas"
-              className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-foreground"
+              className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
             />
           </label>
 

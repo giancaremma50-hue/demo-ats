@@ -69,7 +69,7 @@ export function ErrorThread({
             maxLength={4000}
             rows={2}
             placeholder="Responde…"
-            className="w-full resize-none p-3 text-sm outline-none"
+            className="w-full resize-none p-3 text-sm focus-visible:outline-offset-[-2px]"
           />
           <div className="flex items-center justify-between border-t border-border px-3 py-2">
             <span className="text-xs text-muted-foreground">Se notifica dentro de la plataforma.</span>

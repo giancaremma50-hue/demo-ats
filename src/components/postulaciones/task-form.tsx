@@ -38,7 +38,7 @@ export function TaskForm({
         minLength={3}
         maxLength={300}
         placeholder="Agendar segunda entrevista…"
-        className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+        className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm"
       />
       <input
         name="due_date"

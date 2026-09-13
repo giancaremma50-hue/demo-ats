@@ -18,8 +18,13 @@ import {
   type ReactionType,
 } from "./schema";
 import { getPostComments, type FeedPost, type FeedComment, type Attachment, type Poll, type Reactions } from "./queries";
+import { zodFieldError } from "@/lib/forms/zod-error";
 
-export type ConectadosActionResult<T = undefined> = { error?: string; success?: string } & (T extends undefined
+/** `field` lo pone `zodFieldError`. El compositor del muro todavía no lo
+ *  consume —sus errores siguen yendo al toast— pero el dato llega, así que
+ *  migrarlo es cambiar el JSX y nada más. Sin declararlo acá, TypeScript lo
+ *  borraba del tipo y el formulario no podía leerlo ni queriendo. */
+export type ConectadosActionResult<T = undefined> = { error?: string; success?: string; field?: string } & (T extends undefined
   ? object
   : Partial<T>);
 
@@ -172,7 +177,7 @@ async function getPostAudience(
 export async function createPost(input: unknown): Promise<ConectadosActionResult<{ post: FeedPost }>> {
   const profile = await requireProfile();
   const parsed = CreatePostSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
   // No se exige contenido/encuesta acá: los adjuntos se suben en un segundo
   // paso, después de que este insert devuelva el `id` del post (convención de
   // carpeta `{organization_id}/{post_id}/{...}`) — un post "solo fotos" es
@@ -267,7 +272,7 @@ export async function createPost(input: unknown): Promise<ConectadosActionResult
 export async function addComment(input: unknown): Promise<ConectadosActionResult<{ comment: FeedComment }>> {
   const profile = await requireProfile();
   const parsed = CreateCommentSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+  if (!parsed.success) return zodFieldError(parsed.error);
   const { postId, body: rawBody } = parsed.data;
   const resolved = await resolveMentions(rawBody, profile.organization_id);
   if (resolved.error) return { error: resolved.error };

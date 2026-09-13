@@ -41,7 +41,7 @@ export function JobsBoard({
 
   const hasActiveFilter = Boolean(pais || modalidad || departamento || q);
   const selectClass =
-    "h-9 rounded-md border border-border bg-card px-2.5 text-[13px] outline-none focus-visible:outline-ring focus-visible:outline-2";
+    "h-9 rounded-md border border-border bg-card px-2.5 text-[13px]";
 
   return (
     <div>
@@ -92,7 +92,7 @@ export function JobsBoard({
           aria-label="Buscar por puesto"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="h-9 min-w-[160px] flex-1 rounded-md border border-border bg-card px-2.5 text-[13px] outline-none focus-visible:outline-ring focus-visible:outline-2"
+          className="h-9 min-w-[160px] flex-1 rounded-md border border-border bg-card px-2.5 text-[13px]"
         />
         {hasActiveFilter && (
           <button

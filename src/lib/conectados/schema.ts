@@ -26,7 +26,7 @@ export const MAX_POLL_OPTIONS = 6;
 
 export const PollSchema = z.object({
   options: z
-    .array(z.object({ label: z.string().trim().min(1, "Una opción no puede estar vacía.").max(120) }))
+    .array(z.object({ label: z.string().trim().min(1, "Una opción no puede estar vacía.").max(120, "Máximo 120 caracteres por opción.") }))
     .min(2, "Una encuesta necesita al menos 2 opciones.")
     .max(MAX_POLL_OPTIONS, `Máximo ${MAX_POLL_OPTIONS} opciones por encuesta.`),
 });
