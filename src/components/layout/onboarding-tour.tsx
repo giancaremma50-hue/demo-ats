@@ -35,7 +35,9 @@ const STEP_DEFS: { selector: string; title: string; description: string }[] = [
   },
   {
     selector: '[data-tour="nav-configuracion"]',
-    title: "Configuración",
+    // "Ajustes", como lo llaman el engranaje de la barra y el título de la
+    // pantalla a la que lleva (AGENTS.md, regla 11).
+    title: "Ajustes",
     description: "Marca, usuarios y el centro de errores viven aquí.",
   },
   { selector: '[data-tour="bell"]', title: "Notificaciones", description: "Avisos en tiempo real de lo que te toca." },

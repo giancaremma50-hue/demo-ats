@@ -191,5 +191,35 @@ export function routesOf(module: ModuleConfig): string[] {
  * respuesta segura.
  */
 export function activeModuleFor(pathname: string): ModuleConfig | null {
-  return MODULES.find((m) => routesOf(m).some((r) => pathname === r || pathname.startsWith(`${r}/`))) ?? null;
+  return MODULES.find((m) => routesOf(m).some((r) => cubreRuta(r, pathname))) ?? null;
+}
+
+/** ¿La ruta `base` cubre a `pathname`? Exacta o como padre. Un solo lugar
+ *  porque la comparación tiene una trampa: con `===` a secas, estar en
+ *  `/configuracion/plantillas-vacante/nueva` no marcaba ninguna sección y el
+ *  menú dejaba de decir dónde estabas; y con `startsWith` a secas,
+ *  `/vacantes-archivadas` se leería como hija de `/vacantes`. */
+function cubreRuta(base: string, pathname: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+/**
+ * El ítem al que pertenece `pathname`, quedándose con la ruta MÁS específica.
+ *
+ * Lo de "más específica" no es adorno: con `/conectados` y un hipotético
+ * `/conectados/ajustes` los dos coinciden por prefijo, y quedarse con el
+ * primero marcaría el equivocado (en la barra flotante, además, monta dos
+ * elementos con el mismo `layoutId` y framer-motion no sabe resolverlo).
+ *
+ * Vive acá, al lado de `activeModuleFor`, porque la barra flotante y las
+ * secciones de Ajustes hacían cada una su copia de esta comparación.
+ */
+export function activeByPathname<T extends { href: string }>(items: T[], pathname: string): T | undefined {
+  // Una pasada y sin arrays intermedios: la barra flotante lo llama en cada
+  // render, incluidos los de cada cuadro de scroll mientras se pliega.
+  let mejor: T | undefined;
+  for (const item of items) {
+    if (cubreRuta(item.href, pathname) && (!mejor || item.href.length > mejor.href.length)) mejor = item;
+  }
+  return mejor;
 }

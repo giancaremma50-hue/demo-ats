@@ -32,9 +32,9 @@ export default async function PlantillaPaso3Page({
   return (
     <WizardLayout nav={<WizardStepsNav current={3} />}>
       {guardado && <NotifyOnMount message="Candidatura guardada" />}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div>
-          <h1 className="font-black tracking-display text-[32px]">Preguntas</h1>
+          <h2 className="font-extrabold tracking-heading text-2xl">Preguntas</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Preguntas de precalificación para quien postule a una vacante creada desde esta plantilla — las de opción
             múltiple pueden marcar una respuesta esperada.

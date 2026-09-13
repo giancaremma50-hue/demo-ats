@@ -141,7 +141,7 @@ export default async function CentroErroresPage({
                     <ErrorStatusActions reportId={selected.id} status={selected.status} />
                   </div>
                 </div>
-                <h3 className="font-extrabold tracking-heading text-[24px] leading-tight">{selected.title}</h3>
+                <h3 className="font-extrabold tracking-heading text-[24px] leading-tight break-words">{selected.title}</h3>
                 <p className="mt-2 text-[13px] text-muted-foreground">
                   Reportado por <strong className="font-medium text-foreground">{selected.reporter?.display_name ?? "Anónimo"}</strong> ·{" "}
                   {new Date(selected.created_at).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" })}

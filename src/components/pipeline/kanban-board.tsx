@@ -162,7 +162,7 @@ export function KanbanBoard({
               quedaba pintado fuera de la pantalla. */}
           <div className="flex flex-none flex-wrap items-start justify-between gap-x-4 gap-y-3 pb-4">
             <div className="min-w-0">
-              <h1 className="font-black tracking-display text-[28px]">{jobTitle}</h1>
+              <h1 className="font-black tracking-display text-[28px] break-words">{jobTitle}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{totalActivas} postulaciones activas</p>
             </div>
             <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-none">

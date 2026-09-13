@@ -37,9 +37,9 @@ export default async function PlantillaPaso4Page({
   return (
     <WizardLayout nav={<WizardStepsNav current={4} />}>
       {guardado && <NotifyOnMount message="Preguntas guardadas" />}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div>
-          <h1 className="font-black tracking-display text-[32px]">Etapas</h1>
+          <h2 className="font-extrabold tracking-heading text-2xl">Etapas</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             El kanban de esta plantilla. Bandeja de entrada, Contratado y Descartado son fijas — agregá lo que va en
             medio.

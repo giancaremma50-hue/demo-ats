@@ -20,9 +20,9 @@ const STEPS = [
  * `<nav aria-label>` para que el landmark de navegación exista en los dos
  * tamaños; solo una está visible a la vez, así que un lector anuncia una sola.
  *
- * El resumen **no repite la etiqueta del paso**: el `h1` que va justo abajo ya
- * la dice ("Preguntas", "Etapas"), y decirla dos veces seguidas se lee como un
- * tartamudeo. Lo que el `h1` no puede decir es cuántos pasos faltan.
+ * El resumen **no repite la etiqueta del paso**: el encabezado que va justo
+ * abajo ya la dice ("Preguntas", "Etapas"), y decirla dos veces seguidas se lee
+ * como un tartamudeo. Lo que ese encabezado no puede decir es cuántos faltan.
  */
 export function WizardStepsNav({ current }: { current: number }) {
   // Acotado: un `current` fuera de rango pintaba "Paso 7 de 6" con la barra al

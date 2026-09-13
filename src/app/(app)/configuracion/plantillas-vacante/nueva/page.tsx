@@ -17,9 +17,9 @@ export default async function NuevaPlantillaWizardPage() {
 
   return (
     <WizardLayout nav={<WizardStepsNav current={1} />}>
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div>
-          <h1 className="font-black tracking-display text-[32px]">Nueva plantilla de puesto</h1>
+          <h2 className="font-extrabold tracking-heading text-2xl">Nueva plantilla de puesto</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Detalles de la vacante — la información general que trae cada vacante creada desde esta plantilla.
           </p>

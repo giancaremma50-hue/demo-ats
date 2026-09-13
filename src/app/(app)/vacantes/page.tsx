@@ -13,11 +13,16 @@ export default async function VacantesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="font-black tracking-display text-[32px]">Vacantes</h1>
+      {/* `flex-wrap` + `gap`: el título es una sola palabra y no envuelve,
+          así que sin esto el control de la derecha se iba fuera de la
+          pantalla — y `html` recorta el eje X sin barra. El `min-w-0` va
+          con `break-words`: solo, deja que el título se recorte en silencio
+          en vez de desbordarse. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <h1 className="min-w-0 font-black tracking-display text-[32px] break-words">Vacantes</h1>
         <Link
           href="/vacantes/nueva"
-          className="inline-flex h-10 items-center rounded-full bg-accent px-4 text-sm font-medium text-accent-foreground"
+          className="inline-flex h-10 shrink-0 items-center rounded-full bg-accent px-4 text-sm font-medium whitespace-nowrap text-accent-foreground"
         >
           Solicitar vacante
         </Link>
