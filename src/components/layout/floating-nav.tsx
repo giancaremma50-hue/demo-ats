@@ -30,12 +30,10 @@ const RELLENO = 12;
 const MS_APARICION = 300;
 
 /**
- * Un ítem de la barra. Ícono siempre; la etiqueta, solo el activo — pero en
- * TODO ancho, no a partir de `sm:` como antes. Es el único texto que nombra la
- * pantalla en la que estás, y en un teléfono es justo donde hacía falta: la
- * píldora blanca marca cuál, pero no dice cuál. El que cede el lugar en móvil
- * es el nombre del módulo (ver el selector), que ya lo dice el color de la
- * barra.
+ * Un ítem de la barra. Ícono siempre; la etiqueta solo cuando está activo y
+ * hay ancho (`sm:`) — se probó mostrarla siempre y el nombre fijo pegado al
+ * ícono se veía pesado. En un teléfono quien nombra la pantalla es el `<span>`
+ * que va al lado del selector, no esta etiqueta.
  */
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
@@ -47,12 +45,19 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       data-tour={`nav-${item.href.slice(1).replaceAll("/", "-")}`}
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
-      className="group relative flex h-11 flex-none items-center gap-2 rounded-full px-2 text-sm font-medium sm:px-4"
+      className="group relative flex h-11 flex-none items-center gap-2 rounded-full px-1 text-sm font-medium sm:px-4"
     >
       {active && (
         <motion.span
           layoutId="floating-nav-indicator"
-          className="absolute inset-0 rounded-full bg-background"
+          // Excepción declarada a la escala de radios de AGENTS.md (que pide
+          // token, nunca px a mano): el radio va en `style` porque
+          // framer-motion solo corrige su deformación durante el spring para
+          // los valores que conoce, y un `rounded-full` de CSS no lo es — al
+          // cambiar de ancho el indicador se veía como un huevo aplastado.
+          // Si una auditoría de forma lo devuelve a la clase, vuelve el huevo.
+          style={{ borderRadius: 9999 }}
+          className="absolute inset-0 bg-background"
           transition={{ type: "spring", stiffness: 400, damping: 32 }}
         />
       )}
@@ -62,9 +67,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           sobre la píldora clara, así que ahí manda `text-foreground`. */}
       <span className={`relative flex items-center gap-2 ${active ? "text-foreground" : "text-aje-dark/80"}`}>
         <Icon className="size-[18px]" strokeWidth={2.5} aria-hidden />
-        {/* Siempre, no solo en `sm:`: es lo único que nombra la pantalla en la
-            que estás, y en un teléfono es donde más falta hace. */}
-        {active && <span>{item.label}</span>}
+        {active && <span className="hidden sm:inline">{item.label}</span>}
       </span>
       {!active && (
         <span
@@ -89,9 +92,10 @@ function Separador() {
  * Menú principal flotante: acompaña la pantalla sin invadirla. Nunca una
  * sidebar.
  *
- * Composición `[⊞ Nombre del módulo] · [Home] [submenús] · [⚙]` — ver el
- * comentario de `src/lib/modules.ts` para por qué el nombre vive dentro del
- * selector y por qué esos tres son anclas que no desaparecen.
+ * Composición `[⊞ Módulo] · [Home] [submenús] · [⚙]` desde `sm:`. En un
+ * teléfono el nombre del módulo se oculta y en su lugar, FUERA del botón, va
+ * el nombre de la pantalla activa — ver `src/lib/modules.ts` para por qué esos
+ * tres son anclas que no desaparecen.
  *
  * **Al bajar se PLIEGA, no desaparece** (mockup "Lomo", aprobado el
  * 2026-09-11). Antes se desmontaba entera y no quedaba rastro de que fuera a
@@ -406,16 +410,10 @@ export function FloatingNav({ role }: { role: Role }) {
                   className="flex h-11 flex-none items-center gap-2 rounded-full px-2.5 text-sm font-semibold text-aje-dark hover:bg-aje-dark/10 sm:px-3"
                 >
                   <LayoutGrid className="size-[18px]" strokeWidth={2.5} aria-hidden />
-                  {/* El nombre del módulo, el ancla que dice dónde estás — y
-                      por eso mismo no aparece donde sería falso decirlo (ver
+                  {/* El nombre del módulo, solo desde `sm:` — en un teléfono ese
+                      lugar es del nombre de la PANTALLA, que va AFUERA de este
+                      botón (abajo). Y no aparece donde sería falso decirlo (ver
                       `isModulelessPath`). */}
-                  {/* El nombre del módulo solo donde hay ancho. En un teléfono
-                      el lugar es para la PANTALLA en la que estás (la etiqueta
-                      del ítem activo, abajo): el módulo ya lo dice el color de
-                      la barra, y el popover lo nombra completo al abrirlo.
-                      Que la barra dijera "Reclutamiento" con el Home
-                      seleccionado se leía como que estabas en una pantalla con
-                      ese nombre — reportado el 2026-09-12. */}
                   {!sinModulo && <span className="hidden sm:inline">{activeModule.shortLabel}</span>}
                 </button>
               </PopoverTrigger>
@@ -467,6 +465,32 @@ export function FloatingNav({ role }: { role: Role }) {
                 </div>
               </PopoverContent>
             </Popover>
+
+            {/* El nombre de la pantalla, SOLO en teléfono y FUERA del botón de
+                arriba. Afuera porque no es un control: metido adentro, el botón
+                que abre el selector de módulos quedaba diciendo "Inicio" —
+                nombraba a otro control, y dejaba dos elementos de la barra con
+                el mismo nombre accesible, así que "tocá Inicio" por voz se
+                volvía ambiguo. Acá hace falta porque en un teléfono la etiqueta
+                del ítem activo va oculta por espacio y nada más dice en qué
+                pantalla estás. Si ninguna ruta coincide
+                (`/postulaciones/<id>`), no dice nada: mejor mudo que nombrando
+                una pantalla falsa. */}
+            {itemActivo && !sinModulo && (
+              <span
+                // `aria-hidden`: es un eco visual. El enlace activo ya lo
+                // anuncia con su `aria-label` y su `aria-current="page"`, así
+                // que sin esto un lector de pantalla lee el nombre dos veces,
+                // la primera como texto suelto sin rol.
+                aria-hidden
+                // `font-medium` como los ítems de la barra, no `font-semibold`
+                // como el botón de al lado: el peso dice a quién pertenece el
+                // texto, y este pertenece al ítem activo.
+                className="flex-none pl-0.5 text-sm font-medium text-aje-dark sm:hidden"
+              >
+                {itemActivo.label}
+              </span>
+            )}
 
             <Separador />
 
