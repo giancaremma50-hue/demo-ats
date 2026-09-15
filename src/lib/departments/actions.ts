@@ -53,11 +53,15 @@ export async function createDepartment(
   const supabase = await createClient();
   const fields = normalizeDepartmentFields(parsed.data);
   if (!(await assertProfileInOrg(supabase, fields.head_profile_id, profile.organization_id))) {
-    return { error: "Esa persona no pertenece a tu organización." };
+    return { error: "Esa persona no pertenece a tu organización.", field: "head_profile_id" };
   }
 
   const { error } = await supabase.from("departments").insert({ organization_id: profile.organization_id, ...fields });
   if (error) {
+    // El 23505 es UNIQUE(nombre, país): el choque es de la COMBINACIÓN, y quien
+    // lo causó puede haber tocado solo el país. Colgarlo de "name" pintaba el
+    // borde rojo bajo un campo que el usuario no tocó, con el arreglo en otro.
+    // Sin campo va al canal general, que nombra a los dos.
     return { error: error.code === "23505" ? "Ya existe un departamento con ese nombre en ese país." : "No se pudo crear." };
   }
 
@@ -77,7 +81,7 @@ export async function updateDepartment(
   const supabase = await createClient();
   const fields = normalizeDepartmentFields(parsed.data);
   if (!(await assertProfileInOrg(supabase, fields.head_profile_id, profile.organization_id))) {
-    return { error: "Esa persona no pertenece a tu organización." };
+    return { error: "Esa persona no pertenece a tu organización.", field: "head_profile_id" };
   }
 
   const { error } = await supabase.from("departments").update(fields).eq("id", id);

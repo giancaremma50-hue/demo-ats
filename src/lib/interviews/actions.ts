@@ -133,7 +133,7 @@ export async function scheduleInterview(
   const assignable = await getAssignableProfiles(application.job_id, profile.organization_id);
   const assignableIds = new Set(assignable.map((p) => p.id));
   if (parsed.data.attendee_ids.some((id) => !assignableIds.has(id))) {
-    return { error: "Uno de los destinatarios no tiene acceso a esta vacante." };
+    return { error: "Uno de los destinatarios no tiene acceso a esta vacante.", field: "attendee_ids" };
   }
 
   const location = parsed.data.location ?? null;

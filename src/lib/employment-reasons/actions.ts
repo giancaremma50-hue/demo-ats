@@ -31,7 +31,12 @@ export async function createEmploymentReason(
     .single();
 
   if (error || !data) {
-    return { error: error?.code === "23505" ? "Ese motivo ya existe." : "No se pudo agregar el motivo." };
+    // 23505 es UNIQUE(label): el problema es lo que se escribió, así que el
+    // mensaje va debajo de ESE campo. El resto no es culpa del texto y va al
+    // toast, que es su canal (AGENTS.md, regla 12).
+    return error?.code === "23505"
+      ? { error: "Ese motivo ya existe.", field: "label" }
+      : { error: "No se pudo agregar el motivo." };
   }
 
   revalidatePath("/vacantes/nueva");

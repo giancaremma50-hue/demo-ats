@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useId } from "react";
 import Link from "next/link";
 import { updateTemplateStep4 } from "@/lib/job-templates/wizard-actions";
-import { notifyError } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 import { TemplateStagesEditor } from "@/components/configuracion/wizard/template-stages-editor";
 import type { TemplateStageDraft } from "@/lib/job-templates/wizard-schema";
 import type { PipelineTemplateWithStages } from "@/lib/pipeline-templates/get-pipeline-templates";
@@ -21,13 +21,22 @@ export function WizardStep4Form({
   const action = updateTemplateStep4.bind(null, templateId);
   const [state, formAction] = useActionState(action, undefined);
 
-  useEffect(() => {
-    if (state?.error) notifyError(state.error);
-  }, [state]);
+  // `stages` es un path de un segmento pero no es un control: el editor son
+  // filas, no un campo, así que su mensaje va al toast. `reusable_set_name` SÍ
+  // es un input, y ese se muestra debajo suyo.
+  const uid = useId();
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
+  const errorNombreSet = selectorDeError(state)("reusable_set_name");
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <TemplateStagesEditor initialStages={initialStages} savedSets={savedSets} />
+      <TemplateStagesEditor
+        initialStages={initialStages}
+        savedSets={savedSets}
+        idNombreSet={`${uid}-reusable_set_name`}
+        errorNombreSet={errorNombreSet}
+        idErrorNombreSet={`${uid}-reusable_set_name-error`}
+      />
 
       <div className="mt-6 flex justify-end gap-2.5">
         <Link

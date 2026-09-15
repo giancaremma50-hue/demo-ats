@@ -6,6 +6,9 @@ import { STAGE_TYPE_LABEL } from "@/lib/pipeline-templates/schema";
 import type { PipelineTemplateWithStages } from "@/lib/pipeline-templates/get-pipeline-templates";
 import type { TemplateStageDraft } from "@/lib/job-templates/wizard-schema";
 import { ROW_INPUT_CLASS, ROW_SELECT_CLASS, ROW_WRAP_BASIS } from "@/components/configuracion/wizard/row-field-classes";
+import { ERROR_CONTROL_CLASS, FieldError } from "@/components/ui/field";
+import { campoSuelto } from "@/lib/forms/field-signals";
+import { cn } from "@/lib/utils";
 
 // Los tipos reservados para las etapas fijas (Bandeja de entrada/Contratado/
 // Descartado, ver updateTemplateStep4) no son etapas intermedias válidas —
@@ -27,15 +30,30 @@ function FixedStagePill({ label }: { label: string }) {
 export function TemplateStagesEditor({
   initialStages,
   savedSets,
+  idNombreSet,
+  errorNombreSet,
+  idErrorNombreSet,
 }: {
   initialStages: TemplateStageDraft[];
   savedSets: PipelineTemplateWithStages[];
+  /** Del input del nombre del set. **Obligatoria**: sin ella el `<label>` apunta
+   *  a la nada, el input se queda con el placeholder como nombre accesible y la
+   *  ayuda de la casilla cuelga de un literal `undefined-que-hace` — y nada de
+   *  eso lo ve el compilador si la prop es opcional. */
+  idNombreSet: string;
+  /** El mensaje de ese campo, si el paso 4 lo recibió. */
+  errorNombreSet?: string;
+  /** El id del mensaje: lo apunta el control y lo busca `useErrorToast`.
+   *  **Obligatorio**: `error` e `idError` son una unidad, y con uno solo
+   *  `campoSuelto` se desactiva y el mensaje desaparece sin dejar rastro. */
+  idErrorNombreSet: string;
 }) {
   const nextKey = useRef(initialStages.length);
   const [stages, setStages] = useState<StageRow[]>(() =>
     initialStages.map((s, i) => ({ ...s, key: `stage-${i}` })),
   );
   const [saveAsReusable, setSaveAsReusable] = useState(false);
+  const campo = campoSuelto(errorNombreSet, idErrorNombreSet);
 
   function updateStage(index: number, patch: Partial<TemplateStageDraft>) {
     setStages((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
@@ -185,29 +203,57 @@ export function TemplateStagesEditor({
       </div>
 
       {stages.length > 0 && (
-        <label className="flex flex-col gap-1 border-t border-border pt-4" data-tour="w4-reutilizable">
-          <span className="flex items-center gap-2 text-sm">
+        /* **El `<label>` envuelve SOLO a la casilla.** Antes envolvía también al
+           campo del nombre, y un `<label>` nombra a su primer control: hacer
+           clic en "Nombre del set" —el gesto natural para enfocarlo— activaba
+           la CASILLA, la desmarcaba, y el nombre recién escrito desaparecía sin
+           deshacer. Además, el `<p role="alert">` del mensaje no es contenido
+           válido dentro de un `<label>` y su texto entraba al nombre accesible
+           de la casilla. */
+        <div className="flex flex-col gap-1 border-t border-border pt-4" data-tour="w4-reutilizable">
+          <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={saveAsReusable}
               onChange={(e) => setSaveAsReusable(e.target.checked)}
+              // Al sacar la explicación del `<label>` dejó de ser parte del
+              // nombre de la casilla; sin esto se quedaba sin dueño y quien usa
+              // lector de pantalla nunca se entera de qué hace marcarla.
+              // `-que-hace` y no `-ayuda`: ese sufijo es el que `<Field>` reserva para su
+              // `hint` del mismo id, y migrar este input a `<Field>` —el paso obvio—
+              // dejaría dos elementos con el mismo id en la página.
+              aria-describedby={`${idNombreSet}-que-hace`}
               className="size-4"
             />
             Guardar estas etapas intermedias como un set reutilizable
-          </span>
-          <span className="text-xs text-muted-foreground">
+          </label>
+          <span id={`${idNombreSet}-que-hace`} className="text-xs text-muted-foreground">
             Queda disponible para &ldquo;Empezar desde un set guardado&rdquo; en otras plantillas — esta plantilla no se toca.
           </span>
           {saveAsReusable && (
-            <input
-              name="reusable_set_name"
-              required
-              maxLength={120}
-              placeholder="Nombre del set (ej. Ventas con dos entrevistas)"
-              className="mt-2 h-10 rounded-md border border-border bg-background px-3 text-sm"
-            />
+            <div className="mt-2 flex flex-col gap-1.5">
+              {/* `<label htmlFor>` de verdad, no un `<span>`: sin eso el campo
+                  se quedaba con el placeholder como nombre accesible, que es
+                  justo lo que la regla 12 prohíbe. */}
+              <label htmlFor={idNombreSet} className="text-xs text-muted-foreground">
+                Nombre del set
+              </label>
+              <input
+                id={idNombreSet}
+                name="reusable_set_name"
+                required
+                maxLength={120}
+                placeholder="Ventas con dos entrevistas"
+                {...campo.props}
+                className={cn(
+                  "h-10 rounded-md border border-border bg-background px-3 text-sm",
+                  campo.enError && ERROR_CONTROL_CLASS,
+                )}
+              />
+              {campo.idMensaje && <FieldError id={campo.idMensaje}>{campo.mensaje}</FieldError>}
+            </div>
           )}
-        </label>
+        </div>
       )}
     </div>
   );

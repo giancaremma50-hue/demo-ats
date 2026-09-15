@@ -34,7 +34,7 @@ export async function createTemplateDraftStep1(
   const supabase = await createClient();
 
   const departmentError = await assertBelongsToOrg(supabase, "departments", parsed.data.department_id, profile.organization_id, "Ese departamento no es válido.");
-  if (departmentError) return { error: departmentError };
+  if (departmentError) return { error: departmentError, field: "department_id" };
 
   const { data: template, error } = await supabase
     .from("job_templates")
@@ -74,7 +74,7 @@ export async function updateTemplateStep1(
   const supabase = await createClient();
 
   const departmentError = await assertBelongsToOrg(supabase, "departments", parsed.data.department_id, profile.organization_id, "Ese departamento no es válido.");
-  if (departmentError) return { error: departmentError };
+  if (departmentError) return { error: departmentError, field: "department_id" };
 
   const { data, error } = await supabase
     .from("job_templates")
@@ -263,7 +263,7 @@ export async function updateTemplateStep4(
     // (organization_id, lower(name)) en la base; una carrera entre dos
     // guardados casi simultáneos con el mismo nombre nuevo la cierra esa
     // restricción, no este pre-check.
-    if (existingSet) return { error: "Ya existe un set guardado con ese nombre." };
+    if (existingSet) return { error: "Ya existe un set guardado con ese nombre.", field: "reusable_set_name" };
   }
 
   const { error: deleteError } = await supabase.from("job_template_stages").delete().eq("job_template_id", templateId);

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { ERROR_CONTROL_CLASS, Field, FieldError } from "@/components/ui/field";
+import { campoSuelto } from "@/lib/forms/field-signals";
 import { cn } from "@/lib/utils";
 import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 import type { CandidacyFields } from "@/lib/job-templates/candidacy-fields";
@@ -116,6 +117,12 @@ export function ApplicationForm({
   // girar.
   useErrorToast(fallo, (campo) => `postular-${campo}-error`, ID_MENSAJE_GENERAL);
 
+  /** Los dos controles que no pueden pasar por `<Field>` —un `<input type=file>`
+   *  con su caja y una casilla cuyo texto ES su etiqueta— sacan sus cuatro
+   *  señales del mismo helper, en vez de recalcularlas en cada atributo. */
+  const cv = campoSuelto(errorDe("cv"), "postular-cv-error");
+  const consentimiento = campoSuelto(errorDe("privacy_consent"), "postular-privacy_consent-error");
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-busy={pending}>
       {/* Etiqueta visible, no placeholder. Un placeholder desaparece apenas
@@ -170,7 +177,7 @@ export function ApplicationForm({
             <span
               className={cn(
                 "block rounded-md border border-border bg-background p-2.5",
-                errorDe("cv") !== undefined && ERROR_CONTROL_CLASS,
+                cv.enError && ERROR_CONTROL_CLASS,
               )}
             >
               <input
@@ -178,8 +185,7 @@ export function ApplicationForm({
                 type="file"
                 accept="application/pdf"
                 required={candidacyFields.resume === "required"}
-                aria-invalid={errorDe("cv") !== undefined}
-                aria-describedby={errorDe("cv") !== undefined ? "postular-cv-error" : undefined}
+                {...cv.props}
                 className="w-full text-sm"
               />
             </span>
@@ -189,7 +195,7 @@ export function ApplicationForm({
               lector lo lee dos veces — la misma trampa que ya está anotada
               abajo para la casilla de privacidad. Y un `<p>` no es contenido
               válido dentro de un `<label>`. */}
-          {errorDe("cv") && <FieldError id="postular-cv-error">{errorDe("cv")}</FieldError>}
+          {cv.idMensaje && <FieldError id={cv.idMensaje}>{cv.mensaje}</FieldError>}
         </div>
       )}
 
@@ -253,8 +259,7 @@ export function ApplicationForm({
           type="checkbox"
           name="privacy_consent"
           required
-          aria-invalid={errorDe("privacy_consent") !== undefined}
-          aria-describedby={errorDe("privacy_consent") !== undefined ? "postular-privacy_consent-error" : undefined}
+          {...consentimiento.props}
           className="mt-0.5 size-4 flex-none"
         />
         {/* Sin aria-describedby: este span YA es la etiqueta de la casilla (va
@@ -272,8 +277,8 @@ export function ApplicationForm({
           casilla en vez de ser su descripción. Sin esto, marcar la casilla era
           el único campo del formulario cuyo rechazo no dejaba nada en pantalla
           — y es justo el que decide si se pueden guardar los datos. */}
-      {errorDe("privacy_consent") && (
-        <FieldError id="postular-privacy_consent-error">{errorDe("privacy_consent")}</FieldError>
+      {consentimiento.idMensaje && (
+        <FieldError id={consentimiento.idMensaje}>{consentimiento.mensaje}</FieldError>
       )}
       </div>
 

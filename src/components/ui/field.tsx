@@ -1,6 +1,7 @@
 import { cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { campoSuelto } from "@/lib/forms/field-signals";
 
 /**
  * El aspecto de un control en error: **borde de 2px y fondo tenue**, no solo el
@@ -79,6 +80,7 @@ export function Field({
   error,
   hint,
   children,
+  "data-tour": dataTour,
 }: {
   id: string;
   label: string;
@@ -91,6 +93,11 @@ export function Field({
    *  un valor correcto, que es lo que necesita para corregirlo. */
   hint?: string;
   children: Control;
+  /** Ancla del tour de bienvenida, en el contenedor del campo. Sin esto, migrar
+   *  un campo del asistente a `<Field>` le borraba el anclaje a su paso y el
+   *  paso se descartaba en silencio (regla 11: un paso sin elemento no se ve
+   *  nunca). */
+  "data-tour"?: string;
 }) {
   const idError = `${id}-error`;
   const idAyuda = `${id}-ayuda`;
@@ -118,18 +125,26 @@ export function Field({
     }
   }
 
-  // La guardia va ANTES de leer `children.props`: con un hijo que no es
-  // elemento (`{cond ? <input/> : null}`) esto reventaba con un TypeError y se
-  // llevaba puesto el formulario entero, justo en el caso que el aviso de
-  // arriba existe para reportar.
-  // Se FUSIONA con lo que el control ya traía, no se pisa: un hijo que apunta a
-  // su propia descripción la perdía en silencio y quedaba huérfana en el árbol
-  // de accesibilidad. Varios ids separados por espacio es lo que acepta
-  // `aria-describedby`.
+  // La guardia de `esElemento` va ANTES de leer `children.props`: con un hijo
+  // que no es elemento (`{cond ? <input/> : null}`) esto reventaba con un
+  // TypeError y se llevaba puesto el formulario entero, justo en el caso que el
+  // aviso de arriba existe para reportar.
+
+  // Las señales del error salen del MISMO helper que usan los controles
+  // cableados a mano (`campoSuelto`): si acá se computaran aparte, la regla de
+  // cuándo un campo está en error viviría en dos cuerpos y podrían discrepar —
+  // y por `<Field>` pasan 13 de los 27 formularios; los otros diez usan
+  // `camposDeFila` o `campoSuelto` directo, que salen del mismo cuerpo.
+  const campo = campoSuelto(error ?? undefined, idError);
+
+  // La descripción SÍ se arma acá, porque es lo único que se FUSIONA con lo que
+  // el control ya traía: un hijo que apunta a su propia descripción la perdía
+  // en silencio y quedaba huérfana en el árbol de accesibilidad. Varios ids
+  // separados por espacio es lo que acepta `aria-describedby`.
   const descrito = [
     esElemento ? children.props["aria-describedby"] : null,
     hint ? idAyuda : null,
-    error ? idError : null,
+    campo.idMensaje,
   ]
     .filter(Boolean)
     .join(" ");
@@ -137,14 +152,14 @@ export function Field({
   const control = esElemento
     ? cloneElement(children, {
         id,
-        "aria-invalid": Boolean(error),
+        "aria-invalid": campo.enError,
         "aria-describedby": descrito || undefined,
-        className: cn(children.props.className, error && ERROR_CONTROL_CLASS),
+        className: cn(children.props.className, campo.enError && ERROR_CONTROL_CLASS),
       })
     : children;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" data-tour={dataTour}>
       <label htmlFor={id} className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
         {label}
       </label>
@@ -154,7 +169,7 @@ export function Field({
           {hint}
         </p>
       )}
-      {error && <FieldError id={idError}>{error}</FieldError>}
+      {campo.idMensaje && <FieldError id={campo.idMensaje}>{campo.mensaje}</FieldError>}
     </div>
   );
 }

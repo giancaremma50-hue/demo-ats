@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import Link from "next/link";
 import { createJob } from "@/lib/jobs/actions";
-import { notifyError } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { Field } from "@/components/ui/field";
+import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 import { LabelSelect } from "@/components/ui/label-select";
 import { EmploymentReasonSelect } from "@/components/vacantes/employment-reason-select";
 import { CollaboratorsPicker } from "@/components/vacantes/collaborators-picker";
@@ -41,9 +42,9 @@ export function NuevaVacanteForm({
   const [templateId, setTemplateId] = useState("");
   const selected = templates.find((t) => t.id === templateId);
 
-  useEffect(() => {
-    if (state?.error) notifyError(state.error);
-  }, [state]);
+  const uid = useId();
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
+  const errorDe = selectorDeError(state);
 
   if (templates.length === 0) {
     return (
@@ -59,8 +60,12 @@ export function NuevaVacanteForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-2" data-tour="nv-plantilla">
-        <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Plantilla de puesto</span>
+      <Field
+        id={`${uid}-template_id`}
+        label="Plantilla de puesto"
+        error={errorDe("template_id")}
+        data-tour="nv-plantilla"
+      >
         <select
           name="template_id"
           required
@@ -77,7 +82,7 @@ export function NuevaVacanteForm({
             </option>
           ))}
         </select>
-      </label>
+      </Field>
 
       {selected && (
         <div className="rounded-md border border-border bg-muted/30 p-4 text-sm" data-tour="nv-preview">
@@ -92,8 +97,7 @@ export function NuevaVacanteForm({
           de la plantilla — un mismo puesto puede abrirse en más de un país o
           modalidad sin duplicar la plantilla. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">País</span>
+        <Field id={`${uid}-country`} label="País" error={errorDe("country")}>
           <select name="country" required defaultValue="" className={FIELD_CLASS}>
             <option value="" disabled>
               Elige un país
@@ -104,48 +108,54 @@ export function NuevaVacanteForm({
               </option>
             ))}
           </select>
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Ubicación</span>
+        </Field>
+        <Field id={`${uid}-location`} label="Ubicación" error={errorDe("location")}>
           <input name="location" required maxLength={120} placeholder="Ciudad de Guatemala" className={FIELD_CLASS} />
-        </label>
+        </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Modalidad</span>
+        <Field id={`${uid}-work_mode`} label="Modalidad" error={errorDe("work_mode")}>
           <LabelSelect name="work_mode" required labels={WORK_MODE_LABEL} className={FIELD_CLASS} />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Tipo de contrato</span>
+        </Field>
+        <Field id={`${uid}-employment_type`} label="Tipo de contrato" error={errorDe("employment_type")}>
           <LabelSelect name="employment_type" required labels={EMPLOYMENT_TYPE_LABEL} className={FIELD_CLASS} />
-        </label>
+        </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" data-tour="nv-salario">
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Salario mín. (opcional)</span>
+        <Field id={`${uid}-salary_min`} label="Salario mín. (opcional)" error={errorDe("salary_min")}>
           <input name="salary_min" type="number" min={0} className={`${FIELD_CLASS} tabular-nums`} />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Salario máx. (opcional)</span>
+        </Field>
+        <Field id={`${uid}-salary_max`} label="Salario máx. (opcional)" error={errorDe("salary_max")}>
           <input name="salary_max" type="number" min={0} className={`${FIELD_CLASS} tabular-nums`} />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Plazas</span>
+        </Field>
+        <Field id={`${uid}-headcount`} label="Plazas" error={errorDe("headcount")}>
           <input name="headcount" type="number" min={1} defaultValue={1} className={`${FIELD_CLASS} tabular-nums`} />
-        </label>
+        </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-tour="nv-tipo">
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Tipo de vacante</span>
+        <Field id={`${uid}-vacancy_type`} label="Tipo de vacante" error={errorDe("vacancy_type")}>
           <LabelSelect name="vacancy_type" required labels={VACANCY_TYPE_LABEL} className={FIELD_CLASS} />
-        </label>
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">Motivo de la vacante</span>
-          <EmploymentReasonSelect initialReasons={employmentReasons} />
-        </label>
+        </Field>
+        {/* `EmploymentReasonSelect` no es un control: es un `<select>` más una
+            fila para agregar un motivo nuevo, así que no puede ser el hijo
+            único de `<Field>`. Etiqueta y mensaje van a mano. */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor={`${uid}-employment_reason_id`}
+            className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase"
+          >
+            Motivo de la vacante
+          </label>
+          <EmploymentReasonSelect
+            initialReasons={employmentReasons}
+            id={`${uid}-employment_reason_id`}
+            error={errorDe("employment_reason_id")}
+            idError={`${uid}-employment_reason_id-error`}
+          />
+        </div>
       </div>
 
       <div className="border-t border-border pt-5" data-tour="nv-equipo">
@@ -153,8 +163,11 @@ export function NuevaVacanteForm({
         <div className="mt-3 flex flex-col gap-4">
           {isAdmin && (
             <>
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-muted-foreground">Solicitar en nombre de (opcional — por defecto, tú)</span>
+              <Field
+                id={`${uid}-requester_id`}
+                label="Solicitar en nombre de (opcional — por defecto, tú)"
+                error={errorDe("requester_id")}
+              >
                 <select name="requester_id" defaultValue="" className={FIELD_CLASS}>
                   <option value="">Yo mismo</option>
                   {members.map((m) => (
@@ -163,17 +176,36 @@ export function NuevaVacanteForm({
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-muted-foreground">Admins adicionales (opcional)</span>
-                <CollaboratorsPicker members={admins} name="extra_admin_ids" emptyLabel="No hay otros admins en la organización." />
-              </label>
+              </Field>
+              {/* Un grupo de casillas no es un control único, así que no
+                  puede ir dentro de un `<label>` ni de `<Field>`: lo nombra
+                  `role="group"` + `aria-labelledby`. */}
+              <div className="flex flex-col gap-2">
+                <span id={`${uid}-extra_admin_ids-label`} className="text-xs text-muted-foreground">
+                  Admins adicionales (opcional)
+                </span>
+                <CollaboratorsPicker
+                  members={admins}
+                  name="extra_admin_ids"
+                  emptyLabel="No hay otros admins en la organización."
+                  idEtiqueta={`${uid}-extra_admin_ids-label`}
+                  error={errorDe("extra_admin_ids")}
+                  idError={`${uid}-extra_admin_ids-error`}
+                />
+              </div>
             </>
           )}
-          <label className="flex flex-col gap-2">
-            <span className="text-xs text-muted-foreground">Colaboradores adicionales (opcional)</span>
-            <CollaboratorsPicker members={members} />
-          </label>
+          <div className="flex flex-col gap-2">
+            <span id={`${uid}-collaborator_ids-label`} className="text-xs text-muted-foreground">
+              Colaboradores adicionales (opcional)
+            </span>
+            <CollaboratorsPicker
+              members={members}
+              idEtiqueta={`${uid}-collaborator_ids-label`}
+              error={errorDe("collaborator_ids")}
+              idError={`${uid}-collaborator_ids-error`}
+            />
+          </div>
         </div>
       </div>
 
