@@ -3,14 +3,14 @@
 import { useEffect } from "react";
 import { notifyError } from "@/lib/notifications/toast";
 
+
 /**
  * Cómo se llama en el DOM el mensaje de un campo. `<Field id="x">` lo pinta con
- * id `x-error`, que es el valor por defecto; un formulario que prefija sus ids
- * (para no chocar con otro formulario de la misma pantalla) pasa su función.
+ * id `x-error`, así que un formulario cuyos campos usan `useId()` como prefijo
+ * pasa `(campo) => \`${uid}-${campo}-error\``. **No hay valor por defecto**: ver
+ * el porqué en `useErrorToast`.
  */
 export type IdDeMensaje = (campo: string) => string;
-
-const POR_DEFECTO: IdDeMensaje = (campo) => `${campo}-error`;
 
 /** Lo mínimo que hace falta de un nodo para saber si se pinta — así la decisión
  *  se puede probar sin un DOM, que este proyecto no tiene en los tests. */
@@ -109,7 +109,11 @@ export function decidirToast(
  */
 export function useErrorToast(
   state: { error?: string; field?: string } | undefined,
-  idDeMensaje: IdDeMensaje = POR_DEFECTO,
+  /** **Obligatorio a propósito.** Hubo un default (`${campo}-error`) y era un
+   *  espacio de ids del documento entero: cualquier elemento de la pantalla que
+   *  cayera en ese nombre hacía creer al hook que el mensaje se ve, y se
+   *  callaba. Pedirlo siempre convierte ese olvido en un error de compilación. */
+  idDeMensaje: IdDeMensaje,
   /** Ver `decidirToast`: el mensaje general propio del formulario, si lo hay. */
   idGeneral?: string,
 ) {

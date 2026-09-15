@@ -157,10 +157,13 @@ export async function createJob(
       : Promise.resolve(null),
     isAdminCreator ? assertValidExtraAdmins(supabase, profile.organization_id, parsed.data.extra_admin_ids) : Promise.resolve(null),
   ]);
-  if (reasonError) return { error: reasonError };
-  if (collaboratorsError) return { error: collaboratorsError };
-  if (requesterError) return { error: requesterError };
-  if (extraAdminsError) return { error: extraAdminsError };
+  // Cada uno lleva SU campo: el formulario tiene un mensaje esperando debajo de
+  // cada uno de estos cuatro controles, y sin `field` el texto volvía al toast
+  // genérico sin decir cuál corregir (AGENTS.md, regla 12).
+  if (reasonError) return { error: reasonError, field: "employment_reason_id" };
+  if (collaboratorsError) return { error: collaboratorsError, field: "collaborator_ids" };
+  if (requesterError) return { error: requesterError, field: "requester_id" };
+  if (extraAdminsError) return { error: extraAdminsError, field: "extra_admin_ids" };
 
   const { data: template } = await supabase
     .from("job_templates")
@@ -169,7 +172,7 @@ export async function createJob(
     .eq("organization_id", profile.organization_id)
     .eq("status", "published")
     .maybeSingle();
-  if (!template) return { error: "Esa plantilla ya no está disponible." };
+  if (!template) return { error: "Esa plantilla ya no está disponible.", field: "template_id" };
 
   const requestedBy = isAdminCreator && parsed.data.requester_id ? parsed.data.requester_id : profile.id;
   const ownerId = isAdminCreator ? profile.id : null;

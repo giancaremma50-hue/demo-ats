@@ -1,18 +1,23 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useId } from "react";
 import Link from "next/link";
 import { updateTemplateStep5 } from "@/lib/job-templates/wizard-actions";
-import { notifyError } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { useErrorToast } from "@/lib/forms/use-error-toast";
 
 export function WizardStep5Form({ templateId, isConfidential }: { templateId: string; isConfidential: boolean }) {
   const action = updateTemplateStep5.bind(null, templateId);
   const [state, formAction] = useActionState(action, undefined);
+  // Prefijo propio aunque hoy no pinte ningún mensaje: el id por defecto
+  // (`<campo>-error`) es del documento entero, y cualquier elemento que caiga
+  // en ese nombre haría creer al hook que el mensaje se ve — y se callaría.
+  const uid = useId();
 
-  useEffect(() => {
-    if (state?.error) notifyError(state.error);
-  }, [state]);
+  // No tiene ningún campo que Zod pueda rechazar por su contenido, así que el
+  // toast es el único canal posible. Pasa por el hook igual para que haya un
+  // solo mecanismo en todo el producto.
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

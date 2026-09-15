@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { createMessageTemplate, updateMessageTemplate } from "@/lib/message-templates/actions";
-import { notifyError, notifySuccess } from "@/lib/notifications/toast";
+import { notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { DialogShell, type DialogShellHandle } from "@/components/ui/dialog-shell";
+import { Field, FieldError } from "@/components/ui/field";
+import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 import type { MessageTemplate } from "@/lib/message-templates/get-message-templates";
 
 export function MessageTemplateDialog({
@@ -15,12 +17,20 @@ export function MessageTemplateDialog({
   trigger: React.ReactNode;
 }) {
   const dialogRef = useRef<DialogShellHandle>(null);
+  // Prefijo propio: esta pantalla monta un diálogo por plantilla más el de
+  // "nueva", así que un id fijo se repetiría N+1 veces en el documento.
+  const uid = useId();
   const action = template ? updateMessageTemplate.bind(null, template.id) : createMessageTemplate;
   const [state, formAction] = useActionState(action, undefined);
 
+  // Con `idGeneral`, igual que el diálogo de departamentos: un "no se pudo
+  // crear" dentro de un `<dialog>` abierto solo tenía el toast, que se va
+  // mientras el usuario sigue mirando el formulario.
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`, `${uid}-error`);
+  const errorDe = selectorDeError(state);
+
   useEffect(() => {
-    if (state?.error) notifyError(state.error);
-    else if (state?.success) {
+    if (state?.success) {
       notifySuccess(state.success);
       dialogRef.current?.close();
     }
@@ -32,8 +42,7 @@ export function MessageTemplateDialog({
       <DialogShell ref={dialogRef} title={template ? "Editar plantilla" : "Nueva plantilla"} maxWidthClassName="max-w-[480px]">
         <form action={formAction}>
           <div className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Nombre</span>
+            <Field id={`${uid}-name`} label="Nombre" error={errorDe("name")}>
               <input
                 name="name"
                 required
@@ -42,9 +51,8 @@ export function MessageTemplateDialog({
                 placeholder="Rechazo — no cumple experiencia"
                 className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
               />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Asunto</span>
+            </Field>
+            <Field id={`${uid}-subject`} label="Asunto" error={errorDe("subject")}>
               <input
                 name="subject"
                 required
@@ -52,9 +60,8 @@ export function MessageTemplateDialog({
                 defaultValue={template?.subject}
                 className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
               />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Cuerpo</span>
+            </Field>
+            <Field id={`${uid}-body`} label="Cuerpo" error={errorDe("body")}>
               <textarea
                 name="body"
                 required
@@ -63,8 +70,14 @@ export function MessageTemplateDialog({
                 defaultValue={template?.body}
                 className="rounded-md border border-border bg-background px-2.5 py-2 text-sm"
               />
-            </label>
+            </Field>
           </div>
+
+          {state?.error && !state.field && (
+            <div className="mt-4">
+              <FieldError id={`${uid}-error`}>{state.error}</FieldError>
+            </div>
+          )}
 
           <div className="mt-6 flex justify-end gap-2.5">
             <ActionButton type="button" variant="ghost" onClick={() => dialogRef.current?.close()}>

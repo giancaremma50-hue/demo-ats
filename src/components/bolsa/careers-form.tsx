@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useId } from "react";
 import { updateCareersContent } from "@/lib/organizations/actions";
 import { ActionButton } from "@/components/ui/action-button";
-import { notifyError, notifySuccess } from "@/lib/notifications/toast";
+import { notifySuccess } from "@/lib/notifications/toast";
+import { Field } from "@/components/ui/field";
+import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 
 /**
  * Las leyendas que ve quien entra a /empleos. Vivían dentro del formulario de
@@ -24,33 +26,36 @@ export function CareersForm({
 }) {
   const [state, formAction] = useActionState(updateCareersContent, undefined);
 
+  const uid = useId();
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
+  const errorDe = selectorDeError(state);
+
   useEffect(() => {
     if (state?.success) notifySuccess(state.success);
-    else if (state?.error) notifyError(state.error);
   }, [state]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="careers_headline" className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
-          Título de la bolsa (opcional)
-        </label>
+      <Field
+        id={`${uid}-careers_headline`}
+        label="Título de la bolsa (opcional)"
+        error={errorDe("careers_headline")}
+      >
         <input
-          id="careers_headline"
           name="careers_headline"
           defaultValue={careersHeadline ?? ""}
           maxLength={120}
           placeholder="Vacantes abiertas"
           className="h-[42px] rounded-md border border-border bg-background px-3 text-sm"
         />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor="careers_intro" className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
-          Texto de bienvenida (opcional)
-        </label>
+      <Field
+        id={`${uid}-careers_intro`}
+        label="Texto de bienvenida (opcional)"
+        error={errorDe("careers_intro")}
+      >
         <textarea
-          id="careers_intro"
           name="careers_intro"
           defaultValue={careersIntro ?? ""}
           rows={3}
@@ -58,7 +63,7 @@ export function CareersForm({
           placeholder="Cuéntale a quien visita la bolsa por qué vale la pena trabajar aquí…"
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
-      </div>
+      </Field>
 
       <ActionButton className="self-start">Guardar cambios</ActionButton>
     </form>

@@ -13,40 +13,23 @@
 
 _Última actualización: 2026-09-13 (`outline-none` no apaga el anillo de foco por cascada: deja `--tw-outline-style` en `none` para siempre, así que el anillo no se dibuja NUNCA — ni cuando otra clase intenta reponerlo)_
 
-## `outline-none` no apaga el anillo: lo borra de raíz, y el error y el foco peleaban por el mismo borde (2026-09-13) — MÁXIMA PRIORIDAD
+## El foco no se pierde por cascada: `outline-none` lo borra de raíz (2026-09-13) — MÁXIMA PRIORIDAD
 
-Pedido del usuario: errores visibles debajo del campo, y foco claro. Las dos
-cosas estaban rotas, y las dos por la misma forma de fallo — **la pieza correcta
-ya existía y algo la apagaba**.
-
-**El anillo de foco no se pierde por cascada.** `globals.css` tiene la regla
-buena desde siempre, con su comentario ("es requisito de accesibilidad, no
-decoración") y con `--ring` en `#008134`, que el proyecto bajó a 5.01:1 justo
-para esto. Lo que la rompía es más sutil que una guerra de especificidad — hay
-que mirar el CSS generado para verlo:
+**El anillo no se pierde por cascada.** `globals.css` define el foco en
+`:focus-visible` leyendo `--tw-outline-style` **del propio elemento**, y
+`outline-none` deja esa variable en `none` de forma permanente, no solo mientras
+el campo está enfocado:
 
 ```
 :focus-visible { outline-style: var(--tw-outline-style); … outline-color: var(--ring) }
 .outline-none  { --tw-outline-style: none; outline-style: none }
 ```
 
-La regla **lee la variable del propio elemento**, y `outline-none` la deja en
-`none` de forma permanente, no solo mientras el campo está enfocado. O sea: el
-anillo **no se dibuja nunca**, en ningún navegador, y no hay orden de capas ni
-especificidad que lo salve. La prueba está en que `jobs-board.tsx` era el único
-archivo que intentaba reponerlo con `focus-visible:outline-ring
+O sea: el anillo **no se dibuja nunca**, en ningún navegador, y no hay orden de
+capas ni especificidad que lo salve. La prueba está en que `jobs-board.tsx` era
+el único archivo que intentaba reponerlo con `focus-visible:outline-ring
 focus-visible:outline-2` y **tampoco funcionaba** — esa utilidad lee la misma
 variable envenenada.
-
-**Eran 43 controles, no 28.** 28 es cuántas veces aparece la CLASE (29 menos la
-excepción del popover). **Seis** de esas apariciones son constantes compartidas
-—`ROW_INPUT_CLASS`, tres `FIELD_CLASS` distintos, `TEXTAREA_CLASS` y el
-`selectClass` de `jobs-board`— que entre las seis visten a 21 controles. O sea:
-22 sueltos + 21 por constante = 43. Contar apariciones de una clase y llamarlas
-"controles" es la misma confusión que el recuento de formularios de más abajo, y
-deja a quien revise si el barrido quedó completo buscando 15 controles que no
-faltan. (Escribí primero 41 porque se me pasó que `selectClass` también era una
-constante: la lección no se aprende de una.)
 
 **El error y el foco peleaban por el mismo borde de 1px.** El error pintaba
 `border-destructive` y el foco `focus-visible:border-accent`, en la misma clase.
@@ -56,176 +39,157 @@ usuario la necesitaba. La salida no es elegir cuál gana — es que sean dos
 canales: el borde para el error, el anillo (por fuera, con `outline-offset`)
 para el foco.
 
-**Antes de proponer un componente, buscarlo.** El informe que escribí proponía
-"crear un `<Field>`" y **ya existía** (`src/components/ui/field.tsx`, usado por
-`job-form`). Lo encontré recién al correr el grep de limpieza, no al auditar.
-Hacía bien la mitad —etiqueta, mensaje debajo, `aria-invalid`, borde rojo— y le
-faltaba la otra: `aria-describedby`, `role="alert"`, y que el error no dependiera
-solo del color. **Un grep por el síntoma (`text-destructive`) no encuentra al
-componente que lo encapsula**: por eso el recuento inicial decía 5 formularios
-con error inline —los 5 que escriben la clase a mano— y el real era 6, porque
-`job-form` ya lo hacía en sus 12 campos a través de `<Field>`, sin que la clase
-apareciera nunca en el archivo.
+**Dentro de un contenedor que recorta, el anillo va hacia adentro.**
+`overflow-x-auto` y `overflow-hidden` recortan también el eje Y, así que un
+anillo por fuera queda cortado y se ve como dos barras sueltas. Darle aire al
+contenedor lo arregla y rompe otra cosa (en las pestañas de Ajustes despegaba el
+subrayado de la activa del riel). `outline-offset` negativo no toca ningún
+borde — y necesita `px-1` en el control, o cae encima de la primera y la última
+letra del rótulo. Excepciones declaradas en AGENTS.md: `config-tabs` y
+`error-thread`.
 
-**Y el dato tiene que llegar para que el mensaje tenga dónde ir.**
-`zodFieldError` también existía y devuelve `{ error, field }`, pero **solo 9 de
-las 43 validaciones lo usaban** (contadas sobre `3b20d3a`: 43 bloques
-`!parsed.success`, 9 con el helper, 32 después de esta entrega); las otras hacían
-`parsed.error.issues[0]?.message ?? "…"` y tiraban el campo a la basura. El
-texto de esos mensajes está bien escrito —"El color debe ser un hexadecimal
-válido, ej. #008134"— así que nunca fue un problema de redacción: era que el
-mensaje no sabía a qué campo volver.
+**Contar apariciones de una clase no es contar controles.** Eran **43**, no 28:
+28 es cuántas veces aparece `outline-none` (29 menos la excepción del popover), y
+**seis** de esas apariciones son constantes compartidas —`ROW_INPUT_CLASS`, tres
+`FIELD_CLASS`, `TEXTAREA_CLASS` y el `selectClass` de `jobs-board`— que entre las
+seis visten a 21 controles: 22 sueltos + 21 por constante. Escribí 41 primero
+porque se me pasó que `selectClass` también era una constante: la lección no se
+aprende de una.
 
 **Números de la auditoría** (sobre `main`, commit `3b20d3a`, todos recontados
 antes de escribirlos acá): 121 controles de formulario —`<input>`, `<textarea>`
 y `<select>` **en `.tsx`**, sin los `type="hidden"`; contar también los `.ts`
 sumaba 14 que eran prosa dentro de comentarios—, **29 `outline-none` en 21
-archivos**, 24
-formularios con `useActionState`, 18 de ellos solo con toast, 17 `aria-invalid`,
-**1 `aria-describedby`** —el grep devolvía dos archivos, pero el segundo era un
-comentario que decía "Sin aria-describedby"—, **0 `role="alert"`**.
+archivos**, 24 formularios con `useActionState`, 18 de ellos solo con toast, 17
+`aria-invalid`, **1 `aria-describedby`** —el grep devolvía dos archivos, pero el
+segundo era un comentario que decía "Sin aria-describedby"—, **0 `role="alert"`**.
 
-**Y un recordatorio de por qué se recuentan**: la primera versión de este mismo
-párrafo decía "127 campos, 28 `outline-none`" y "5 de 42 validaciones", tres
-cifras que no salían de ningún comando reproducible. Una bitácora con números
-inventados es peor que una sin números: el que venga después los usa para
-decidir. Toda cifra acá se escribe con el comando que la produce en la cabeza y
-se vuelve a correr antes de commitear.
+**Toda cifra acá se escribe con el comando que la produce en la cabeza.** La
+primera versión de ese párrafo decía "127 campos, 28 `outline-none`" y "5 de 42
+validaciones": tres cifras que no salían de ningún comando reproducible. Una
+bitácora con números inventados es peor que una sin números — el que venga
+después los usa para decidir.
 
-**Y al arreglarlo introduje dos veces el bug que venía a evitar.** Las dos las
-encontró el review, y las dos son la misma idea mal aplicada:
+## Un error que no se ve es un error mudo (2026-09-13) — MÁXIMA PRIORIDAD
 
-- Silenciar el toast cuando el error trae `field` **da por hecho que ese campo
-  se pintó**. Pero un campo puede estar escondido por configuración
-  (`candidacyFields` en el formulario público, `departments.length > 0` en el de
-  vacante), así que el mensaje no se mostraba en ningún lado: **fallo mudo**,
-  justo lo que la regla 5 llama el peor final. La condición tiene que salir de
-  **lo mismo que decide si el campo se pinta**, no de una lista aparte — que fue
-  mi primer parche, y es la trampa que la regla 11 ya describe.
-- Leer `children.props` **antes** de la guardia `isValidElement` que existía para
-  ese caso: con `{cond ? <input/> : null}` reventaba con un TypeError y se
-  llevaba el formulario entero. La guardia va antes de lo que protege.
+**Antes de proponer un componente, buscarlo.** El informe que escribí proponía
+"crear un `<Field>`" y **ya existía** (`src/components/ui/field.tsx`, usado por
+`job-form`). Un grep por el síntoma (`text-destructive`) no encuentra al
+componente que lo encapsula: el recuento inicial decía 5 formularios con error
+inline y el real era 6, porque `job-form` ya lo hacía en sus 12 campos a través
+de `<Field>`, sin que la clase apareciera nunca en el archivo.
 
-**Un ref no se muta durante el render** — el lint del proyecto lo rechaza
-(`react-hooks/refs`). Lo intenté para marcar "este mensaje ya se pintó". Una
-`let` capturada por la closure del efecto sí funciona (la closure captura el
-binding, y el efecto corre después del JSX), pero el lint también la marca
-(`Cannot reassign variable after render completes`).
+**El dato tiene que llegar, o el mensaje no tiene dónde ir.** `zodFieldError`
+existía y devuelve `{ error, field }`, pero solo 9 de las 43 validaciones lo
+usaban. Tres trampas, las tres encontradas por review:
+- **`field` solo si el path tiene UN segmento.** Uno anidado
+  (`["questions", 2, "prompt"]`) nombra al contenedor, no a un control del DOM.
+- **"El schema es anidado, así que no hay campo" es FALSO.** El error del
+  ARREGLO (`["questions"]`) tiene un segmento y sí trae campo. Lo que decide si
+  el mensaje se ve no es la forma del schema: es **si existe un control con ese
+  id**. `reusable_set_name` del paso 4 era un input a la vista cuyo error se iba
+  a un toast.
+- **Un `z.uuid()` suelto da `path: []`.** Le cableé a `collaborators-panel` el
+  mensaje de `owner_id` y **nacía muerto**. La acción valida un objeto de una
+  clave y recién ahí el path tiene un segmento.
 
-**Y la salida declarativa —un `Record<string, boolean>` por formulario— tampoco
-era la buena: era la misma trampa una capa más arriba.** Terminó copiada en
-SIETE componentes, con cinco de ellos poniendo `true` en todo, y falló donde
-una lista paralela siempre falla: en lo que la lista no sabe. `refer-candidate`
-monta su formulario detrás de `{open && …}` y `reject-dialog` vive en un
-`<dialog>`; si el usuario cierra el diálogo mientras la acción corre, la lista
-sigue diciendo "este campo muestra su mensaje" y el toast se calla, pero el
-mensaje se pinta dentro de algo invisible. **Error mudo otra vez**, y el mismo
-review lo encontró.
+Y **Zod no es la única fuente de `field`**: "Ese motivo de vacante no es
+válido.", "Esa persona ya es miembro", "Ya existe ese motivo." salían como
+`{ error }` pelado, con el formulario teniendo un mensaje esperando debajo de ese
+control. Cualquier `return { error }` que hable de un campo concreto tiene que
+traerlo — **y solo si señala a UNO**: el `UNIQUE(nombre, país)` de departamentos
+lo colgué de `name`, y quien cambió SOLO el país se encontraba el borde rojo bajo
+un campo que no tocó, con el arreglo en otro. Un mensaje que habla de una
+combinación va al canal general, que los nombra a los dos.
 
-Lo que sí contesta la pregunta es el **layout**: `document.getElementById(id)` y
-`getClientRects().length === 0`, que da vacío para `display:none`, para un
-`<dialog>` cerrado, para una rama escondida por punto de corte y para un
-`<details>` plegado. Que el nodo esté **montado** no alcanza — la pregunta nunca
-fue "¿existe?" sino "¿se ve?". Vive en `useErrorToast`
-(`src/lib/forms/use-error-toast.ts`), un solo mecanismo en vez de siete listas.
+**Derivar, no anotar.** Silenciar el toast "porque el error trae campo" da por
+hecho que ese campo se pintó, y puede estar escondido por configuración: **fallo
+mudo**. Mi primer parche fue un `Record<string, boolean>` por formulario, que
+terminó copiado en SIETE componentes y falló como falla toda lista paralela —
+decía "se ve" de un campo dentro de un `<dialog>` que el usuario había cerrado.
+Lo que contesta la pregunta es el **layout**: `getClientRects().length === 0` da
+vacío para `display:none`, un `<dialog>` cerrado, una rama escondida por punto
+de corte y un `<details>` plegado. Vive en `useErrorToast`. Cuando una condición
+se puede derivar de lo que ya pasó, se deriva — no se anota.
 
-La lección general, que es la regla 11 otra vez: **cuando una condición se puede
-derivar de lo que ya pasó, derivarla — no anotarla.** Una lista escrita a mano
-solo puede estar al día si alguien se acuerda, y la pregunta "¿se ve esto?" tiene
-una fuente de verdad que no hay que mantener.
+**Y "pintado" tampoco es "visto".** En un formulario de doce campos el mensaje
+aparece arriba mientras el usuario mira el botón de abajo: sin toast y sin nada
+que se mueva, lo único que pasa es que el botón deja de girar. El hook lleva el
+foco al control (lo encuentra por `[aria-describedby~=…]`, la relación que
+`<Field>` ya crea) y lo trae a la vista. **Pero una guardia que no avisa a nadie
+deja el error mudo otra vez**: por eso `llevarAlCampo` devuelve si de verdad
+movió, y cuando no pudo, el toast habla. Regla general: el silencio solo se
+justifica si algo más quedó diciéndolo, y eso hay que **comprobarlo**.
 
-**Y la "excepción" tampoco necesitaba lista.** El formulario público pinta un
-mensaje general en el mismo render, así que parecía necesitar saber ANTES qué
-campos están en pantalla — y sobre eso escribí dos versiones de un mapa. Las dos
-sobraban: la condición del mensaje general es **que el error no traiga campo**,
-que sale del propio estado. Si trae campo pero ese campo está escondido por
-configuración, no se pinta nada ahí y el hook lo manda al toast, porque
-**comprueba** si el mensaje se ve en vez de suponerlo. Tres intentos para llegar
-a que la pregunta correcta no era "¿qué campos hay?" sino "¿quedó algo dicho?".
+Pero **el foco no se mueve si otro lo tiene**: una Server Action tarda y el
+usuario puede haberse ido a otro formulario; traerle el cursor le manda las
+teclas al campo equivocado. Se mueve si el foco está en `body`, dentro del
+formulario que envió, **o en un ancestro suyo** — esa tercera rama no es teórica:
+en un diálogo modal el navegador devuelve el foco al `<dialog>`, que contiene al
+formulario y no al revés. El `scrollIntoView` va en la MISMA guardia.
 
-**"Pintado" tampoco es "visto".** Segundo review, segunda vuelta de tuerca: el
-predicado contestaba si el nodo ocupa lugar, y en `/vacantes/<id>/editar` —doce
-campos a lo largo de una página— el mensaje aparecía arriba mientras el usuario
-miraba el botón de abajo. Sin toast (el mensaje "se ve") y sin nada que se
-mueva, lo único que pasaba en pantalla era que el botón dejaba de girar. Por eso
-el hook, cuando el mensaje sí está pintado, **manda el foco al control y lo trae
-a la vista**. El control se encuentra por `[aria-describedby~="<id>"]`, que es la
-relación que `<Field>` ya crea — no hace falta una segunda referencia.
+**Lo que el mecanismo NO arregla, y hay que saberlo:** si el componente se
+desmonta con la mutación en vuelo (cambiar de pestaña en el cajón del candidato)
+no corre ningún efecto y no hay aviso por ningún lado — la salida es mantener
+montado lo que tiene una mutación corriendo, o deshabilitar lo que lo desmonta
+(`employment-reason-select` deshabilita "Cancelar" mientras corre). Y
+`visibility:hidden` / `opacity:0` cuentan como pintados: el día que un cajón se
+anime saliendo con opacidad, el predicado necesita `checkVisibility()`. **Y el
+teclado no pasa por el botón**: el alta de motivos deshabilita "Agregar" por
+debajo de 2 caracteres, pero Enter llama directo al handler, que hacía `return` y
+no pasaba nada en pantalla. Toda guardia que corta temprano tiene que decir por
+qué.
 
-**Lo que este hook NO puede arreglar, y hay que saberlo:** si el componente se
-desmonta con la mutación en vuelo, no corre ningún efecto y no hay aviso por
-ningún lado. Pasa en el cajón del candidato: enviar un correo y cambiar de
-pestaña antes de que responda. No es una regresión de esto —antes tampoco
-avisaba, por el mismo motivo— pero sigue abierto, y la salida es mantener
-montado lo que tiene una mutación corriendo. Y `visibility:hidden` / `opacity:0`
-cuentan como pintados: el día que un cajón se anime saliendo con opacidad, el
-predicado necesita `checkVisibility()`.
+**No todo lo que recibe un error es un campo.** Tres formas, tres herramientas:
+`<Field>` cuando etiqueta, control y mensaje van en columna; `camposDeFila`
+cuando el campo comparte fila con su botón —adentro de la columna, con
+`items-end`, el mensaje empuja el botón al fallar—; `campoSuelto` para un control
+con layout propio o un grupo de casillas. Y **un `<label>` nombra a UN control**:
+envolver con él a una casilla y a un input hacía que clic en el rótulo del input
+desmarcara la casilla y borrara lo escrito. Un grupo va con `role="group"` +
+`aria-labelledby`, y con `tabIndex={-1}` cuando tiene error, o el salto al campo
+queda a medias (scroll sí, foco no). **Y los tres helpers dicen lo mismo con el
+mismo tipo**: `campoSuelto().enError` era booleano y `camposDeFila().enError`
+devolvía el nombre del campo — el primero que escribiera `=== true` después de
+leer el otro descartaba el mensaje en silencio. Ahora los dos son booleanos, el
+nombre vive en `cual`, hay una prueba que fija que coinciden, y `<Field>` deriva
+sus cuatro señales del mismo helper: por ahí pasan 13 de los 27 formularios (los
+otros diez usan los helpers directo). **Y los helpers viven en un módulo SIN
+`"use client"`** (`src/lib/forms/field-signals.ts`): `ui/field.tsx` no lleva
+directiva, así que importarlos del módulo del hook —que sí es de cliente—
+convertía a `<Field>` en un componente que revienta si alguien lo renderiza desde
+el servidor. Una función pura no tiene por qué arrastrar esa marca.
 
-**Una fila `items-end` con el mensaje adentro empuja el botón.** `<Field>` apila
-etiqueta + control + mensaje, así que meterlo en una columna que comparte fila
-con el botón hace que al fallar el botón se despegue del campo. En esas filas
-(invitar usuario, agregar motivo) el mensaje va **debajo de la fila** y las tres
-piezas se cablean a mano — que es para lo que existe `<FieldError>` suelto.
+**Ids: `useId` por instancia, y cuidado con lo que se lleva puesto la
+migración.** Una pantalla que monta un diálogo por fila más el de "nuevo" declara
+N+1 veces el mismo id, y `htmlFor` / `aria-describedby` resuelven por la primera
+coincidencia del documento. Y los `data-tour` del asistente vivían en los
+`<label>` que `<Field>` reemplaza: un paso cuyo elemento no está en el DOM se
+descarta **en silencio** y no lo ve nadie nunca, así que `<Field>` acepta
+`data-tour`.
 
-**Un parámetro que nunca se usa se lee como si se usara.** `zodFieldError` tenía
-un `fallback` para cuando el error de Zod no trajera mensaje — caso que no
-existe: un `safeParse` que falla siempre trae al menos un issue, y todo issue
-trae `message`. Veintiocho llamadas le pasaban textos escritos para el usuario
-("Revisa la tarea.", "Revisa las etapas.") que **nunca se mostraron**. Se quitó
-el parámetro. Una copia muerta que parece viva es peor que no tenerla: alguien la
-edita creyendo que mejora un mensaje y no cambia nada.
+**Código muerto que parece vivo.** `zodFieldError` tenía un `fallback` para
+cuando el issue no trajera mensaje — caso que no existe: 28 llamadas le pasaban
+textos escritos para el usuario que **nunca se mostraron**. Se quitó. Alguien
+edita una copia muerta creyendo que mejora un mensaje y no cambia nada.
 
-**Y el foco no se mueve si otro lo tiene.** Llevar al usuario al campo que falló
-es bueno, pero una Server Action tarda, y en ese rato puede haberse ido a
-escribir a otro formulario de la misma pantalla. Traerle el cursor de vuelta le
-manda las teclas siguientes al campo equivocado. Se mueve solo si el foco está en
-`body`, dentro del formulario que envió (lo normal: quedó en el botón) **o en un
-ancestro suyo** — esa tercera rama no es teórica: en un diálogo modal, al
-deshabilitarse el botón mientras la acción corre, el navegador devuelve el foco
-al `<dialog>`, que **contiene** al formulario y no al revés; sin ella los dos
-diálogos del proyecto quedaban justo afuera de la ayuda escrita para ellos.
-Y el `scrollIntoView` va en la MISMA guardia: mover la ventana de alguien que
-está escribiendo en otra parte molesta igual que robarle el cursor.
+**Tres trampas de plataforma que solo se ven pintando el error.**
+`bg-color/5` de Tailwind v4 **no es un color con alfa**: compila a `color-mix()`
+con el color ENTERO de respaldo, así que en un navegador sin soporte el campo en
+error quedaba rojo sólido con la tinta encima a 3.5:1 — el tinte vive en
+`--destructive-soft`, literal. Zod responde **en inglés** cuando no le das
+mensaje, y eso ahora se queda fijo debajo del campo. Y el `<span>` de
+`<FieldError>` es hijo de flex: sin `min-w-0 break-words` un mensaje que cita lo
+que el usuario escribió se sale del ancho y `html` lo recorta sin barra.
 
-**Pero una guardia que no avisa a nadie vuelve a dejar el error mudo.** Callar el
-toast porque "el mensaje se ve" y después no poder llevar al usuario hasta él
-deja la pantalla sin ninguna señal — el mismo final que todo esto vino a
-arreglar, entrando por la puerta de atrás. Por eso `llevarAlCampo` **devuelve si
-de verdad movió**, y cuando no pudo, el toast habla. Regla para cualquier aviso
-que se silencie a sí mismo: el silencio solo se justifica si algo más quedó
-diciéndolo, y eso hay que **comprobarlo**, no suponerlo.
-
-**Un parámetro opcional que nunca se alcanza se lee como si se alcanzara** — ver
-el `fallback` de `zodFieldError` arriba. Lo mismo vale para una lista: la
-`CAMPOS` de `invite-form` solo se justifica porque de ella salen **las cuatro**
-señales (borde, `aria-invalid`, `aria-describedby`, mensaje). Una lista que
-convive con los mismos literales repetidos al lado no es una fuente de verdad,
-es una tercera copia.
-
-**El mensaje de un campo lleva lo que el usuario escribió, así que puede ser
-largo.** `<FieldError>` pinta un ícono y el texto en una fila flex: sin
-`min-w-0 break-words` en el `<span>`, un mensaje como «"correo@subdominio-muy-largo.empresa.com.gt"
-no es válido» no baja de su tamaño min-content, se sale del ancho y `html` lo
-recorta sin barra — media frase, y nunca se sabe qué fue lo rechazado. Vale para
-los nueve formularios a la vez, porque el componente es uno.
-
-**`bg-color/5` de Tailwind v4 no es un color con alfa: es `color-mix()` con un
-respaldo OPACO.** La utilidad compila a `background-color: var(--destructive)` y,
-dentro de un `@supports (color: color-mix(...))`, el mezclado real. En un
-navegador sin `color-mix` (Safari < 16.2, Chrome < 111) gana el respaldo: el
-campo en error se pintaba de rojo SÓLIDO con la tinta oscura encima —3.5:1—
-justo cuando hay que leerlo para corregirlo. Por eso el tinte vive en un token
-literal (`--destructive-soft: rgb(196 56 56 / 5%)`), donde no hay respaldo que
-pueda salir mal.
-
-**Zod responde en inglés cuando no le das mensaje.** `.max(120)` a secas devuelve
-"Too big: expected string to have <=120 characters". Mientras eso iba a un toast
-que se iba solo casi no se notaba; **ahora se queda pintado debajo del campo**,
-que es texto en inglés fijo en la interfaz — prohibido por la primera regla del
-proyecto. Se revisaron los schemas y se completaron los que un usuario puede
-disparar escribiendo: título y ubicación de vacante, nombre y teléfono de un
-referido, nombre de la plataforma, opción de encuesta y los cinco `max` del
-reporte de error.
+**Dos formas de destrozar un archivo con una herramienta, las dos vividas en
+esta entrega.** Un script cuyo patrón se calcula tiene que comprobar que no sea
+vacío: `s.replace("", nuevo)` inserta el texto entre CADA carácter: un
+`s.index(...)` devolvió un rango vacío y `invite-form.tsx` quedó destruido (se
+recuperó con `git checkout --`). La guardia es una línea, junto al
+`assert s.count(viejo) == 1`. Y **`prettier` no es del proyecto** —no hay
+`.prettierrc` ni dependencia—: correrlo para arreglar una sangría reformateó 150
+líneas con un estilo ajeno. Se revirtió y se rehizo a mano.
 
 ## Responsividad, ronda 4: un menú que no entra se agrupa, y `break-words` solo no sirve (2026-09-13) — MÁXIMA PRIORIDAD
 

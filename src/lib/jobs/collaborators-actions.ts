@@ -35,7 +35,7 @@ export async function addJobCollaborator(
       .maybeSingle(),
     assertBelongsToOrg(supabase, "jobs", jobId, profile.organization_id, "No se encontró la vacante."),
   ]);
-  if (!targetProfile) return { error: "Esa persona no pertenece a tu organización." };
+  if (!targetProfile) return { error: "Esa persona no pertenece a tu organización.", field: "profile_id" };
   if (jobError) return { error: jobError };
 
   const { error } = await supabase.from("job_collaborators").insert({
@@ -46,7 +46,11 @@ export async function addJobCollaborator(
   });
   if (error) {
     // UNIQUE(job_id, profile_id) — mensaje concreto en vez del genérico de abajo.
-    return { error: error.code === "23505" ? "Esa persona ya es miembro de esta vacante." : "No se pudo agregar." };
+    // 23505 es UNIQUE(job_id, profile_id): el problema es la persona elegida,
+    // así que el mensaje va debajo de ESE campo, no en un toast suelto.
+    return error.code === "23505"
+      ? { error: "Esa persona ya es miembro de esta vacante.", field: "profile_id" }
+      : { error: "No se pudo agregar." };
   }
 
   revalidatePath(`/vacantes/${jobId}`);
@@ -95,7 +99,12 @@ export async function reassignRecruiter(
   formData: FormData,
 ): Promise<CollaboratorActionResult> {
   const profile = await requireAdminOrAbove();
-  const parsed = z.uuid({ error: "Elige a quién le pasa la vacante." }).safeParse(formData.get("owner_id"));
+  // Un objeto de UNA clave, no un `z.uuid()` suelto: un escalar da `path: []`,
+  // así que `zodFieldError` no devuelve `field` y el mensaje se queda sin
+  // dónde mostrarse (AGENTS.md, regla 12).
+  const parsed = z
+    .object({ owner_id: z.uuid({ error: "Elige a quién le pasa la vacante." }) })
+    .safeParse({ owner_id: formData.get("owner_id") });
   if (!parsed.success) return zodFieldError(parsed.error);
 
   const supabase = await createClient();
@@ -105,16 +114,16 @@ export async function reassignRecruiter(
   const { data: target } = await supabase
     .from("profiles")
     .select("id")
-    .eq("id", parsed.data)
+    .eq("id", parsed.data.owner_id)
     .eq("organization_id", profile.organization_id)
     .eq("is_active", true)
     .in("role", ["admin", "super_admin"])
     .maybeSingle();
-  if (!target) return { error: "Esa persona no puede quedar como reclutador asignado." };
+  if (!target) return { error: "Esa persona no puede quedar como reclutador asignado.", field: "owner_id" };
 
   const { data: updated, error } = await supabase
     .from("jobs")
-    .update({ owner_id: parsed.data })
+    .update({ owner_id: parsed.data.owner_id })
     .eq("id", jobId)
     .eq("organization_id", profile.organization_id)
     .select("id");
@@ -125,7 +134,7 @@ export async function reassignRecruiter(
   const { error: memberError } = await supabase
     .from("job_collaborators")
     .upsert(
-      { organization_id: profile.organization_id, job_id: jobId, profile_id: parsed.data, permission: "lectura_escritura" },
+      { organization_id: profile.organization_id, job_id: jobId, profile_id: parsed.data.owner_id, permission: "lectura_escritura" },
       { onConflict: "job_id,profile_id", ignoreDuplicates: true },
     );
   if (memberError) console.error("reassignRecruiter: no se pudo sumar al nuevo reclutador como miembro", memberError);

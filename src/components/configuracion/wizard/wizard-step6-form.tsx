@@ -1,18 +1,20 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useId } from "react";
 import Link from "next/link";
 import { publishTemplate, saveTemplateAsDraft } from "@/lib/job-templates/wizard-actions";
-import { notifyError } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
+import { useErrorToast } from "@/lib/forms/use-error-toast";
 
 function DraftForm({ templateId }: { templateId: string }) {
   const action = saveTemplateAsDraft.bind(null, templateId);
   const [state, formAction] = useActionState(action, undefined);
+  const uid = useId();
 
-  useEffect(() => {
-    if (state?.error) notifyError(state.error);
-  }, [state]);
+  // No tiene ningún campo que Zod pueda rechazar por su contenido, así que el
+  // toast es el único canal posible. Pasa por el hook igual para que haya un
+  // solo mecanismo en todo el producto.
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
 
   return (
     <form action={formAction} data-tour="w6-borrador">
@@ -26,10 +28,12 @@ function DraftForm({ templateId }: { templateId: string }) {
 function PublishForm({ templateId }: { templateId: string }) {
   const action = publishTemplate.bind(null, templateId);
   const [state, formAction] = useActionState(action, undefined);
+  const uid = useId();
 
-  useEffect(() => {
-    if (state?.error) notifyError(state.error);
-  }, [state]);
+  // No tiene ningún campo que Zod pueda rechazar por su contenido, así que el
+  // toast es el único canal posible. Pasa por el hook igual para que haya un
+  // solo mecanismo en todo el producto.
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
 
   return (
     <form action={formAction} data-tour="w6-publicar">

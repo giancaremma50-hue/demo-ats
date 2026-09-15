@@ -515,7 +515,7 @@ export async function addTask(
   // candidate_tasks_select exige can_access_job).
   if (parsed.data.assigned_to) {
     if (!(await isProfileAssignable(parsed.data.assigned_to, taskJobId, profile.organization_id))) {
-      return { error: "Esa persona no tiene acceso a esta vacante." };
+      return { error: "Esa persona no tiene acceso a esta vacante.", field: "assigned_to" };
     }
   }
 

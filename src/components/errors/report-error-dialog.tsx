@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { createErrorReport } from "@/lib/errors/actions";
-import { notifyError, notifySuccess } from "@/lib/notifications/toast";
+import { notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { DialogShell, type DialogShellHandle } from "@/components/ui/dialog-shell";
+import { Field } from "@/components/ui/field";
+import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 
 /**
  * Única puerta de entrada a "Contarle al soporte" — una sola pregunta,
@@ -16,6 +18,7 @@ import { DialogShell, type DialogShellHandle } from "@/components/ui/dialog-shel
  */
 export function ReportErrorDialog({ motivo, titulo, technicalDetail }: { motivo: string; titulo: string; technicalDetail?: string }) {
   const dialogRef = useRef<DialogShellHandle>(null);
+  const uid = useId();
   const pathname = usePathname();
   const context = {
     motivo,
@@ -27,9 +30,11 @@ export function ReportErrorDialog({ motivo, titulo, technicalDetail }: { motivo:
   const action = createErrorReport.bind(null, context);
   const [state, formAction] = useActionState(action, undefined);
 
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
+  const errorDe = selectorDeError(state);
+
   useEffect(() => {
-    if (state?.error) notifyError(state.error);
-    else if (state?.success) {
+    if (state?.success) {
       notifySuccess(state.success);
       dialogRef.current?.close();
     }
@@ -42,18 +47,25 @@ export function ReportErrorDialog({ motivo, titulo, technicalDetail }: { motivo:
       </ActionButton>
       <DialogShell ref={dialogRef} title="¿Qué estabas intentando hacer?">
         <form action={formAction}>
-          <p className="text-sm text-muted-foreground">
-            Cuéntanos en tus palabras. Adjuntamos el resto (página, navegador) automáticamente.
-          </p>
-          <textarea
-            name="user_message"
-            required
-            minLength={5}
-            maxLength={2000}
-            rows={4}
-            className="mt-4 w-full resize-none rounded-md border border-border bg-background p-3 text-sm"
-            placeholder="Estaba subiendo el CV de una candidata y…"
-          />
+          {/* La ayuda va por `hint`, no en un `<p>` suelto: así entra en el
+              `aria-describedby` del campo y un lector de pantalla la lee al
+              llegar al control, en vez de dejarla huérfana arriba. */}
+          <Field
+            id={`${uid}-user_message`}
+            label="Cuéntanos qué pasó"
+            hint="En tus palabras. Adjuntamos el resto (página, navegador) automáticamente."
+            error={errorDe("user_message")}
+          >
+            <textarea
+              name="user_message"
+              required
+              minLength={5}
+              maxLength={2000}
+              rows={4}
+              className="w-full resize-none rounded-md border border-border bg-background p-3 text-sm"
+              placeholder="Estaba subiendo el CV de una candidata y…"
+            />
+          </Field>
           <div className="mt-5 flex justify-end gap-2.5">
             <ActionButton type="button" variant="ghost" onClick={() => dialogRef.current?.close()}>
               Cancelar

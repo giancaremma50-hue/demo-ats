@@ -6,6 +6,7 @@ import { notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card } from "@/components/ui/card";
 import { ERROR_CONTROL_TINT, FieldError } from "@/components/ui/field";
+import { campoSuelto } from "@/lib/forms/field-signals";
 import { useErrorToast } from "@/lib/forms/use-error-toast";
 import { activeMentionQuery, buildMentionToken } from "@/lib/applications/mentions";
 import { normalizarTexto } from "@/lib/utils";
@@ -181,7 +182,8 @@ export function NoteForm({
    *  dos al área de texto: un solo predicado para las tres señales —borde y
    *  fondo, `aria-invalid`, y el mensaje— en vez de tres ternarios que se
    *  desincronizan. */
-  const enError = Boolean(state?.error) && (state?.field === "body" || state?.field === "mentions");
+  const esDelArea = state?.field === "body" || state?.field === "mentions";
+  const campo = campoSuelto(esDelArea ? state?.error : undefined, `${listaId}-error`);
 
   useErrorToast(state, () => `${listaId}-error`);
 
@@ -311,7 +313,7 @@ export function NoteForm({
           // mismo o el cursor real se desalinea del texto pintado (ver arriba),
           // y `border-2` cambia la caja. El segundo canal lo dan el fondo y el
           // mensaje de abajo, no el grosor.
-          className={`pointer-events-none absolute inset-0 overflow-hidden rounded-md border px-3 py-2 text-sm whitespace-pre-wrap break-words ${enError ? ERROR_CONTROL_TINT : "border-border bg-background"}`}
+          className={`pointer-events-none absolute inset-0 overflow-hidden rounded-md border px-3 py-2 text-sm whitespace-pre-wrap break-words ${campo.enError ? ERROR_CONTROL_TINT : "border-border bg-background"}`}
         >
           {segmentos.map((s, i) =>
             s.esMencion ? (
@@ -364,8 +366,7 @@ export function NoteForm({
             sugerencias.length > 0 ? `${listaId}-${(sugerencias[elegido] ?? sugerencias[0]).id}` : undefined
           }
           placeholder={isReply ? "Escribe tu respuesta… (@ para mencionar)" : "Escribe una nota… (@ para mencionar)"}
-          aria-invalid={enError}
-          aria-describedby={enError ? `${listaId}-error` : undefined}
+          {...campo.props}
           // Mismo rounded-md/px-3/py-2/text-sm que el overlay, a propósito
           // (ver el comentario de arriba) — border-transparent en vez de
           // quitar el borde: mantiene el mismo tamaño de caja que el
@@ -410,7 +411,7 @@ export function NoteForm({
         )}
       </div>
 
-      {enError && <FieldError id={`${listaId}-error`}>{state!.error}</FieldError>}
+      {campo.idMensaje && <FieldError id={campo.idMensaje}>{campo.mensaje}</FieldError>}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         {isReply || !canMarkPrivate ? (

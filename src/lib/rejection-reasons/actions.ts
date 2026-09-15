@@ -21,7 +21,10 @@ export async function createRejectionReason(
     .from("rejection_reasons")
     .insert({ organization_id: profile.organization_id, label: parsed.data.label });
   if (error) {
-    return { error: error.code === "23505" ? "Ya existe ese motivo." : "No se pudo crear." };
+    // 23505 es UNIQUE(label): el problema es lo que se escribió en el campo.
+    return error.code === "23505"
+      ? { error: "Ya existe ese motivo.", field: "label" }
+      : { error: "No se pudo crear." };
   }
 
   revalidatePath("/configuracion/motivos-rechazo");

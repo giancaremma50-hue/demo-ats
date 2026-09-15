@@ -1,19 +1,29 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { createSegment } from "@/lib/candidates/segments-actions";
-import { notifyError, notifySuccess } from "@/lib/notifications/toast";
+import { notifySuccess } from "@/lib/notifications/toast";
 import { ActionButton } from "@/components/ui/action-button";
 import { DialogShell, type DialogShellHandle } from "@/components/ui/dialog-shell";
+import { Field } from "@/components/ui/field";
+import { selectorDeError, useErrorToast } from "@/lib/forms/use-error-toast";
 import type { CandidateFilters } from "@/lib/candidates/get-candidates";
 
 export function SaveSegmentButton({ filters }: { filters: CandidateFilters }) {
   const dialogRef = useRef<DialogShellHandle>(null);
+  // Prefijo propio por instancia: un id fijo choca si el diálogo se monta más
+  // de una vez en la misma pantalla, y `htmlFor`/`aria-describedby` resuelven
+  // por la primera coincidencia del documento.
+  const uid = useId();
   const [state, formAction] = useActionState(createSegment, undefined);
 
+  // El formulario vive en un `<dialog>`: si el usuario lo cierra mientras la
+  // acción corre, el mensaje se pinta pero no se ve, y el hook lo manda al toast.
+  useErrorToast(state, (campo) => `${uid}-${campo}-error`);
+  const errorDe = selectorDeError(state);
+
   useEffect(() => {
-    if (state?.error) notifyError(state.error);
-    else if (state?.success) {
+    if (state?.success) {
       notifySuccess(state.success);
       dialogRef.current?.close();
     }
@@ -33,8 +43,7 @@ export function SaveSegmentButton({ filters }: { filters: CandidateFilters }) {
             <input key={key} type="hidden" name={key} value={value} />
           ))}
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Nombre</span>
+          <Field id={`${uid}-name`} label="Nombre" error={errorDe("name")}>
             <input
               name="name"
               required
@@ -43,7 +52,7 @@ export function SaveSegmentButton({ filters }: { filters: CandidateFilters }) {
               placeholder="Candidatos en entrevista — Ventas"
               className="h-[38px] rounded-md border border-border bg-background px-2.5 text-sm"
             />
-          </label>
+          </Field>
 
           <div className="mt-6 flex justify-end gap-2.5">
             <ActionButton type="button" variant="ghost" onClick={() => dialogRef.current?.close()}>
